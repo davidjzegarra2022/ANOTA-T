@@ -1,24 +1,10 @@
 import { useState } from 'react'
 import { COURIERS } from '../data/agencies'
 import { PAYMENT_LABELS } from '../data/paymentMethods'
+import { copyText } from '../utils/clipboard'
 import { downloadShippingLabel } from '../utils/label'
 import { buildWhatsAppSummary, buildWhatsAppUrl } from '../utils/whatsapp'
 import { IconArrowLeft, IconCheck, IconCopy, IconTag, IconWhatsapp } from './icons'
-
-function copyText(text) {
-  if (navigator.clipboard?.writeText) {
-    return navigator.clipboard.writeText(text)
-  }
-  const textarea = document.createElement('textarea')
-  textarea.value = text
-  textarea.style.position = 'fixed'
-  textarea.style.opacity = '0'
-  document.body.appendChild(textarea)
-  textarea.select()
-  document.execCommand('copy')
-  document.body.removeChild(textarea)
-  return Promise.resolve()
-}
 
 const DELIVERY_TITLES = {
   store: 'Recojo en tienda',
