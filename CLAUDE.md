@@ -12,6 +12,10 @@ update or change — do not wait for explicit approval per change. Use
 rewriting history, or pushing to a different branch than the one already
 checked out.
 
+When a change is ready as a pull request, open it against `main` and merge
+it automatically right away — do not wait for a review or ask for
+approval first.
+
 ## Project
 
 Mobile-first logistics shipping form (React + Vite + Tailwind CSS v4).
