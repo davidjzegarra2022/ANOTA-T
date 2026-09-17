@@ -5,11 +5,16 @@ import {
   adminDeleteClient,
   adminListClients,
   adminSetClientActive,
+  adminUpdateClientWhatsapp,
   getAdminSecret,
   setAdminSecret,
 } from '../utils/supabaseClients'
 import { VALID_SERIALS } from '../data/serials'
-import { IconCheck, IconKey, IconRefresh, IconTrash, IconUsers } from './icons'
+import { IconCheck, IconKey, IconPencil, IconRefresh, IconTrash, IconUsers } from './icons'
+
+function digitsOnly(value) {
+  return String(value || '').replace(/\D/g, '')
+}
 
 function fmtDate(iso) {
   try {
@@ -28,9 +33,12 @@ export default function ClientManager() {
   const [loading, setLoading] = useState(false)
   const [listError, setListError] = useState(null)
 
-  const [form, setForm] = useState({ serial: '', name: '', notes: '' })
+  const [form, setForm] = useState({ serial: '', name: '', whatsapp: '', notes: '' })
   const [addMsg, setAddMsg] = useState(null)
   const [busyId, setBusyId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [editMsg, setEditMsg] = useState(null)
 
   async function refresh() {
     if (!configured || !getAdminSecret()) return
@@ -60,13 +68,42 @@ export default function ClientManager() {
       setAddMsg({ ok: false, text: 'El código serial es obligatorio.' })
       return
     }
+    if (digitsOnly(form.whatsapp).length < 9) {
+      setAddMsg({
+        ok: false,
+        text: 'El número de WhatsApp del cliente es obligatorio (mínimo 9 dígitos, con código de país, ej. 51987654321).',
+      })
+      return
+    }
     const res = await adminAddClient(form)
     if (res.ok) {
-      setForm({ serial: '', name: '', notes: '' })
+      setForm({ serial: '', name: '', whatsapp: '', notes: '' })
       setAddMsg({ ok: true, text: 'Cliente agregado.' })
       refresh()
     } else {
       setAddMsg({ ok: false, text: res.error })
+    }
+  }
+
+  function startEdit(client) {
+    setEditingId(client.id)
+    setEditValue(client.whatsapp_number || '')
+    setEditMsg(null)
+  }
+
+  async function handleSaveEdit(client) {
+    if (digitsOnly(editValue).length < 9) {
+      setEditMsg({ ok: false, text: 'Mínimo 9 dígitos.' })
+      return
+    }
+    setBusyId(client.id)
+    const res = await adminUpdateClientWhatsapp(client.id, editValue)
+    setBusyId(null)
+    if (res.ok) {
+      setEditingId(null)
+      refresh()
+    } else {
+      setEditMsg({ ok: false, text: res.error })
     }
   }
 
@@ -96,7 +133,9 @@ export default function ClientManager() {
         </h2>
         <p className="mt-0.5 text-xs leading-relaxed text-gray-400">
           Cada cliente (negociante) entra al link normal con su serial. Agrégalos o retíralos aquí — el cambio
-          aplica de inmediato, incluso si ya habían desbloqueado el formulario en su dispositivo.
+          aplica de inmediato, incluso si ya habían desbloqueado el formulario en su dispositivo. El número de
+          WhatsApp que le asignes es al que le llegarán los pedidos que sus propios clientes llenen en el
+          formulario — no un número compartido por defecto.
         </p>
       </div>
 
@@ -139,7 +178,7 @@ export default function ClientManager() {
       {configured && (
         <form onSubmit={handleAdd} className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
           <p className="text-sm font-semibold text-white">Agregar cliente</p>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block">
               <span className="mb-1 block text-xs font-semibold text-gray-300">
                 Serial<span className="text-red-400"> *</span>
@@ -159,6 +198,19 @@ export default function ClientManager() {
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Tienda de Juan"
                 className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-amber-400/70 focus:ring-2 focus:ring-amber-400/20 focus:outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold text-gray-300">
+                WhatsApp del cliente<span className="text-red-400"> *</span>
+              </span>
+              <input
+                value={form.whatsapp}
+                onChange={(e) => setForm((f) => ({ ...f, whatsapp: e.target.value }))}
+                placeholder="51987654321"
+                inputMode="numeric"
+                spellCheck={false}
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white placeholder:text-gray-500 focus:border-amber-400/70 focus:ring-2 focus:ring-amber-400/20 focus:outline-none"
               />
             </label>
             <label className="block">
@@ -222,6 +274,7 @@ export default function ClientManager() {
                   <tr>
                     <th className="px-3 py-2 font-semibold">Serial</th>
                     <th className="px-3 py-2 font-semibold">Nombre</th>
+                    <th className="px-3 py-2 font-semibold">WhatsApp</th>
                     <th className="px-3 py-2 font-semibold">Estado</th>
                     <th className="px-3 py-2 font-semibold">Desde</th>
                     <th className="px-3 py-2 font-semibold" />
@@ -232,6 +285,40 @@ export default function ClientManager() {
                     <tr key={c.id} className="text-gray-200">
                       <td className="px-3 py-2 font-mono text-xs">{c.serial}</td>
                       <td className="px-3 py-2">{c.name || '—'}</td>
+                      <td className="px-3 py-2">
+                        {editingId === c.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              inputMode="numeric"
+                              autoFocus
+                              className="w-32 rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-xs text-white focus:border-amber-400/70 focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEdit(c)}
+                              disabled={busyId === c.id}
+                              aria-label="Guardar número"
+                              className="rounded-lg p-1 text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-50"
+                            >
+                              <IconCheck className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => startEdit(c)}
+                            className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-200 hover:text-amber-300"
+                          >
+                            {c.whatsapp_number || '—'}
+                            <IconPencil className="h-3 w-3 opacity-60" />
+                          </button>
+                        )}
+                        {editingId === c.id && editMsg && !editMsg.ok && (
+                          <p className="mt-1 text-[11px] text-red-400">{editMsg.text}</p>
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         <button
                           type="button"

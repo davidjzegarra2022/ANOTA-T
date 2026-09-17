@@ -9,13 +9,27 @@ import ShippingForm from './components/ShippingForm'
 import SuccessScreen from './components/SuccessScreen'
 import { getMerchant } from './data/merchants'
 import { clearAccess, getStoredRole, getStoredSerial } from './utils/serial'
-import { checkClientSerial } from './utils/supabaseClients'
+import { getClientAccess } from './utils/supabaseClients'
 
 export default function App() {
-  const merchant = useMemo(() => {
+  const baseMerchant = useMemo(() => {
     const params = new URLSearchParams(window.location.search)
     return getMerchant(params.get('merchant'))
   }, [])
+
+  // Cuando el rol activo es "negociante" (login por serial), el pedido debe
+  // llegarle a SU propio WhatsApp — no al de prueba hardcodeado en
+  // data/merchants.js. clientAccess trae ese override, obtenido de Supabase
+  // al validar el serial (ver AccessGate y el efecto de abajo).
+  const [clientAccess, setClientAccess] = useState(null)
+  const merchant = useMemo(() => {
+    if (!clientAccess?.whatsappNumber) return baseMerchant
+    return {
+      ...baseMerchant,
+      whatsappNumber: clientAccess.whatsappNumber,
+      businessName: clientAccess.businessName || baseMerchant.businessName,
+    }
+  }, [baseMerchant, clientAccess])
 
   // La URL decide el flujo: "/admin" es del dueño del negocio; cualquier
   // otro link (el normal, con o sin ?merchant=) es para el cliente/
@@ -37,10 +51,14 @@ export default function App() {
     const stored = getStoredSerial()
     if (!stored) return undefined
     let alive = true
-    checkClientSerial(stored).then((ok) => {
+    getClientAccess(stored).then((access) => {
       if (!alive) return
-      if (ok) setRole('merchant')
-      else clearAccess()
+      if (access.valid) {
+        setClientAccess(access)
+        setRole('merchant')
+      } else {
+        clearAccess()
+      }
       setCheckingAccess(false)
     })
     return () => {
@@ -48,11 +66,17 @@ export default function App() {
     }
   }, [isAdminRoute])
 
+  function handleUnlock(newRole, access) {
+    if (access) setClientAccess(access)
+    setRole(newRole)
+  }
+
   function handleLogout() {
     clearAccess()
     setSubmittedForm(null)
     setAdminView('dashboard')
     setRole(null)
+    setClientAccess(null)
   }
 
   function handleBackToPanel() {
@@ -81,7 +105,7 @@ export default function App() {
       <CosmicBackground />
 
       {!role ? (
-        <AccessGate mode={isAdminRoute ? 'admin' : 'client'} onUnlock={setRole} />
+        <AccessGate mode={isAdminRoute ? 'admin' : 'client'} onUnlock={handleUnlock} />
       ) : (
         <div className="relative z-10 flex min-h-screen flex-col">
           <Header

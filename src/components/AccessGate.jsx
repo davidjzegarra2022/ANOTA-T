@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { isValidAdmin, setAdminUnlocked, setUnlockedSerial } from '../utils/serial'
-import { checkClientSerial } from '../utils/supabaseClients'
+import { getClientAccess } from '../utils/supabaseClients'
 import { logActivation } from '../utils/telemetry'
 import CrmIllustration from './CrmIllustration'
 import { IconShield, IconStore } from './icons'
@@ -84,12 +84,12 @@ function SerialStep({ onUnlock }) {
   async function handleSubmit(e) {
     e.preventDefault()
     setChecking(true)
-    const ok = await checkClientSerial(value)
+    const access = await getClientAccess(value)
     setChecking(false)
-    if (ok) {
+    if (access.valid) {
       setUnlockedSerial(value)
       logActivation({ type: 'serial', serial: value.trim().toUpperCase() }) // fire-and-forget
-      onUnlock('merchant')
+      onUnlock('merchant', { whatsappNumber: access.whatsappNumber, businessName: access.businessName })
     } else {
       setError(true)
     }

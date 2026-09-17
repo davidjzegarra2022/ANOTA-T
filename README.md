@@ -306,6 +306,10 @@ create table if not exists public.clients (
   id bigint generated always as identity primary key,
   serial text not null unique,
   name text,
+  -- Número al que le llegan por WhatsApp los pedidos que ESE cliente
+  -- (negociante) reciba de sus propios clientes finales — obligatorio,
+  -- nunca un número compartido por defecto.
+  whatsapp_number text not null,
   notes text,
   active boolean not null default true,
   created_at timestamptz not null default now()
@@ -331,6 +335,24 @@ returns boolean language sql security definer set search_path = public as $$
 $$;
 grant execute on function public.check_client_serial(text) to anon, authenticated;
 
+-- Público: valida el serial y devuelve el whatsapp/nombre de ESE cliente
+-- puntual (no la lista completa — hay que conocer el serial exacto, mismo
+-- modelo de seguridad que check_client_serial). Es lo que usa el login por
+-- serial para que los pedidos le lleguen a SU número, no a uno fijo.
+create or replace function public.get_client_access(p_serial text)
+returns table(valid boolean, whatsapp_number text, business_name text)
+language plpgsql security definer set search_path = public as $$
+begin
+  return query
+    select true, c.whatsapp_number, c.name
+    from public.clients c
+    where c.serial = p_serial and c.active = true;
+  if not found then
+    return query select false, null::text, null::text;
+  end if;
+end; $$;
+grant execute on function public.get_client_access(text) to anon, authenticated;
+
 -- Protegidas con la clave de admin (nunca en el bundle del navegador).
 create or replace function public.admin_list_clients(p_secret text)
 returns setof public.clients language plpgsql security definer set search_path = public as $$
@@ -342,17 +364,44 @@ begin
 end; $$;
 grant execute on function public.admin_list_clients(text) to anon, authenticated;
 
-create or replace function public.admin_add_client(p_secret text, p_serial text, p_name text, p_notes text default null)
+create or replace function public.admin_add_client(p_secret text, p_serial text, p_name text, p_whatsapp text, p_notes text default null)
 returns public.clients language plpgsql security definer set search_path = public as $$
-declare r public.clients;
+declare
+  r public.clients;
+  v_whatsapp text;
 begin
   if p_secret is null or p_secret <> (select value from public.app_settings where key = 'admin_secret') then
     raise exception 'unauthorized';
   end if;
-  insert into public.clients (serial, name, notes) values (upper(trim(p_serial)), p_name, p_notes) returning * into r;
+  v_whatsapp := regexp_replace(coalesce(p_whatsapp, ''), '\D', '', 'g');
+  if length(v_whatsapp) < 9 then
+    raise exception 'whatsapp_invalid';
+  end if;
+  insert into public.clients (serial, name, notes, whatsapp_number)
+  values (upper(trim(p_serial)), p_name, p_notes, v_whatsapp) returning * into r;
   return r;
 end; $$;
-grant execute on function public.admin_add_client(text,text,text,text) to anon, authenticated;
+grant execute on function public.admin_add_client(text,text,text,text,text) to anon, authenticated;
+
+-- Corrige el número de un cliente ya creado sin tener que borrarlo y
+-- volver a crearlo.
+create or replace function public.admin_update_client_whatsapp(p_secret text, p_id bigint, p_whatsapp text)
+returns public.clients language plpgsql security definer set search_path = public as $$
+declare
+  r public.clients;
+  v_whatsapp text;
+begin
+  if p_secret is null or p_secret <> (select value from public.app_settings where key = 'admin_secret') then
+    raise exception 'unauthorized';
+  end if;
+  v_whatsapp := regexp_replace(coalesce(p_whatsapp, ''), '\D', '', 'g');
+  if length(v_whatsapp) < 9 then
+    raise exception 'whatsapp_invalid';
+  end if;
+  update public.clients set whatsapp_number = v_whatsapp where id = p_id returning * into r;
+  return r;
+end; $$;
+grant execute on function public.admin_update_client_whatsapp(text,bigint,text) to anon, authenticated;
 
 create or replace function public.admin_set_client_active(p_secret text, p_id bigint, p_active boolean)
 returns public.clients language plpgsql security definer set search_path = public as $$
@@ -378,11 +427,25 @@ end; $$;
 grant execute on function public.admin_delete_client(text,bigint) to anon, authenticated;
 ```
 
+> Si ya habías corrido la versión anterior de este SQL (sin `whatsapp_number`),
+> corre en su lugar solo el bloque de migración incremental: `alter table
+> public.clients add column whatsapp_number text not null default ''`, luego
+> `alter table public.clients alter column whatsapp_number drop default`, y
+> después las 3 funciones nuevas/actualizadas de arriba (`admin_add_client`
+> primero con un `drop function if exists public.admin_add_client(text, text,
+> text, text);` porque cambia de firma, `admin_update_client_whatsapp` y
+> `get_client_access`).
+
 Después, en el panel → pestaña **Clientes**, pega esa misma clave (el
 campo "Clave de administrador") y ya puedes agregar/activar/desactivar/
-eliminar clientes. El cambio aplica **de inmediato**: el formulario
-re-valida el serial guardado contra Supabase en cada carga, así que
-desactivar un cliente bloquea su dispositivo sin esperar nada más.
+eliminar clientes — y ahora también asignarles su **propio número de
+WhatsApp** al crearlos (obligatorio) o corregirlo después haciendo click
+sobre el número en la tabla. Ese número, no uno fijo por defecto, es al
+que le llegan los pedidos que sus clientes finales llenen en el
+formulario mientras ese cliente esté logueado con su serial. El cambio
+aplica **de inmediato**: el formulario re-valida el serial guardado
+contra Supabase en cada carga, así que desactivar un cliente bloquea su
+dispositivo sin esperar nada más.
 
 > Si Supabase no está configurado (o se cae la red), el login de cliente
 > cae de respaldo a la lista fija `VALID_SERIALS` de `src/data/serials.js`

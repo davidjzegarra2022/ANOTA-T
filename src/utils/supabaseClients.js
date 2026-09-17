@@ -53,6 +53,41 @@ export async function checkClientSerial(rawSerial) {
   }
 }
 
+/**
+ * Valida el serial y, si es válido, devuelve el número de WhatsApp y el
+ * nombre propios de ESE cliente — los que le pertenecen a él, no el
+ * demo/default de src/data/merchants.js. Es lo que usa el login por serial
+ * (AccessGate) para que los pedidos que sus clientes finales llenen le
+ * lleguen a SU número, no a uno fijo compartido por todos.
+ *
+ * Si Supabase no está configurado o falla, cae de respaldo a la lista fija
+ * VALID_SERIALS (igual que checkClientSerial) pero sin número propio — en
+ * ese caso el formulario sigue usando el merchant estático como respaldo de
+ * emergencia (ver README).
+ */
+export async function getClientAccess(rawSerial) {
+  const serial = String(rawSerial || '').trim().toUpperCase()
+  if (!serial) return { valid: false, whatsappNumber: null, businessName: null }
+  if (!isSupabaseConfigured()) {
+    return { valid: VALID_SERIALS.has(serial), whatsappNumber: null, businessName: null }
+  }
+  try {
+    const supabase = await getSupabaseClient()
+    if (!supabase) return { valid: VALID_SERIALS.has(serial), whatsappNumber: null, businessName: null }
+    const { data, error } = await supabase.rpc('get_client_access', { p_serial: serial })
+    if (error) throw error
+    const row = data?.[0]
+    return {
+      valid: Boolean(row?.valid),
+      whatsappNumber: row?.whatsapp_number || null,
+      businessName: row?.business_name || null,
+    }
+  } catch (err) {
+    console.warn('[supabase] get_client_access falló, usando respaldo local:', err?.message || err)
+    return { valid: VALID_SERIALS.has(serial), whatsappNumber: null, businessName: null }
+  }
+}
+
 function unauthorizedMessage(err) {
   const msg = String(err?.message || err || '')
   if (/unauthorized/i.test(msg)) return 'Clave de administrador incorrecta.'
@@ -68,16 +103,35 @@ export async function adminListClients() {
   return { ok: true, clients: data || [] }
 }
 
-export async function adminAddClient({ serial, name, notes }) {
+function whatsappErrorMessage(err) {
+  const msg = String(err?.message || err || '')
+  if (/whatsapp_invalid/i.test(msg)) return 'Número de WhatsApp inválido (mínimo 9 dígitos).'
+  return unauthorizedMessage(err)
+}
+
+export async function adminAddClient({ serial, name, whatsapp, notes }) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
   const { data, error } = await supabase.rpc('admin_add_client', {
     p_secret: getAdminSecret(),
     p_serial: String(serial || '').trim().toUpperCase(),
     p_name: String(name || '').trim() || null,
+    p_whatsapp: String(whatsapp || '').trim(),
     p_notes: String(notes || '').trim() || null,
   })
-  if (error) return { ok: false, error: unauthorizedMessage(error) }
+  if (error) return { ok: false, error: whatsappErrorMessage(error) }
+  return { ok: true, client: data }
+}
+
+export async function adminUpdateClientWhatsapp(id, whatsapp) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { data, error } = await supabase.rpc('admin_update_client_whatsapp', {
+    p_secret: getAdminSecret(),
+    p_id: id,
+    p_whatsapp: String(whatsapp || '').trim(),
+  })
+  if (error) return { ok: false, error: whatsappErrorMessage(error) }
   return { ok: true, client: data }
 }
 
