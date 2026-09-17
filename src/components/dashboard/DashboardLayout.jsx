@@ -15,6 +15,7 @@ import ConfiguracionPage from './ConfiguracionPage'
 import EnviosPage from './EnviosPage'
 import PanelProPage from './PanelProPage'
 import PlanesPage from './PlanesPage'
+import ShareLinkBar from './ShareLinkBar'
 import SuscripcionPage from './SuscripcionPage'
 
 const NAV_ITEMS = [
@@ -120,20 +121,24 @@ export default function DashboardLayout({ email, onLogout }) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto px-6 py-8 sm:px-10">
-        {!merchant ? (
-          <p className="text-sm text-red-400">No se pudo cargar tu perfil. Recarga la página.</p>
-        ) : (
-          <>
-            {tab === 'envios' && <EnviosPage merchant={merchant} />}
-            {tab === 'clientes' && <ClientesPage merchant={merchant} />}
-            {tab === 'panel' && <PanelProPage merchant={merchant} />}
-            {tab === 'configuracion' && <ConfiguracionPage merchant={merchant} onSaved={refreshMerchant} />}
-            {tab === 'planes' && <PlanesPage merchant={merchant} />}
-            {tab === 'suscripcion' && <SuscripcionPage merchant={merchant} />}
-          </>
-        )}
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <main className="min-w-0 flex-1 overflow-y-auto px-6 py-8 sm:px-10">
+          {!merchant ? (
+            <p className="text-sm text-red-400">No se pudo cargar tu perfil. Recarga la página.</p>
+          ) : (
+            <>
+              {tab === 'envios' && <EnviosPage merchant={merchant} />}
+              {tab === 'clientes' && <ClientesPage merchant={merchant} />}
+              {tab === 'panel' && <PanelProPage merchant={merchant} />}
+              {tab === 'configuracion' && <ConfiguracionPage merchant={merchant} onSaved={refreshMerchant} />}
+              {tab === 'planes' && <PlanesPage merchant={merchant} />}
+              {tab === 'suscripcion' && <SuscripcionPage merchant={merchant} />}
+            </>
+          )}
+        </main>
+
+        {merchant && <ShareLinkBar slug={merchant.slug} />}
+      </div>
     </div>
   )
 }
