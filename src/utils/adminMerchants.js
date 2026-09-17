@@ -1,0 +1,95 @@
+// Gestión de negociantes y planes desde el panel de administrador —
+// reemplaza el antiguo utils/supabaseClients.js (seriales). Mismo patrón de
+// seguridad: funciones RPC protegidas con `admin_secret`, que vive solo en
+// la base de datos (nunca en el bundle del navegador).
+import { getSupabaseClient } from './supabaseClient'
+import { getAdminSecret, unauthorizedMessage } from './adminSecret'
+
+function fromRow(row) {
+  return {
+    id: row.id,
+    businessName: row.business_name,
+    whatsappNumber: row.whatsapp_number,
+    slug: row.slug,
+    active: row.active,
+    planId: row.plan_id,
+    planName: row.plan_name,
+    createdAt: row.created_at,
+    email: row.email,
+  }
+}
+
+export async function adminListMerchants() {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.', merchants: [] }
+  const { data, error } = await supabase.rpc('admin_list_merchants', { p_secret: getAdminSecret() })
+  if (error) return { ok: false, error: unauthorizedMessage(error), merchants: [] }
+  return { ok: true, merchants: (data || []).map(fromRow) }
+}
+
+export async function adminSetMerchantActive(id, active) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { error } = await supabase.rpc('admin_set_merchant_active', {
+    p_secret: getAdminSecret(),
+    p_id: id,
+    p_active: active,
+  })
+  if (error) return { ok: false, error: unauthorizedMessage(error) }
+  return { ok: true }
+}
+
+export async function adminSetMerchantPlan(id, planId) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { error } = await supabase.rpc('admin_set_merchant_plan', {
+    p_secret: getAdminSecret(),
+    p_id: id,
+    p_plan_id: planId,
+  })
+  if (error) return { ok: false, error: unauthorizedMessage(error) }
+  return { ok: true }
+}
+
+function planFromRow(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    monthlyOrderLimit: row.monthly_order_limit,
+    priceSoles: Number(row.price_soles),
+    description: row.description,
+    active: row.active,
+  }
+}
+
+export async function adminListPlans() {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.', plans: [] }
+  const { data, error } = await supabase.rpc('admin_list_plans', { p_secret: getAdminSecret() })
+  if (error) return { ok: false, error: unauthorizedMessage(error), plans: [] }
+  return { ok: true, plans: (data || []).map(planFromRow) }
+}
+
+export async function adminUpsertPlan({ id, name, monthlyOrderLimit, priceSoles, description, active }) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { data, error } = await supabase.rpc('admin_upsert_plan', {
+    p_secret: getAdminSecret(),
+    p_id: id ?? null,
+    p_name: String(name || '').trim(),
+    p_monthly_order_limit: Number(monthlyOrderLimit) || 0,
+    p_price_soles: Number(priceSoles) || 0,
+    p_description: String(description || '').trim() || null,
+    p_active: active !== false,
+  })
+  if (error) return { ok: false, error: unauthorizedMessage(error) }
+  return { ok: true, plan: planFromRow(data) }
+}
+
+export async function adminDeletePlan(id) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { error } = await supabase.rpc('admin_delete_plan', { p_secret: getAdminSecret(), p_id: id })
+  if (error) return { ok: false, error: unauthorizedMessage(error) }
+  return { ok: true }
+}

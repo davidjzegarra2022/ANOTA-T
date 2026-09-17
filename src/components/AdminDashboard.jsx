@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
+import AdminMerchantsManager from './AdminMerchantsManager'
+import AdminPlansManager from './AdminPlansManager'
 import AgencyManager from './AgencyManager'
-import ClientManager from './ClientManager'
 import { clearLog, getEndpoint, getLog, setEndpoint } from '../utils/telemetry'
-import { IconBox, IconChart, IconDownload, IconLogout, IconRefresh, IconStore, IconTrash, IconUsers } from './icons'
+import { IconBox, IconChart, IconDownload, IconLogout, IconRefresh, IconSparkles, IconStore, IconTrash } from './icons'
 
 function fmtDate(iso) {
   try {
@@ -47,11 +48,11 @@ export default function AdminDashboard({ onLogout, onOpenForm }) {
 
   const stats = useMemo(() => {
     const devices = new Set(log.map((e) => e.deviceId))
-    const serials = new Set(log.filter((e) => e.type === 'serial' && e.serial).map((e) => e.serial))
+    const accounts = new Set(log.filter((e) => e.type === 'merchant' && e.serial).map((e) => e.serial))
     // eslint-disable-next-line react/purity -- "últimas 24 h" depende de la hora actual real
     const since = Date.now() - 24 * 60 * 60 * 1000
     const last24 = log.filter((e) => new Date(e.ts).getTime() >= since).length
-    return { total: log.length, devices: devices.size, serials: serials.size, last24 }
+    return { total: log.length, devices: devices.size, accounts: accounts.size, last24 }
   }, [log])
 
   function refresh() {
@@ -147,26 +148,38 @@ export default function AdminDashboard({ onLogout, onOpenForm }) {
         </button>
         <button
           type="button"
-          onClick={() => setTab('clientes')}
+          onClick={() => setTab('negociantes')}
           className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-semibold transition ${
-            tab === 'clientes'
+            tab === 'negociantes'
               ? 'border-amber-400 text-white'
               : 'border-transparent text-gray-400 hover:text-gray-200'
           }`}
         >
-          <IconUsers className="h-4 w-4" /> Clientes
+          <IconStore className="h-4 w-4" /> Negociantes
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('planes')}
+          className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-semibold transition ${
+            tab === 'planes'
+              ? 'border-amber-400 text-white'
+              : 'border-transparent text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          <IconSparkles className="h-4 w-4" /> Planes
         </button>
       </div>
 
       {tab === 'datos' && <AgencyManager />}
-      {tab === 'clientes' && <ClientManager />}
+      {tab === 'negociantes' && <AdminMerchantsManager />}
+      {tab === 'planes' && <AdminPlansManager />}
 
       {tab === 'activaciones' && (
       <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile label="Activaciones" value={stats.total} accent="text-white" />
         <StatTile label="Dispositivos" value={stats.devices} accent="text-cyan-300" />
-        <StatTile label="Seriales usados" value={stats.serials} accent="text-amber-300" />
+        <StatTile label="Cuentas usadas" value={stats.accounts} accent="text-amber-300" />
         <StatTile label="Últimas 24 h" value={stats.last24} accent="text-emerald-300" />
       </div>
 
@@ -243,7 +256,7 @@ export default function AdminDashboard({ onLogout, onOpenForm }) {
               <tr>
                 <th className="px-3 py-2 font-semibold">Fecha / hora</th>
                 <th className="px-3 py-2 font-semibold">Tipo</th>
-                <th className="px-3 py-2 font-semibold">Serial</th>
+                <th className="px-3 py-2 font-semibold">Cuenta</th>
                 <th className="px-3 py-2 font-semibold">Dispositivo</th>
                 <th className="px-3 py-2 font-semibold">IP</th>
                 <th className="px-3 py-2 font-semibold">Ubicación (IP)</th>
@@ -263,7 +276,7 @@ export default function AdminDashboard({ onLogout, onOpenForm }) {
                           : 'bg-cyan-400/15 text-cyan-300'
                       }`}
                     >
-                      {e.type === 'admin' ? 'Admin' : 'Serial'}
+                      {e.type === 'admin' ? 'Admin' : 'Negociante'}
                     </span>
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">{e.serial || '—'}</td>
