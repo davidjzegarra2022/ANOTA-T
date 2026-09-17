@@ -149,7 +149,15 @@ export default function ShippingForm({ merchant, onSubmit }) {
     }
   }, [])
 
-  const deliveryOptions = useMemo(() => buildDeliveryOptions(couriers), [couriers])
+  // Si el negociante restringió couriers en "Configuración", solo se
+  // muestran esos; un `couriersActive` vacío significa "todos" (default de
+  // cuentas nuevas que aún no lo configuraron).
+  const visibleCouriers = useMemo(() => {
+    if (!merchant.couriersActive?.length) return couriers
+    return couriers.filter((c) => merchant.couriersActive.includes(c.id))
+  }, [couriers, merchant.couriersActive])
+
+  const deliveryOptions = useMemo(() => buildDeliveryOptions(visibleCouriers), [visibleCouriers])
   const availableDates = useMemo(() => generateAvailableDates(merchant), [merchant])
 
   const isAgencyFlow = form.deliveryMethod.startsWith('agency:')

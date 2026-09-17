@@ -1,82 +1,92 @@
 import { useEffect, useMemo, useState } from 'react'
 import AccessGate from './components/AccessGate'
 import AdminDashboard from './components/AdminDashboard'
+import AuthGate from './components/auth/AuthGate'
 import CosmicBackground from './components/CosmicBackground'
+import DashboardLayout from './components/dashboard/DashboardLayout'
 import Footer from './components/Footer'
 import Header from './components/Header'
 import { IconRefresh } from './components/icons'
 import ShippingForm from './components/ShippingForm'
 import SuccessScreen from './components/SuccessScreen'
-import { getMerchant } from './data/merchants'
-import { clearAccess, getStoredRole, getStoredSerial } from './utils/serial'
-import { getClientAccess } from './utils/supabaseClients'
+import { fetchMerchantBySlug } from './utils/merchantProfile'
+import { createOrder } from './utils/orders'
+import { clearAdminAccess, getStoredAdminRole, setAdminUnlocked } from './utils/serial'
+import { getCurrentSession, onAuthStateChange, signOutMerchant } from './utils/supabaseAuth'
 
-export default function App() {
-  const baseMerchant = useMemo(() => {
-    const params = new URLSearchParams(window.location.search)
-    return getMerchant(params.get('merchant'))
-  }, [])
+// Merchant de muestra SOLO para que el administrador pueda previsualizar el
+// formulario ("Ver formulario" en su panel) — no está atado a ninguna
+// cuenta real (el admin no es un negociante con su propio slug).
+const ADMIN_PREVIEW_MERCHANT = {
+  businessName: 'ANOTA-T (vista previa)',
+  subtitle: 'Formulario de Envío',
+  whatsappNumber: '51900000000',
+  couriersActive: [],
+  dispatchDays: [1, 2, 3, 4, 5, 6],
+  cutoffHour: 18,
+  leadTimeHours: 0,
+}
 
-  // Cuando el rol activo es "negociante" (login por serial), el pedido debe
-  // llegarle a SU propio WhatsApp — no al de prueba hardcodeado en
-  // data/merchants.js. clientAccess trae ese override, obtenido de Supabase
-  // al validar el serial (ver AccessGate y el efecto de abajo).
-  const [clientAccess, setClientAccess] = useState(null)
-  const merchant = useMemo(() => {
-    if (!clientAccess?.whatsappNumber) return baseMerchant
-    return {
-      ...baseMerchant,
-      whatsappNumber: clientAccess.whatsappNumber,
-      businessName: clientAccess.businessName || baseMerchant.businessName,
-    }
-  }, [baseMerchant, clientAccess])
-
-  // La URL decide el flujo: "/admin" es del dueño del negocio; cualquier
-  // otro link (el normal, con o sin ?merchant=) es para el cliente/
-  // negociante. Ya no hay un selector "¿Cómo deseas ingresar?" — un click
-  // menos para cada quien.
-  const isAdminRoute = useMemo(() => /^\/admin(\/|$)/.test(window.location.pathname), [])
-
+function PublicShippingRoute({ slug }) {
+  const [merchant, setMerchant] = useState(undefined)
   const [submittedForm, setSubmittedForm] = useState(null)
-  // El rol de admin se confía de inmediato (localStorage) — se resuelve acá
-  // mismo, sin efecto. El de negociante necesita una llamada de red para
-  // re-validarse contra Supabase (puede haber sido revocado), así que solo
-  // ese caso arranca "cargando" y lo resuelve el efecto de abajo.
-  const [role, setRole] = useState(() => (isAdminRoute ? (getStoredRole() === 'admin' ? 'admin' : null) : null))
-  const [checkingAccess, setCheckingAccess] = useState(() => !isAdminRoute && Boolean(getStoredSerial()))
-  const [adminView, setAdminView] = useState('dashboard') // 'dashboard' | 'form'
 
   useEffect(() => {
-    if (isAdminRoute) return undefined
-    const stored = getStoredSerial()
-    if (!stored) return undefined
-    let alive = true
-    getClientAccess(stored).then((access) => {
-      if (!alive) return
-      if (access.valid) {
-        setClientAccess(access)
-        setRole('merchant')
-      } else {
-        clearAccess()
-      }
-      setCheckingAccess(false)
-    })
-    return () => {
-      alive = false
-    }
-  }, [isAdminRoute])
+    fetchMerchantBySlug(slug).then(setMerchant)
+  }, [slug])
 
-  function handleUnlock(newRole, access) {
-    if (access) setClientAccess(access)
-    setRole(newRole)
+  async function handleSubmit(form) {
+    await createOrder(merchant.id, form)
+    setSubmittedForm(form)
+  }
+
+  if (merchant === undefined) {
+    return (
+      <div className="relative z-10 flex min-h-screen items-center justify-center gap-2 text-gray-400">
+        <IconRefresh className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Cargando…</span>
+      </div>
+    )
+  }
+
+  if (!merchant || !merchant.active) {
+    return (
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-6 text-center">
+        <p className="text-sm text-gray-400">Este link no existe o ya no está disponible.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative z-10 flex min-h-screen flex-col">
+      <Header businessName={merchant.businessName} subtitle="Formulario de Envío" minimal={Boolean(submittedForm)} />
+      <main className="mx-auto w-full max-w-xl flex-1 px-5 py-6 sm:px-6">
+        {submittedForm ? (
+          <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} />
+        ) : (
+          <ShippingForm merchant={merchant} onSubmit={handleSubmit} />
+        )}
+      </main>
+      <Footer />
+    </div>
+  )
+}
+
+function AdminRoute() {
+  const [role, setRole] = useState(() => (getStoredAdminRole() === 'admin' ? 'admin' : null))
+  const [adminView, setAdminView] = useState('dashboard') // 'dashboard' | 'form'
+  const [submittedForm, setSubmittedForm] = useState(null)
+
+  function handleUnlock() {
+    setAdminUnlocked()
+    setRole('admin')
   }
 
   function handleLogout() {
-    clearAccess()
-    setSubmittedForm(null)
-    setAdminView('dashboard')
+    clearAdminAccess()
     setRole(null)
-    setClientAccess(null)
+    setAdminView('dashboard')
+    setSubmittedForm(null)
   }
 
   function handleBackToPanel() {
@@ -84,64 +94,101 @@ export default function App() {
     setAdminView('dashboard')
   }
 
-  const isAdmin = role === 'admin'
-  const showForm = !isAdmin || adminView === 'form'
-  const wide = isAdmin && adminView === 'dashboard'
+  if (!role) return <AccessGate onUnlock={handleUnlock} />
 
-  if (checkingAccess) {
+  const wide = adminView === 'dashboard'
+
+  return (
+    <div className="relative z-10 flex min-h-screen flex-col">
+      <Header businessName="ANOTA-T" subtitle="Panel de administrador" />
+      <main className={`mx-auto w-full flex-1 px-5 py-6 sm:px-6 ${wide ? 'max-w-5xl' : 'max-w-xl'}`}>
+        {adminView === 'dashboard' ? (
+          <AdminDashboard onLogout={handleLogout} onOpenForm={() => setAdminView('form')} />
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleBackToPanel}
+              className="mb-4 inline-flex items-center gap-1 text-xs font-semibold text-gray-400 transition hover:text-white"
+            >
+              ← Volver al panel
+            </button>
+            {submittedForm ? (
+              <SuccessScreen form={submittedForm} merchant={ADMIN_PREVIEW_MERCHANT} onNewOrder={() => setSubmittedForm(null)} onBackToPanel={handleBackToPanel} />
+            ) : (
+              <ShippingForm merchant={ADMIN_PREVIEW_MERCHANT} onSubmit={setSubmittedForm} />
+            )}
+          </>
+        )}
+      </main>
+      <Footer />
+    </div>
+  )
+}
+
+function MerchantSaasRoute() {
+  const [session, setSession] = useState(undefined)
+  const [showResetScreen, setShowResetScreen] = useState(false)
+
+  useEffect(() => {
+    let unsubscribe = () => {}
+    getCurrentSession().then(setSession)
+    onAuthStateChange((newSession) => {
+      setSession(newSession)
+    }).then((unsub) => {
+      unsubscribe = unsub
+    })
+    // Supabase entrega este hash cuando el usuario viene del link de "recuperar contraseña".
+    if (window.location.hash.includes('type=recovery')) setShowResetScreen(true)
+    return () => unsubscribe()
+  }, [])
+
+  async function handleLogout() {
+    await signOutMerchant()
+    setSession(null)
+  }
+
+  if (session === undefined) {
     return (
-      <div className="relative min-h-screen overflow-x-hidden">
-        <CosmicBackground />
-        <div className="relative z-10 flex min-h-screen items-center justify-center gap-2 text-gray-400">
-          <IconRefresh className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Cargando…</span>
-        </div>
+      <div className="relative z-10 flex min-h-screen items-center justify-center gap-2 text-gray-400">
+        <IconRefresh className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Cargando…</span>
       </div>
     )
   }
 
+  if (!session || showResetScreen) {
+    return (
+      <AuthGate
+        initialScreen={showResetScreen ? 'reset' : 'login'}
+        onLoggedIn={() => {
+          setShowResetScreen(false)
+          window.location.hash = ''
+        }}
+      />
+    )
+  }
+
+  return <DashboardLayout email={session.user.email} onLogout={handleLogout} />
+}
+
+export default function App() {
+  const path = window.location.pathname
+  const isAdminRoute = useMemo(() => /^\/admin(\/|$)/.test(path), [path])
+  const publicFormSlug = useMemo(() => {
+    const match = path.match(/^\/f\/([^/]+)/)
+    return match ? decodeURIComponent(match[1]) : null
+  }, [path])
+
   return (
     <div className="relative min-h-screen overflow-x-hidden">
       <CosmicBackground />
-
-      {!role ? (
-        <AccessGate mode={isAdminRoute ? 'admin' : 'client'} onUnlock={handleUnlock} />
+      {isAdminRoute ? (
+        <AdminRoute />
+      ) : publicFormSlug ? (
+        <PublicShippingRoute slug={publicFormSlug} />
       ) : (
-        <div className="relative z-10 flex min-h-screen flex-col">
-          <Header
-            businessName={merchant.businessName}
-            subtitle={isAdmin ? 'Panel de administrador' : merchant.subtitle}
-            minimal={Boolean(submittedForm) && !isAdmin}
-          />
-
-          <main className={`mx-auto w-full flex-1 px-5 py-6 sm:px-6 ${wide ? 'max-w-5xl' : 'max-w-xl'}`}>
-            {isAdmin && adminView === 'dashboard' ? (
-              <AdminDashboard onLogout={handleLogout} onOpenForm={() => setAdminView('form')} />
-            ) : submittedForm ? (
-              <SuccessScreen
-                form={submittedForm}
-                merchant={merchant}
-                onNewOrder={() => setSubmittedForm(null)}
-                onBackToPanel={isAdmin ? handleBackToPanel : null}
-              />
-            ) : (
-              <>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={handleBackToPanel}
-                    className="mb-4 inline-flex items-center gap-1 text-xs font-semibold text-gray-400 transition hover:text-white"
-                  >
-                    ← Volver al panel
-                  </button>
-                )}
-                {showForm && <ShippingForm merchant={merchant} onSubmit={setSubmittedForm} />}
-              </>
-            )}
-          </main>
-
-          <Footer />
-        </div>
+        <MerchantSaasRoute />
       )}
     </div>
   )

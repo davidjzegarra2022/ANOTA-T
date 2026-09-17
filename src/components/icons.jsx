@@ -200,6 +200,44 @@ export function IconUsers({ className }) {
   )
 }
 
+export function IconSettings({ className }) {
+  return (
+    <svg className={className} {...base()}>
+      <circle cx="12" cy="12" r="3.25" />
+      <path d="M19.4 13.5a1.8 1.8 0 0 0 .36 1.98l.06.06a2.18 2.18 0 1 1-3.08 3.08l-.06-.06a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.65V20a2.18 2.18 0 1 1-4.36 0v-.1a1.8 1.8 0 0 0-1.18-1.65 1.8 1.8 0 0 0-1.98.36l-.06.06a2.18 2.18 0 1 1-3.08-3.08l.06-.06a1.8 1.8 0 0 0 .36-1.98 1.8 1.8 0 0 0-1.65-1.1H4a2.18 2.18 0 1 1 0-4.36h.1a1.8 1.8 0 0 0 1.65-1.18 1.8 1.8 0 0 0-.36-1.98l-.06-.06a2.18 2.18 0 1 1 3.08-3.08l.06.06a1.8 1.8 0 0 0 1.98.36H10.5a1.8 1.8 0 0 0 1.1-1.65V4a2.18 2.18 0 1 1 4.36 0v.1a1.8 1.8 0 0 0 1.1 1.65 1.8 1.8 0 0 0 1.98-.36l.06-.06a2.18 2.18 0 1 1 3.08 3.08l-.06.06a1.8 1.8 0 0 0-.36 1.98V10.5a1.8 1.8 0 0 0 1.65 1.1H20a2.18 2.18 0 1 1 0 4.36h-.1a1.8 1.8 0 0 0-1.65 1.1Z" />
+    </svg>
+  )
+}
+
+export function IconSparkles({ className }) {
+  return (
+    <svg className={className} {...base()}>
+      <path d="M12 3v4M12 17v4M4 12h4M16 12h4" />
+      <path d="M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" />
+    </svg>
+  )
+}
+
+export function IconCard({ className }) {
+  return (
+    <svg className={className} {...base()}>
+      <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+      <path d="M3 10h18" />
+    </svg>
+  )
+}
+
+export function IconGrid({ className }) {
+  return (
+    <svg className={className} {...base()}>
+      <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.75" />
+      <rect x="13" y="3.5" width="7.5" height="7.5" rx="1.75" />
+      <rect x="3.5" y="13" width="7.5" height="7.5" rx="1.75" />
+      <rect x="13" y="13" width="7.5" height="7.5" rx="1.75" />
+    </svg>
+  )
+}
+
 export function IconPencil({ className }) {
   return (
     <svg className={className} {...base()}>
