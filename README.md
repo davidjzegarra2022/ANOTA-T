@@ -568,6 +568,16 @@ Detalles que conviene tener presentes:
   un mensaje claro; el candado real es el trigger).
 - **Storage**: el bucket `logos` limita a 2 MB y a PNG/JPEG/WEBP del lado
   del servidor, además de la validación del navegador.
+- **Contraseñas filtradas** (`utils/passwordSecurity.js`): al registrarse o
+  al cambiar la contraseña se exige un mínimo de 8 caracteres y se rechazan
+  las que aparecen en filtraciones públicas, consultando la API de
+  HaveIBeenPwned — la misma fuente que usa la protección nativa de
+  Supabase, que solo está disponible desde el plan Pro. La contraseña no
+  sale del navegador: se calcula el SHA-1 localmente y se envían solo los 5
+  primeros caracteres del hash (modelo de k-anonimato). Si la API no
+  responde no se bloquea el registro, solo queda la validación de longitud.
+  Cuando el proyecto pase a plan Pro conviene activar además el toggle
+  nativo en Authentication → Providers → Email.
 
 - **El admin ya no es "seguridad de cliente"**: no hay contraseña de
   administrador en el bundle ni clave compartida que se pueda robar de un
