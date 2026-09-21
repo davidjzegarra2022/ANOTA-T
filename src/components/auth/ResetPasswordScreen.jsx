@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import logoIcon from '../../assets/logo-icon.png'
+import { checkNewPassword, MIN_PASSWORD_LENGTH } from '../../utils/passwordSecurity'
 import { updateMerchantPassword } from '../../utils/supabaseAuth'
 
 /** Se muestra cuando Supabase Auth entrega el evento PASSWORD_RECOVERY (el
@@ -11,9 +12,13 @@ export default function ResetPasswordScreen({ onDone }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.')
     setError(null)
     setLoading(true)
+    const check = await checkNewPassword(password)
+    if (!check.ok) {
+      setLoading(false)
+      return setError(check.error)
+    }
     const res = await updateMerchantPassword(password)
     setLoading(false)
     if (!res.ok) return setError(res.error)
@@ -38,7 +43,7 @@ export default function ResetPasswordScreen({ onDone }) {
           autoFocus
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Mínimo 6 caracteres"
+          placeholder={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`}
           autoComplete="new-password"
           className="input-field"
         />

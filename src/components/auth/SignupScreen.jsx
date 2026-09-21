@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import logoIcon from '../../assets/logo-icon.png'
 import { checkEmailDomain } from '../../utils/emailDomains'
+import { checkNewPassword, MIN_PASSWORD_LENGTH } from '../../utils/passwordSecurity'
 import { signUpMerchant } from '../../utils/supabaseAuth'
 import { IconCheck } from '../icons'
 
@@ -18,13 +19,17 @@ export default function SignupScreen({ onGoToLogin }) {
     setError(null)
     if (!businessName.trim()) return setError('Ingresa el nombre de tu tienda.')
     if (whatsapp.replace(/\D/g, '').length < 9) return setError('Ingresa un WhatsApp válido (mínimo 9 dígitos).')
-    if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.')
 
     setLoading(true)
     const domainCheck = await checkEmailDomain(email)
     if (!domainCheck.ok) {
       setLoading(false)
       return setError(domainCheck.error)
+    }
+    const passwordCheck = await checkNewPassword(password)
+    if (!passwordCheck.ok) {
+      setLoading(false)
+      return setError(passwordCheck.error)
     }
     const res = await signUpMerchant({ email, password, businessName, whatsappNumber: whatsapp })
     setLoading(false)
@@ -110,7 +115,7 @@ export default function SignupScreen({ onGoToLogin }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
-            placeholder="Mínimo 6 caracteres"
+            placeholder={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`}
             className="input-field"
           />
         </label>
