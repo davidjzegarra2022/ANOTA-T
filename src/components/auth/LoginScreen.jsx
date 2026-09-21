@@ -2,8 +2,9 @@ import { useState } from 'react'
 import logoIcon from '../../assets/logo-icon.png'
 import { signInMerchant } from '../../utils/supabaseAuth'
 import { logActivation } from '../../utils/telemetry'
+import { IconCheck } from '../icons'
 
-export default function LoginScreen({ onLoggedIn, onGoToSignup, onGoToForgotPassword }) {
+export default function LoginScreen({ notice, onLoggedIn, onGoToSignup, onGoToForgotPassword }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -34,6 +35,12 @@ export default function LoginScreen({ onLoggedIn, onGoToSignup, onGoToForgotPass
 
       <h1 className="mt-5 text-2xl font-bold text-navy">Ingresa a tu cuenta</h1>
       <p className="mt-1 text-sm text-muted">Gestiona tus envíos y tu panel de negociante.</p>
+
+      {notice && (
+        <p className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm font-semibold text-emerald-700">
+          <IconCheck className="h-4 w-4 shrink-0" /> {notice}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
         <label className="block">

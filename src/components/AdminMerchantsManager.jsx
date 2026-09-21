@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured } from '../utils/supabaseClient'
-import { adminListMerchants, adminListPlans, adminSetMerchantActive, adminSetMerchantPlan } from '../utils/adminMerchants'
+import {
+  adminAddEmailDomain,
+  adminDeleteEmailDomain,
+  adminListEmailDomains,
+  adminListMerchants,
+  adminListPlans,
+  adminSetMerchantActive,
+  adminSetMerchantPlan,
+} from '../utils/adminMerchants'
 import { getAdminSecret, setAdminSecret } from '../utils/adminSecret'
-import { IconKey, IconRefresh, IconStore } from './icons'
+import { IconCheck, IconKey, IconRefresh, IconStore, IconX } from './icons'
 
 function fmtDate(iso) {
   try {
@@ -23,15 +31,41 @@ export default function AdminMerchantsManager() {
   const [listError, setListError] = useState(null)
   const [busyId, setBusyId] = useState(null)
 
+  const [domains, setDomains] = useState([])
+  const [domainDraft, setDomainDraft] = useState('')
+  const [domainMsg, setDomainMsg] = useState(null)
+
   async function refresh() {
     if (!configured || !getAdminSecret()) return
     setLoading(true)
     setListError(null)
-    const [merchantsRes, plansRes] = await Promise.all([adminListMerchants(), adminListPlans()])
+    const [merchantsRes, plansRes, domainsRes] = await Promise.all([
+      adminListMerchants(),
+      adminListPlans(),
+      adminListEmailDomains(),
+    ])
     setLoading(false)
     if (merchantsRes.ok) setMerchants(merchantsRes.merchants)
     else setListError(merchantsRes.error)
     if (plansRes.ok) setPlans(plansRes.plans)
+    if (domainsRes.ok) setDomains(domainsRes.domains)
+  }
+
+  async function handleAddDomain(e) {
+    e.preventDefault()
+    if (!domainDraft.trim()) return
+    const res = await adminAddEmailDomain(domainDraft)
+    if (!res.ok) return setDomainMsg({ ok: false, text: res.error })
+    setDomainDraft('')
+    setDomainMsg({ ok: true, text: 'Dominio agregado.' })
+    refresh()
+  }
+
+  async function handleDeleteDomain(domain) {
+    if (!window.confirm(`¿Quitar "${domain}"? Nadie con ese correo podrá registrarse.`)) return
+    const res = await adminDeleteEmailDomain(domain)
+    if (!res.ok) return setDomainMsg({ ok: false, text: res.error })
+    refresh()
   }
 
   useEffect(() => {
@@ -184,6 +218,56 @@ export default function AdminMerchantsManager() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {configured && (
+        <div className="card p-4">
+          <p className="text-sm font-semibold text-navy">Dominios de correo permitidos ({domains.length})</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            Solo se puede crear una cuenta con un correo de estos dominios — así no entran correos temporales
+            ni de bots. Si un cliente tiene correo con dominio propio (ej. <b>contacto@sutienda.com</b>),
+            agrégalo aquí para que pueda registrarse.
+          </p>
+
+          <form onSubmit={handleAddDomain} className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <input
+              value={domainDraft}
+              onChange={(e) => setDomainDraft(e.target.value)}
+              placeholder="sutienda.com"
+              spellCheck={false}
+              className="input-field min-w-0 flex-1"
+            />
+            <button type="submit" className="btn btn-primary shrink-0">
+              <IconCheck className="h-4 w-4" /> Agregar dominio
+            </button>
+          </form>
+          {domainMsg && (
+            <p className={`mt-1.5 text-xs font-semibold ${domainMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
+              {domainMsg.text}
+            </p>
+          )}
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {domains.map((d) => (
+              <span key={d} className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-xs text-ink">
+                {d}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteDomain(d)}
+                  aria-label={`Quitar ${d}`}
+                  className="rounded-full p-0.5 text-muted transition hover:bg-red-100 hover:text-red-600"
+                >
+                  <IconX className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            {domains.length === 0 && (
+              <p className="text-xs text-muted">
+                {getAdminSecret() ? 'Sin dominios cargados.' : 'Ingresa la clave de administrador arriba para verlos.'}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

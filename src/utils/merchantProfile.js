@@ -40,16 +40,21 @@ export async function fetchMyMerchant() {
   return fromRow(data)
 }
 
-/** Configuración pública de un negociante por su slug — la usa el formulario público (sin login). */
+/**
+ * Configuración pública de un negociante por su slug — la usa el formulario
+ * público (sin login). Va por una función security definer y no por la tabla:
+ * `merchants` NO es legible públicamente, porque eso permitiría listar todos
+ * los negociantes con su WhatsApp (ver README → nota de seguridad).
+ */
 export async function fetchMerchantBySlug(slug) {
   const supabase = await getSupabaseClient()
   if (!supabase || !slug) return null
-  const { data, error } = await supabase.from('merchants').select('*').eq('slug', slug).maybeSingle()
+  const { data, error } = await supabase.rpc('get_merchant_public', { p_slug: slug })
   if (error) {
     console.warn('[supabase] No se pudo leer el negociante por slug:', error.message)
     return null
   }
-  return fromRow(data)
+  return data?.[0] ? fromRow(data[0]) : null
 }
 
 export async function updateMyMerchant(patch) {

@@ -2,24 +2,44 @@
 // Reemplaza el login por serial fijo: cada negociante tiene su propia
 // cuenta, puede recuperar su contraseña, y confirma su correo mediante el
 // flujo estándar de Supabase Auth (ver README → "Correo de confirmación").
+import { checkEmailDomain } from './emailDomains'
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient'
 
 export { isSupabaseConfigured }
 
+/** A dónde vuelve el usuario tras hacer click en un link de correo: siempre
+ * al login de ESTE dominio (el link solo confirma la cuenta; la sesión se
+ * cierra al llegar — ver App.jsx). */
+export function authRedirectUrl() {
+  return `${window.location.origin}/login`
+}
+
 export async function signUpMerchant({ email, password, businessName, whatsappNumber }) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+
+  const domainCheck = await checkEmailDomain(email)
+  if (!domainCheck.ok) return { ok: false, error: domainCheck.error }
+
   const { data, error } = await supabase.auth.signUp({
     email: String(email || '').trim(),
     password,
     options: {
+      emailRedirectTo: authRedirectUrl(),
       data: {
         business_name: String(businessName || '').trim(),
         whatsapp_number: String(whatsappNumber || '').replace(/\D/g, ''),
       },
     },
   })
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    // El trigger de la base de datos rechaza dominios no permitidos; GoTrue
+    // lo devuelve como un error genérico de base de datos.
+    if (/database error|email_domain_not_allowed/i.test(error.message)) {
+      return { ok: false, error: 'Ese correo no está permitido. Usa Gmail, Outlook/Hotmail, Yahoo o iCloud.' }
+    }
+    return { ok: false, error: error.message }
+  }
   // Si el proyecto exige confirmación de correo, `session` viene null hasta
   // que el usuario haga click en el link que le llega por email.
   return { ok: true, needsEmailConfirmation: !data.session, user: data.user }
@@ -46,7 +66,7 @@ export async function sendPasswordReset(email) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
   const { error } = await supabase.auth.resetPasswordForEmail(String(email || '').trim(), {
-    redirectTo: window.location.origin,
+    redirectTo: authRedirectUrl(),
   })
   if (error) return { ok: false, error: error.message }
   return { ok: true }

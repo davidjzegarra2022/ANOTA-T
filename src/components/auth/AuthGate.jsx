@@ -8,7 +8,7 @@ import SignupScreen from './SignupScreen'
  * Pantalla de acceso del negociante: login / registro / recuperar
  * contraseña con Supabase Auth (email + contraseña real).
  */
-export default function AuthGate({ initialScreen = 'login', onLoggedIn }) {
+export default function AuthGate({ initialScreen = 'login', notice = null, onLoggedIn }) {
   const [screen, setScreen] = useState(initialScreen)
 
   return (
@@ -21,6 +21,7 @@ export default function AuthGate({ initialScreen = 'login', onLoggedIn }) {
         <ResetPasswordScreen onDone={onLoggedIn} />
       ) : (
         <LoginScreen
+          notice={screen === initialScreen ? notice : null}
           onLoggedIn={onLoggedIn}
           onGoToSignup={() => setScreen('signup')}
           onGoToForgotPassword={() => setScreen('forgot')}

@@ -90,6 +90,41 @@ export async function adminUpsertPlan({ id, name, trialDays, pricePerDay, monthl
   return { ok: true, plan: planFromRow(data) }
 }
 
+// --- Dominios de correo permitidos para registrarse -----------------------
+
+export async function adminListEmailDomains() {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.', domains: [] }
+  const { data, error } = await supabase.rpc('admin_list_email_domains', { p_secret: getAdminSecret() })
+  if (error) return { ok: false, error: unauthorizedMessage(error), domains: [] }
+  return { ok: true, domains: (data || []).map((r) => r.domain) }
+}
+
+export async function adminAddEmailDomain(domain) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { error } = await supabase.rpc('admin_add_email_domain', {
+    p_secret: getAdminSecret(),
+    p_domain: String(domain || '').trim(),
+  })
+  if (error) {
+    if (/invalid_domain/i.test(error.message)) return { ok: false, error: 'Dominio inválido (ej. gmail.com).' }
+    return { ok: false, error: unauthorizedMessage(error) }
+  }
+  return { ok: true }
+}
+
+export async function adminDeleteEmailDomain(domain) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { error } = await supabase.rpc('admin_delete_email_domain', {
+    p_secret: getAdminSecret(),
+    p_domain: domain,
+  })
+  if (error) return { ok: false, error: unauthorizedMessage(error) }
+  return { ok: true }
+}
+
 export async function adminDeletePlan(id) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }

@@ -81,14 +81,45 @@ usar tu Gmail como servidor saliente:
    - Remitente: tu Gmail (o un alias que tengas verificado)
 3. Guarda. Desde ese momento, los correos de confirmación de registro y de
    recuperación de contraseña salen por tu Gmail.
-4. Opcional: en **Authentication → URL Configuration**, configura el "Site
-   URL" con tu dominio de producción para que los links de los correos
-   apunten ahí en vez de a `localhost`.
+4. En **Authentication → URL Configuration**:
+   - **Site URL**: tu dominio de producción (ej. `https://anotat.vercel.app`).
+   - **Redirect URLs**: agrega `https://tu-dominio/login` (y
+     `http://localhost:5173/login` si pruebas en local). Sin esto, Supabase
+     ignora el destino que pide la app y manda todo al Site URL.
+5. En **Authentication → Emails → Templates**, reemplaza las plantillas por
+   defecto (vienen en inglés) por las de la marca. Están maquetadas con
+   tablas, colores planos y una imagen estática (`/logo-icon.png`, servida
+   por el propio sitio): Gmail y Outlook ignoran degradados, flexbox y
+   animaciones, por eso no se usan.
+
+**A dónde cae el usuario al hacer click:** el link de confirmación vale
+solo como token de alta. Supabase abre una sesión automática al validarlo,
+así que la app la cierra en cuanto detecta el hash `type=signup`, limpia la
+URL y deja al usuario en `/login` con el aviso "Tu cuenta quedó
+confirmada" (ver `readAuthHashType` en `src/App.jsx`). El destino se pide
+desde el código con `emailRedirectTo` (`utils/supabaseAuth.js` →
+`authRedirectUrl()`), que siempre apunta al `/login` del dominio donde
+corre la app — nunca a otro dominio.
 
 > Gmail tiene un límite diario de envíos (~500/día en cuentas normales) —
 > suficiente para arrancar. Si creces mucho, migra el SMTP a un proveedor
 > transaccional (Resend, SendGrid, Amazon SES) cambiando solo esta
 > configuración, sin tocar código.
+
+## Quién puede registrarse (dominios de correo permitidos)
+
+Para que no entren correos temporales ni de bots que saturen la
+plataforma, solo se puede crear cuenta con dominios de la tabla
+`allowed_email_domains` (Gmail, Outlook/Hotmail, Live, Yahoo, iCloud,
+Proton y algunos más por defecto).
+
+El dueño de la plataforma administra esa lista desde su panel →
+**Negociantes → "Dominios de correo permitidos"**: puede agregar o quitar
+dominios en caliente, sin redeploy.
+
+> **Ojo con los clientes que usan dominio propio** (ej.
+> `contacto@ferreteriatelco.com`): por defecto quedan bloqueados. Cuando
+> uno legítimo quiera entrar, agrega su dominio desde ese panel.
 
 ## El panel del negociante (`src/components/dashboard/`)
 
@@ -445,13 +476,46 @@ create policy "logos_owner_update" on storage.objects for update using (bucket_i
 create policy "logos_owner_delete" on storage.objects for delete using (bucket_id = 'logos' and (storage.foldername(name))[1] = auth.uid()::text);
 ```
 
-> **Nota de seguridad:** `merchants` y `orders` permiten inserción/lectura
-> pública en varios casos (mismo modelo que `agencies`: seguridad de
-> cliente, no de servidor — la app es 100% estática, sin backend propio).
-> Ninguna columna expuesta es secreta: el WhatsApp de un negociante ya es
-> público por diseño (es el número al que sus clientes le escriben). Si
-> más adelante quieres cerrarlo más, existe margen para políticas más
-> finas — pídelo.
+### Modelo de seguridad (qué puede hacer un anónimo y qué no)
+
+La anon key viaja en el bundle del navegador — es pública por diseño. Lo
+que impide abusos es Row Level Security, no ocultar esa clave. Reglas:
+
+| Tabla | Anónimo (cliente final) | Negociante logueado | Admin |
+|---|---|---|---|
+| `agencies` | Solo **leer** | Solo leer | Escribe vía RPC con `admin_secret` |
+| `merchants` | **Nada directo**; solo `get_merchant_public(slug)`, que devuelve UNA tienda por slug exacto | Lee/edita **su** fila (marca y logística) | Activa/desactiva y asigna plan vía RPC |
+| `orders` | Solo **insertar** su pedido, con topes de longitud y contra un negociante activo | Lee/edita **sus** pedidos | — |
+| `plans` | Leer los activos (se muestran en la landing) | Leer los activos | CRUD vía RPC |
+| `app_settings` | Nada | Nada | Solo vía funciones `security definer` |
+
+Detalles que conviene tener presentes:
+
+- **El estado y el código de rastreo de un pedido los fija el servidor**
+  (trigger `prepare_new_order`), no el navegador: nadie puede crear un
+  pedido ya marcado como "entregado" ni elegir su propio código.
+- **Un negociante no puede cambiarse el plan ni reactivarse solo**: el
+  trigger `protect_merchant_columns` revierte `plan_id`, `active` y
+  `plan_started_at` si la edición viene de una sesión de negociante. Esas
+  columnas solo las mueven las RPC de admin (que corren sin `auth.uid()`).
+- **`merchants` no es enumerable**: si lo fuera, cualquiera podría
+  descargar la lista completa de tus clientes con su WhatsApp.
+- **Registro restringido por dominio de correo**: el trigger
+  `enforce_allowed_email_domain` sobre `auth.users` rechaza dominios fuera
+  de `allowed_email_domains` (la validación del navegador es solo para dar
+  un mensaje claro; el candado real es el trigger).
+- **Storage**: el bucket `logos` limita a 2 MB y a PNG/JPEG/WEBP del lado
+  del servidor, además de la validación del navegador.
+
+> **Lo que sigue siendo "seguridad de cliente":** la contraseña de
+> administrador (`src/utils/serial.js`) viaja en el bundle y cualquiera que
+> lo inspeccione puede leerla. Lo que realmente protege los datos de otros
+> negociantes es la `admin_secret` guardada en la base (nunca en el
+> bundle), que es lo que exigen todas las RPC `admin_*`. Aun así, esas RPC
+> son invocables por cualquiera y no tienen límite de intentos: usa una
+> clave larga y aleatoria. Si más adelante quieres cerrarlo del todo, el
+> camino es mover el admin a una cuenta real de Supabase Auth con un rol
+> propio — dilo y se hace.
 
 **Credenciales en Vercel** (Project Settings → Environment Variables):
 
