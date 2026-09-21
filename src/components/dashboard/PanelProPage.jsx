@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchMyOrders, ORDER_STATUS_LABELS } from '../../utils/orders'
-import { fetchActivePlans } from '../../utils/plans'
+import { fetchActivePlans, trialEndsAt } from '../../utils/plans'
 import { IconRefresh } from '../icons'
 
 function startOfMonthIso() {
@@ -60,7 +60,7 @@ export default function PanelProPage({ merchant }) {
 
   if (!stats) {
     return (
-      <div className="flex items-center gap-2 text-gray-400">
+      <div className="flex items-center gap-2 text-muted">
         <IconRefresh className="h-4 w-4 animate-spin" />
         <span className="text-sm">Cargando…</span>
       </div>
@@ -69,23 +69,34 @@ export default function PanelProPage({ merchant }) {
 
   const limit = plan?.monthlyOrderLimit ?? null
   const pct = limit ? Math.min(100, Math.round((stats.thisMonthCount / limit) * 100)) : 0
+  const trialEnd = plan ? trialEndsAt(merchant, plan) : null
+  const trialDaysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd - Date.now()) / 86400000)) : null
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-white">Panel Pro</h1>
-        <p className="mt-1 text-sm text-gray-400">Pedidos, couriers más usados y tus clientes recurrentes (los cancelados no cuentan).</p>
+        <h1 className="text-2xl font-bold text-navy">Panel Pro</h1>
+        <p className="mt-1 text-sm text-muted">Pedidos, couriers más usados y tus clientes recurrentes (los cancelados no cuentan).</p>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-        <p className="text-sm font-bold text-white">Pedidos de este mes</p>
-        <p className="mt-1 text-xs text-gray-400">
-          {stats.thisMonthCount} de {limit ?? '∞'} pedidos usados este mes en tu plan{plan ? ` (${plan.name})` : ''}.
-        </p>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-600" style={{ width: `${pct}%` }} />
+      {trialEnd ? (
+        <div className="card p-4">
+          <p className="text-sm font-bold text-navy">Prueba gratuita</p>
+          <p className="mt-1 text-xs text-muted">
+            {trialDaysLeft > 0 ? `Te quedan ${trialDaysLeft} día${trialDaysLeft === 1 ? '' : 's'} de prueba.` : 'Tu prueba gratuita ya venció.'}
+          </p>
         </div>
-      </div>
+      ) : limit ? (
+        <div className="card p-4">
+          <p className="text-sm font-bold text-navy">Pedidos de este mes</p>
+          <p className="mt-1 text-xs text-muted">
+            {stats.thisMonthCount} de {limit} pedidos usados este mes en tu plan{plan ? ` (${plan.name})` : ''}.
+          </p>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface">
+            <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard label="Hoy" value={stats.today} />
@@ -93,11 +104,11 @@ export default function PanelProPage({ merchant }) {
         <StatCard label="Últimos 30 días" value={stats.last30} />
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-        <p className="text-sm font-bold text-white">Pedidos por estado</p>
-        <p className="mt-1 text-xs text-gray-400">Últimos 30 días — a diferencia del resto del Panel Pro, sí incluye cancelados.</p>
+      <div className="card p-4">
+        <p className="text-sm font-bold text-navy">Pedidos por estado</p>
+        <p className="mt-1 text-xs text-muted">Últimos 30 días — a diferencia del resto del Panel Pro, sí incluye cancelados.</p>
         {stats.last30Total === 0 ? (
-          <p className="mt-4 text-center text-sm text-gray-500">Todavía no tienes pedidos en los últimos 30 días.</p>
+          <p className="mt-4 text-center text-sm text-muted">Todavía no tienes pedidos en los últimos 30 días.</p>
         ) : (
           <div className="mt-3 space-y-2">
             {Object.entries(ORDER_STATUS_LABELS).map(([status, label]) => {
@@ -105,11 +116,11 @@ export default function PanelProPage({ merchant }) {
               const pctBar = Math.round((count / stats.last30Total) * 100)
               return (
                 <div key={status} className="flex items-center gap-2">
-                  <span className="w-24 shrink-0 text-xs text-gray-300">{label}</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-cyan-400" style={{ width: `${pctBar}%` }} />
+                  <span className="w-24 shrink-0 text-xs text-ink">{label}</span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
+                    <div className="h-full rounded-full bg-navy" style={{ width: `${pctBar}%` }} />
                   </div>
-                  <span className="w-6 shrink-0 text-right text-xs text-gray-400">{count}</span>
+                  <span className="w-6 shrink-0 text-right text-xs text-muted">{count}</span>
                 </div>
               )
             })}
@@ -117,17 +128,17 @@ export default function PanelProPage({ merchant }) {
         )}
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-        <p className="text-sm font-bold text-white">Top couriers</p>
-        <p className="mt-1 text-xs text-gray-400">Por cantidad de pedidos (últimos 30 días).</p>
+      <div className="card p-4">
+        <p className="text-sm font-bold text-navy">Top couriers</p>
+        <p className="mt-1 text-xs text-muted">Por cantidad de pedidos (últimos 30 días).</p>
         {stats.topCouriers.length === 0 ? (
-          <p className="mt-4 text-center text-sm text-gray-500">Aún no hay pedidos suficientes.</p>
+          <p className="mt-4 text-center text-sm text-muted">Aún no hay pedidos suficientes.</p>
         ) : (
           <div className="mt-3 space-y-2">
             {stats.topCouriers.map(([courier, count]) => (
-              <div key={courier} className="flex items-center justify-between text-sm text-gray-200">
+              <div key={courier} className="flex items-center justify-between text-sm text-ink">
                 <span className="capitalize">{courier}</span>
-                <span className="font-semibold text-amber-300">{count}</span>
+                <span className="font-semibold text-brand-dark">{count}</span>
               </div>
             ))}
           </div>
@@ -139,10 +150,10 @@ export default function PanelProPage({ merchant }) {
 
 function StatCard({ label, value }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-      <p className="text-xs font-semibold text-gray-400">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-white">{value}</p>
-      <p className="text-[11px] text-gray-500">pedidos</p>
+    <div className="card p-4">
+      <p className="text-xs font-semibold text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-navy">{value}</p>
+      <p className="text-[11px] text-muted">pedidos</p>
     </div>
   )
 }

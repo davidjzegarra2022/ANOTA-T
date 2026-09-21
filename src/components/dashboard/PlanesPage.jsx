@@ -17,7 +17,7 @@ export default function PlanesPage({ merchant }) {
 
   if (!plans) {
     return (
-      <div className="flex items-center gap-2 text-gray-400">
+      <div className="flex items-center gap-2 text-muted">
         <IconRefresh className="h-4 w-4 animate-spin" />
         <span className="text-sm">Cargando…</span>
       </div>
@@ -27,31 +27,36 @@ export default function PlanesPage({ merchant }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-white">Planes</h1>
-        <p className="mt-1 text-sm text-gray-400">El plan lo asigna el administrador. Si quieres cambiar de plan, contáctalo por WhatsApp.</p>
+        <h1 className="text-2xl font-bold text-navy">Planes</h1>
+        <p className="mt-1 text-sm text-muted">El plan lo asigna el administrador. Si quieres cambiar de plan, contáctalo por WhatsApp.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {plans.map((p) => {
           const isCurrent = p.id === merchant.planId
+          const priceLabel = p.trialDays ? `${p.trialDays} días` : `S/ ${p.pricePerDay.toFixed(2)}`
+          const priceSuffix = p.trialDays ? 'gratis' : 'x día'
           return (
-            <div
-              key={p.id}
-              className={`rounded-2xl border p-5 backdrop-blur-sm ${
-                isCurrent ? 'border-amber-400/60 bg-amber-400/[0.06]' : 'border-white/10 bg-white/5'
-              }`}
-            >
+            <div key={p.id} className={`card p-5 ${isCurrent ? 'border-brand bg-amber-50/60' : ''}`}>
               {isCurrent && (
-                <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-bold text-amber-300">
+                <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-brand/20 px-2 py-0.5 text-[11px] font-bold text-brand-dark">
                   <IconCheck className="h-3 w-3" /> Tu plan actual
                 </span>
               )}
-              <p className="text-lg font-bold text-white">{p.name}</p>
-              <p className="mt-1 text-2xl font-bold text-white">
-                S/ {p.priceSoles.toFixed(2)} <span className="text-xs font-normal text-gray-400">/ mes</span>
+              <p className="text-lg font-bold text-navy">{p.name}</p>
+              <p className="mt-1 text-2xl font-bold text-navy">
+                {priceLabel} <span className="text-xs font-normal text-muted">{priceSuffix}</span>
               </p>
-              <p className="mt-2 text-sm text-gray-400">Hasta {p.monthlyOrderLimit} pedidos al mes.</p>
-              {p.description && <p className="mt-2 text-xs text-gray-500">{p.description}</p>}
+              {p.description && <p className="mt-2 text-xs text-muted">{p.description}</p>}
+              {p.features?.length > 0 && (
+                <ul className="mt-3 space-y-1.5">
+                  {p.features.map((f) => (
+                    <li key={f} className="flex items-start gap-1.5 text-xs text-muted">
+                      <IconCheck className="mt-0.5 h-3 w-3 shrink-0 text-brand-dark" /> {f}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )
         })}

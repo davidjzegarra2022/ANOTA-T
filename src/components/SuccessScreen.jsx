@@ -14,7 +14,7 @@ const DELIVERY_TITLES = {
 
 function Row({ icon, children }) {
   return (
-    <p className="flex items-start gap-2 text-[13.5px] leading-relaxed text-gray-300">
+    <p className="flex items-start gap-2 text-[13.5px] leading-relaxed text-ink">
       <span className="mt-px shrink-0">{icon}</span>
       <span className="min-w-0 break-words">{children}</span>
     </p>
@@ -43,19 +43,19 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
 
   return (
     <div className="flex flex-col items-center py-4 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-400/30 animate-pop-in">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 ring-1 ring-emerald-300 animate-pop-in">
         <IconCheck className="h-8 w-8" />
       </div>
 
-      <h1 className="mt-4 text-xl font-bold text-white">¡Registro Exitoso!</h1>
-      <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-gray-400">
+      <h1 className="mt-4 text-xl font-bold text-navy">¡Registro Exitoso!</h1>
+      <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-muted">
         Tu envío ha sido programado correctamente. Verifica los datos y envíalos por chat con el botón verde.
       </p>
 
-      <div className="animate-fade-in-up mt-6 w-full space-y-2.5 rounded-2xl border border-white/10 bg-white/5 p-5 text-left shadow-xl shadow-black/30 backdrop-blur-sm">
-        <p className="text-[11px] font-bold tracking-wide text-gray-500 uppercase">Resumen</p>
+      <div className="animate-fade-in-up mt-6 w-full space-y-2.5 card p-5 text-left shadow-xl">
+        <p className="text-[11px] font-bold tracking-wide text-muted uppercase">Resumen</p>
 
-        <p className="text-sm font-bold text-white">
+        <p className="text-sm font-bold text-navy">
           📦 {DELIVERY_TITLES[form.deliveryMethod] ?? 'Nuevo pedido'}
         </p>
 
@@ -91,14 +91,14 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
         </div>
 
         {(form.courier || form.shippingDate) && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/10 pt-2.5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-200 pt-2.5">
             {form.courier && (
-              <span className="flex items-center gap-1.5 text-[13.5px] font-semibold text-gray-200">
+              <span className="flex items-center gap-1.5 text-[13.5px] font-semibold text-ink">
                 🚚 {COURIERS[form.courier]?.label ?? form.agency?.courierLabel ?? form.courier}
               </span>
             )}
             {form.shippingDate && (
-              <span className="flex items-center gap-1.5 text-[13.5px] font-semibold text-gray-200">
+              <span className="flex items-center gap-1.5 text-[13.5px] font-semibold text-ink">
                 📅 {form.shippingDate.shortLabel}
               </span>
             )}
@@ -124,22 +124,22 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
           title="Copiar resumen"
           className={`flex w-14 shrink-0 items-center justify-center rounded-xl border transition active:scale-[0.97] ${
             copied
-              ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-400'
-              : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
+              : 'border-slate-200 bg-white text-ink hover:bg-surface hover:text-navy'
           }`}
         >
           {copied ? <IconCheck className="h-5 w-5" /> : <IconCopy className="h-5 w-5" />}
         </button>
       </div>
-      {copied && <p className="mt-2 text-xs font-medium text-emerald-400">Resumen copiado</p>}
+      {copied && <p className="mt-2 text-xs font-medium text-emerald-600">Resumen copiado</p>}
 
       <button
         type="button"
         onClick={handleDownloadLabel}
         className={`mt-3 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-[14px] font-bold transition active:scale-[0.99] ${
           labelSaved
-            ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-400'
-            : 'border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/15'
+            ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
+            : 'border-brand/50 bg-amber-50 text-brand-dark hover:bg-amber-100'
         }`}
       >
         {labelSaved ? 'Etiqueta descargada' : 'Descargar etiqueta para imprimir'}
@@ -151,7 +151,7 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
           <button
             type="button"
             onClick={onBackToPanel}
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-[13px] font-semibold text-gray-300 transition hover:bg-white/10 hover:text-white active:scale-[0.99]"
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-ink transition hover:bg-surface hover:text-navy active:scale-[0.99]"
           >
             <IconArrowLeft className="h-4 w-4" /> Panel
           </button>
@@ -159,7 +159,7 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
         <button
           type="button"
           onClick={onNewOrder}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 py-2.5 text-[14px] font-bold text-gray-200 transition hover:bg-white/10 hover:text-white active:scale-[0.99]"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2.5 text-[14px] font-bold text-ink transition hover:bg-surface hover:text-navy active:scale-[0.99]"
         >
           + Nuevo pedido
         </button>
