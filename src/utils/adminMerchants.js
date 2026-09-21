@@ -55,9 +55,11 @@ function planFromRow(row) {
   return {
     id: row.id,
     name: row.name,
+    trialDays: row.trial_days,
+    pricePerDay: Number(row.price_per_day),
     monthlyOrderLimit: row.monthly_order_limit,
-    priceSoles: Number(row.price_soles),
     description: row.description,
+    features: row.features || [],
     active: row.active,
   }
 }
@@ -70,16 +72,18 @@ export async function adminListPlans() {
   return { ok: true, plans: (data || []).map(planFromRow) }
 }
 
-export async function adminUpsertPlan({ id, name, monthlyOrderLimit, priceSoles, description, active }) {
+export async function adminUpsertPlan({ id, name, trialDays, pricePerDay, monthlyOrderLimit, description, features, active }) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
   const { data, error } = await supabase.rpc('admin_upsert_plan', {
     p_secret: getAdminSecret(),
     p_id: id ?? null,
     p_name: String(name || '').trim(),
-    p_monthly_order_limit: Number(monthlyOrderLimit) || 0,
-    p_price_soles: Number(priceSoles) || 0,
+    p_trial_days: trialDays ? Number(trialDays) : null,
+    p_price_per_day: Number(pricePerDay) || 0,
+    p_monthly_order_limit: monthlyOrderLimit ? Number(monthlyOrderLimit) : null,
     p_description: String(description || '').trim() || null,
+    p_features: (features || []).map((f) => String(f).trim()).filter(Boolean),
     p_active: active !== false,
   })
   if (error) return { ok: false, error: unauthorizedMessage(error) }

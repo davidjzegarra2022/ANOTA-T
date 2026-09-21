@@ -24,16 +24,16 @@ function buildDeliveryOptions(couriers) {
 
 function FieldLabel({ children, required }) {
   return (
-    <label className="mb-1.5 block text-sm font-semibold text-gray-200">
+    <label className="mb-1.5 block text-sm font-semibold text-ink">
       {children}
-      {required && <span className="text-red-400"> *</span>}
+      {required && <span className="text-red-600"> *</span>}
     </label>
   )
 }
 
 function FieldError({ message }) {
   if (!message) return null
-  return <p className="mt-1 text-xs text-red-400">{message}</p>
+  return <p className="mt-1 text-xs text-red-600">{message}</p>
 }
 
 function TextField({ label, required, value, onChange, onBlur, error, placeholder, prefix, ...rest }) {
@@ -41,19 +41,19 @@ function TextField({ label, required, value, onChange, onBlur, error, placeholde
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
       <div
-        className={`flex items-center gap-2 rounded-xl border bg-white/5 px-3.5 py-3 backdrop-blur-sm transition ${
+        className={`flex items-center gap-2 rounded-xl border bg-white px-3.5 py-3 transition ${
           error
-            ? 'border-red-400/60'
-            : 'border-white/10 focus-within:border-amber-400/70 focus-within:ring-2 focus-within:ring-amber-400/20'
+            ? 'border-red-500'
+            : 'border-slate-200 focus-within:border-brand-dark focus-within:ring-2 focus-within:ring-brand/25'
         }`}
       >
-        {prefix && <span className="font-semibold text-gray-500">{prefix}</span>}
+        {prefix && <span className="font-semibold text-muted">{prefix}</span>}
         <input
           value={value}
           onChange={onChange}
           onBlur={onBlur}
           placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent text-[15px] text-white placeholder:text-gray-500 focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-muted focus:outline-none"
           {...rest}
         />
       </div>
@@ -78,10 +78,10 @@ function SelectField({
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
       <div
-        className={`relative rounded-xl border bg-white/5 backdrop-blur-sm transition ${
+        className={`relative rounded-xl border bg-white transition ${
           error
-            ? 'border-red-400/60'
-            : 'border-white/10 focus-within:border-amber-400/70 focus-within:ring-2 focus-within:ring-amber-400/20'
+            ? 'border-red-500'
+            : 'border-slate-200 focus-within:border-brand-dark focus-within:ring-2 focus-within:ring-brand/25'
         }`}
       >
         <select
@@ -89,21 +89,21 @@ function SelectField({
           onChange={onChange}
           onBlur={onBlur}
           className={`w-full appearance-none bg-transparent px-3.5 py-3 pr-10 text-[15px] focus:outline-none ${
-            value ? 'text-white' : 'text-gray-500'
+            value ? 'text-ink' : 'text-muted'
           }`}
         >
-          <option value="" className="bg-gray-900 text-gray-400">
+          <option value="">
             {placeholder}
           </option>
           {options.map((o) => (
-            <option key={o.value} value={o.value} className="bg-gray-900 text-white">
+            <option key={o.value} value={o.value}>
               {o.label}
             </option>
           ))}
         </select>
-        <Icon className="pointer-events-none absolute right-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-gray-500" />
+        <Icon className="pointer-events-none absolute right-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-muted" />
       </div>
-      {hint && <p className="mt-1.5 text-xs text-gray-500">{hint}</p>}
+      {hint && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
       <FieldError message={error} />
     </div>
   )
@@ -405,7 +405,7 @@ export default function ShippingForm({ merchant, onSubmit }) {
 
       <button
         type="submit"
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 py-3.5 text-[15px] font-bold text-white shadow-[0_8px_30px_-8px_rgba(249,115,22,0.6)] transition hover:from-amber-400 hover:to-orange-500 active:scale-[0.99]"
+        className="btn btn-primary w-full py-3.5 text-[15px]"
       >
         Agendar y ver resumen
         <IconCalendar className="h-5 w-5" />

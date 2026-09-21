@@ -2,10 +2,19 @@
 
 @theme {
   --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --color-navy: #071d2d;
+  --color-navy-2: #0c2c41;
+  --color-navy-light: #163e50;
+  --color-brand: #ffc400;
+  --color-brand-dark: #e9aa00;
+  --color-brand-light: #ffd54c;
+  --color-ink: #122337;
+  --color-muted: #718196;
+  --color-surface: #f4f7fa;
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html {
@@ -15,8 +24,8 @@ html {
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: #05050d;
-  color: #e5e7eb;
+  background: var(--color-surface);
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -38,58 +47,87 @@ input, select, textarea {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(7, 29, 45, 0.15);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
-/* --- Cosmic background (asteroid field) --- */
+/* --- Clases compartidas (mismo lenguaje visual que anotat-website) ---
+   En @layer components para que las utilidades de Tailwind (sm:hidden,
+   !px-3, etc.) las puedan sobreescribir — si quedaran fuera de las capas
+   de Tailwind, ganan por orden de aparición en la hoja de estilos y
+   utilidades como "sm:hidden" dejan de funcionar sobre estos elementos. */
+@layer components {
+  .card {
+    border-radius: 18px;
+    border: 1px solid #e6ecf1;
+    background: #ffffff;
+    box-shadow: 0 12px 35px rgba(7, 29, 45, 0.06);
+  }
 
-.cosmic-stars {
-  background-image:
-    radial-gradient(1.6px 1.6px at 20px 30px, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 90px 80px, #fff, transparent),
-    radial-gradient(1px 1px at 130px 40px, #fff, transparent),
-    radial-gradient(1.4px 1.4px at 160px 120px, #fff, transparent),
-    radial-gradient(1px 1px at 50px 140px, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 180px 20px, #fff, transparent);
-  background-repeat: repeat;
-  background-size: 200px 200px;
-  animation: twinkle 7s ease-in-out infinite;
-}
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+    padding: 12px 22px;
+    font-weight: 800;
+    font-size: 14px;
+    transition: 0.2s;
+    border: 0;
+    cursor: pointer;
+  }
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .btn-primary {
+    background: var(--color-brand);
+    color: var(--color-navy);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-brand-light);
+    transform: translateY(-1px);
+  }
+  .btn-dark {
+    background: var(--color-navy);
+    color: #ffffff;
+  }
+  .btn-dark:hover:not(:disabled) {
+    background: var(--color-navy-2);
+  }
+  .btn-outline {
+    background: #ffffff;
+    color: var(--color-navy);
+    border: 1px solid #dbe4eb;
+  }
+  .btn-outline:hover:not(:disabled) {
+    background: var(--color-surface);
+  }
 
-@keyframes twinkle {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 0.75; }
-}
-
-@keyframes drift1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(26px, -22px) scale(1.08); }
-}
-
-@keyframes drift2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-24px, 24px) scale(1.06); }
-}
-
-@keyframes drift3 {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
-  50% { transform: translate(14px, 16px) scale(0.94); opacity: 1; }
-}
-
-@keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cosmic-stars,
-  .cosmic-orb,
-  .cosmic-asteroid {
-    animation: none !important;
+  .input-field {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid #dbe4eb;
+    background: #ffffff;
+    padding: 12px 14px;
+    font-size: 15px;
+    color: var(--color-ink);
+    outline: none;
+    transition: 0.15s;
+  }
+  .input-field::placeholder {
+    color: #9aa8b5;
+  }
+  .input-field:focus {
+    border-color: var(--color-brand-dark);
+    box-shadow: 0 0 0 3px rgba(255, 196, 0, 0.25);
+  }
+  .input-field.has-error {
+    border-color: #ef4444;
   }
 }
 
@@ -126,30 +164,57 @@ input, select, textarea {
   animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* --- Ilustración 3D del portal de acceso --- */
-
-.tilt-3d-wrap {
-  perspective: 1400px;
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
 }
-
-.tilt-3d {
-  transform-style: preserve-3d;
-  filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.55));
-  animation: float-3d 7s ease-in-out infinite;
-}
-
-@keyframes float-3d {
-  0%, 100% {
-    transform: rotateY(-14deg) rotateX(6deg) translateY(0);
-  }
-  50% {
-    transform: rotateY(-8deg) rotateX(3deg) translateY(-14px);
-  }
-}
+.reveal.reveal-left { transform: translateX(-32px); }
+.reveal.reveal-right { transform: translateX(32px); }
+.reveal.is-visible { opacity: 1; transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .tilt-3d {
-    animation: none;
-    transform: rotateY(-14deg) rotateX(6deg);
+  .reveal, .reveal.reveal-left, .reveal.reveal-right {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
+}
+
+/* --- Logo 3D flotante (hero de la landing) --- */
+
+.logo-stage {
+  perspective: 1100px;
+}
+.logo-float {
+  position: relative;
+  animation: logoFloat 5s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+.logo-3d {
+  position: relative;
+  border-radius: 30px;
+  background: linear-gradient(145deg, #ffffff 0%, #eef4fb 55%, #d9e6f4 100%);
+  box-shadow: 0 1px 0 #fff inset, 0 -6px 0 rgba(9, 40, 80, 0.12) inset,
+    14px 22px 0 -4px #c3d3e6, 28px 44px 60px rgba(0, 0, 0, 0.35);
+}
+.logo-3d img {
+  display: block;
+  filter: drop-shadow(0 14px 12px rgba(6, 32, 66, 0.35));
+}
+.logo-ground {
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 70%);
+  animation: logoShadow 5s ease-in-out infinite;
+}
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-16px); }
+}
+@keyframes logoShadow {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(0.82); opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-float, .logo-ground { animation: none; }
 }

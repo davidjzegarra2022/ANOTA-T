@@ -10,19 +10,36 @@ Cuando un cliente llena el formulario, el pedido queda **guardado** (no
 solo enviado por WhatsApp) y aparece en el panel del negociante (Envíos,
 Clientes, Panel Pro).
 
-## Los tres roles de la app
+## Diseño: navy + amarillo
 
-1. **Cliente final** — entra a `tu-dominio.com/f/<slug>` (sin login), llena
-   el formulario y lo manda por WhatsApp al número del negociante dueño de
-   ese link. El pedido también queda guardado en Supabase.
-2. **Negociante** — entra a `tu-dominio.com/` (login normal, `src/App.jsx`),
-   con **correo y contraseña reales** (Supabase Auth). Tiene su propio panel
-   con pestañas **Envíos, Clientes, Panel Pro, Configuración, Planes y
-   Suscripción** (`src/components/dashboard/`).
-3. **Administrador (dueño de la plataforma)** — entra a
-   `tu-dominio.com/admin` con usuario/contraseña fijos (`src/utils/serial.js`).
-   Gestiona el directorio de agencias, los negociantes (activar/desactivar,
-   asignar plan) y los planes disponibles.
+La marca sigue la landing de referencia
+([anotat-website](https://github.com/davidjzegarra2022/ANOTAT-WEBSITE)):
+fondo claro, navy (`#071d2d`) y amarillo (`#ffc400`) como acentos,
+tipografía Inter. Los tokens de color viven en `src/index.css` (`@theme` de
+Tailwind v4: `--color-navy`, `--color-brand`, etc.) y las clases
+compartidas `.btn`/`.card`/`.input-field` están en `@layer components`
+para que las utilidades responsive de Tailwind (`sm:hidden`, etc.) sigan
+pudiendo sobreescribirlas.
+
+## Rutas y los tres roles de la app
+
+- **`tu-dominio.com/`** — landing de marketing (`src/components/LandingPage.jsx`,
+  sin login): hero, funciones, planes (leídos en vivo de Supabase), cómo
+  funciona, rastreo público de pedidos y contacto. Si el visitante ya tiene
+  sesión de negociante activa, esta ruta muestra su panel directamente en
+  vez de la landing.
+- **`tu-dominio.com/login`** / **`/signup`** / **`/forgot-password`** —
+  acceso del negociante (`src/components/auth/`), con **correo y
+  contraseña reales** (Supabase Auth). Una vez logueado, tiene su propio
+  panel con pestañas **Envíos, Clientes, Panel Pro, Configuración, Planes
+  y Suscripción** (`src/components/dashboard/`).
+- **`tu-dominio.com/f/<slug>`** — el link que cada negociante comparte con
+  sus propios clientes finales (sin login). Llenan el formulario y el
+  pedido se manda por WhatsApp al negociante Y queda guardado en Supabase.
+- **`tu-dominio.com/admin`** — el dueño de la plataforma, con
+  usuario/contraseña fijos (`src/utils/serial.js`). Gestiona el directorio
+  de agencias, los negociantes (activar/desactivar, asignar plan) y los
+  planes disponibles.
 
 ## Cuentas de negociante (Supabase Auth)
 
@@ -81,8 +98,10 @@ usar tu Gmail como servidor saliente:
 - **Clientes** (`ClientesPage.jsx`) — agrupa los pedidos por WhatsApp del
   cliente final: recurrentes (2+ pedidos), nuevos este mes, dormidos (sin
   comprar +30 días), en riesgo (15-30 días sin comprar).
-- **Panel Pro** (`PanelProPage.jsx`) — pedidos de hoy/7/30 días, uso del
-  plan del mes ("X de N pedidos"), pedidos por estado y top couriers.
+- **Panel Pro** (`PanelProPage.jsx`) — pedidos de hoy/7/30 días, días
+  restantes de prueba gratuita (si el plan es de prueba) o uso del límite
+  de pedidos del mes (si el plan lo tiene), pedidos por estado y top
+  couriers.
   > **Limitación honesta:** el formulario no pide un monto por pedido (es
   > un formulario de logística, no de facturación), así que este panel
   > mide **pedidos**, no ventas en soles. Si quieres un campo de monto
@@ -91,11 +110,16 @@ usar tu Gmail como servidor saliente:
   despacho, hora de corte, anticipación en horas, nombre de tienda,
   WhatsApp, moneda de visualización, zona horaria, logo (sube a Supabase
   Storage, bucket `logos`) y el slug de su link público.
-- **Planes** (`PlanesPage.jsx`) — planes disponibles (los define el admin),
-  resalta el plan actual; sin pasarela de pago, el cambio se pide por
+- **Planes** (`PlanesPage.jsx`) — planes disponibles (los define el admin):
+  días de prueba gratis y/o precio por día, con su lista de
+  características. Sin pasarela de pago todavía — el cambio se pide por
   WhatsApp a un número tuyo que configuras en el propio archivo
-  (`ADMIN_WHATSAPP` en `PlanesPage.jsx`, vacío por defecto).
-- **Suscripción** (`SuscripcionPage.jsx`) — plan actual y uso del mes.
+  (`ADMIN_WHATSAPP` en `PlanesPage.jsx`, vacío por defecto). La landing
+  menciona Culqi como método de pago del plan Gold — el terreno está
+  preparado en el esquema de planes, pero la integración de cobro en sí
+  no está hecha; pídela aparte cuando quieras activarla.
+- **Suscripción** (`SuscripcionPage.jsx`) — plan actual, días de prueba
+  restantes o uso del mes según corresponda.
 
 ## El panel de administrador
 
@@ -153,21 +177,43 @@ insert into public.app_settings (key, value) values ('admin_secret', 'pon-aqui-u
   on conflict (key) do update set value = excluded.value;
 
 -- Planes -----------------------------------------------------------------
+-- Esquema por día (alineado a la landing): trial_days para planes de
+-- prueba gratuita, price_per_day para planes pagos, monthly_order_limit
+-- opcional (null = sin límite) y features como lista para mostrar.
 create table if not exists public.plans (
   id bigint generated always as identity primary key,
   name text not null,
-  monthly_order_limit integer not null default 20,
-  price_soles numeric(10,2) not null default 0,
+  trial_days integer,
+  price_per_day numeric(10,2) not null default 0,
+  monthly_order_limit integer,
   description text,
+  features text[] not null default '{}'::text[],
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
 alter table public.plans enable row level security;
 create policy "plans_authenticated_select" on public.plans
   for select using (auth.role() = 'authenticated' and active = true);
-insert into public.plans (name, monthly_order_limit, price_soles, description)
-select 'Prueba', 20, 0, 'Plan de prueba gratuito, hasta 20 pedidos al mes.'
-where not exists (select 1 from public.plans where name = 'Prueba');
+
+insert into public.plans (name, trial_days, price_per_day, description, features)
+select 'Prueba Free', 7, 0, 'Prueba gratis por 7 días.',
+  array['Te registras', 'Con tu número de WhatsApp']
+where not exists (select 1 from public.plans where name = 'Prueba Free');
+
+insert into public.plans (name, price_per_day, description, features)
+select 'Pro', 1.00, 'Todo lo esencial para operar tu tienda.',
+  array['Link con tu marca', 'Formulario de datos universal',
+        'Base de datos oficial de las agencias más conocidas a nivel nacional',
+        'Panel de control de estados de envío',
+        'Plantillas de Excel para envíos masivos Shalom y Olva',
+        'Impresión de etiquetas desde tu móvil']
+where not exists (select 1 from public.plans where name = 'Pro');
+
+insert into public.plans (name, price_per_day, description, features)
+select 'Gold', 1.50, 'Todo el plan Pro, con seguimiento en tiempo real y pagos.',
+  array['Todo el plan Pro', 'Seguimiento de envío en tiempo real', 'Dashboard del negocio',
+        'Pasarela de pagos por Culqi (Yape, Plin, BCP, etc.) — próximamente']
+where not exists (select 1 from public.plans where name = 'Gold');
 
 -- Negociantes (1 fila por cuenta de Supabase Auth) ----------------------
 create table if not exists public.merchants (
@@ -183,6 +229,9 @@ create table if not exists public.merchants (
   cutoff_hour integer not null default 18,
   lead_time_hours integer not null default 0,
   plan_id bigint references public.plans(id),
+  -- Desde cuándo corre el plan actual — con esto se calcula el vencimiento
+  -- de la prueba gratuita (plan_started_at + plan.trial_days).
+  plan_started_at timestamptz not null default now(),
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -244,7 +293,10 @@ create table if not exists public.orders (
   notes text,
   shipping_date date,
   status text not null default 'pending',
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Código corto para que el cliente final rastree SU pedido sin login
+  -- (ej. ANOTA-4F8K2) — lo genera el trigger de abajo.
+  tracking_code text unique
 );
 alter table public.orders enable row level security;
 create policy "orders_insert_public" on public.orders for insert with check (true);
@@ -252,6 +304,48 @@ create policy "orders_select_own" on public.orders for select using (auth.uid() 
 create policy "orders_update_own" on public.orders for update using (auth.uid() = merchant_id);
 create policy "orders_delete_own" on public.orders for delete using (auth.uid() = merchant_id);
 create index if not exists orders_merchant_created_idx on public.orders (merchant_id, created_at desc);
+
+create or replace function public.generate_order_tracking_code()
+returns trigger language plpgsql as $$
+declare
+  code text;
+  chars text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; -- sin 0/O/1/I para evitar confusiones
+  i int;
+begin
+  if new.tracking_code is not null then
+    return new;
+  end if;
+  loop
+    code := 'ANOTA-';
+    for i in 1..5 loop
+      code := code || substr(chars, 1 + floor(random() * length(chars))::int, 1);
+    end loop;
+    exit when not exists (select 1 from public.orders where tracking_code = code);
+  end loop;
+  new.tracking_code := code;
+  return new;
+end; $$;
+
+drop trigger if exists set_order_tracking_code on public.orders;
+create trigger set_order_tracking_code
+  before insert on public.orders
+  for each row execute function public.generate_order_tracking_code();
+
+-- Público: consulta SOLO por código exacto, sin exponer datos personales
+-- del cliente final ni la lista completa de pedidos.
+create or replace function public.track_order_by_code(p_code text)
+returns table (
+  tracking_code text, delivery_method text, courier text, agency_label text,
+  shipping_date date, status text, created_at timestamptz, business_name text
+)
+language sql security definer set search_path = public as $$
+  select o.tracking_code, o.delivery_method, o.courier, o.agency_label,
+         o.shipping_date, o.status, o.created_at, m.business_name
+  from public.orders o
+  join public.merchants m on m.id = o.merchant_id
+  where o.tracking_code = upper(trim(p_code));
+$$;
+grant execute on function public.track_order_by_code(text) to anon, authenticated;
 
 -- RPCs de administrador (multi-tenant) --------------------------------------
 create or replace function public.admin_list_merchants(p_secret text)
@@ -290,7 +384,8 @@ begin
   if p_secret is null or p_secret <> (select value from public.app_settings where key = 'admin_secret') then
     raise exception 'unauthorized';
   end if;
-  update public.merchants set plan_id = p_plan_id where id = p_id returning * into r;
+  -- plan_started_at se reinicia para que un plan de prueba nuevo arranque su cuenta de días desde cero.
+  update public.merchants set plan_id = p_plan_id, plan_started_at = now() where id = p_id returning * into r;
   return r;
 end; $$;
 grant execute on function public.admin_set_merchant_plan(text, uuid, bigint) to anon, authenticated;
@@ -301,13 +396,14 @@ begin
   if p_secret is null or p_secret <> (select value from public.app_settings where key = 'admin_secret') then
     raise exception 'unauthorized';
   end if;
-  return query select * from public.plans order by price_soles asc, created_at asc;
+  return query select * from public.plans order by price_per_day asc, created_at asc;
 end; $$;
 grant execute on function public.admin_list_plans(text) to anon, authenticated;
 
 create or replace function public.admin_upsert_plan(
-  p_secret text, p_id bigint, p_name text, p_monthly_order_limit integer,
-  p_price_soles numeric, p_description text, p_active boolean
+  p_secret text, p_id bigint, p_name text, p_trial_days integer,
+  p_price_per_day numeric, p_monthly_order_limit integer, p_description text,
+  p_features text[], p_active boolean
 )
 returns public.plans language plpgsql security definer set search_path = public as $$
 declare r public.plans;
@@ -316,17 +412,19 @@ begin
     raise exception 'unauthorized';
   end if;
   if p_id is null then
-    insert into public.plans (name, monthly_order_limit, price_soles, description, active)
-    values (p_name, p_monthly_order_limit, p_price_soles, p_description, coalesce(p_active, true))
+    insert into public.plans (name, trial_days, price_per_day, monthly_order_limit, description, features, active)
+    values (p_name, p_trial_days, p_price_per_day, p_monthly_order_limit, p_description, coalesce(p_features, '{}'), coalesce(p_active, true))
     returning * into r;
   else
-    update public.plans set name = p_name, monthly_order_limit = p_monthly_order_limit,
-      price_soles = p_price_soles, description = p_description, active = coalesce(p_active, true)
+    update public.plans set
+      name = p_name, trial_days = p_trial_days, price_per_day = p_price_per_day,
+      monthly_order_limit = p_monthly_order_limit, description = p_description,
+      features = coalesce(p_features, '{}'), active = coalesce(p_active, true)
     where id = p_id returning * into r;
   end if;
   return r;
 end; $$;
-grant execute on function public.admin_upsert_plan(text, bigint, text, integer, numeric, text, boolean) to anon, authenticated;
+grant execute on function public.admin_upsert_plan(text, bigint, text, integer, numeric, integer, text, text[], boolean) to anon, authenticated;
 
 create or replace function public.admin_delete_plan(p_secret text, p_id bigint)
 returns boolean language plpgsql security definer set search_path = public as $$
@@ -424,8 +522,15 @@ es un **Google Apps Script + Hoja de cálculo**:
      Transportes Flores) — buscador de agencias con geolocalización + DNI/CE.
    - **Otra agencia / encomienda** — nombre y dirección de recojo libres.
 5. Al enviar, el pedido se **guarda en Supabase** (`utils/orders.js`) ligado
-   al negociante, y se muestra la pantalla de confirmación con un botón
-   para mandarlo también por WhatsApp al número del negociante.
+   al negociante y con un **código de rastreo** único generado por un
+   trigger de Postgres (ej. `ANOTA-4F8K2`, ver esquema arriba). Se muestra
+   la pantalla de confirmación con un botón para mandarlo también por
+   WhatsApp al número del negociante.
+6. Ese código sirve para que el cliente final consulte el estado de su
+   pedido sin login desde la sección "Rastrear pedido" de la landing
+   (`utils/orders.js` → `trackOrderByCode`, que llama a la función pública
+   `track_order_by_code` — solo por código exacto, nunca expone la lista
+   completa ni datos personales).
 
 ## Sobre las "agencias cercanas" (Shalom, Emtrafesa, Marvisur, Olva, Flores)
 

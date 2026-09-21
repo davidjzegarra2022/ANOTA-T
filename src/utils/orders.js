@@ -7,6 +7,7 @@ import { getSupabaseClient } from './supabaseClient'
 function fromRow(row) {
   return {
     id: row.id,
+    trackingCode: row.tracking_code,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerDni: row.customer_dni,
@@ -88,6 +89,29 @@ export async function updateOrderStatus(id, status) {
   const { error } = await supabase.from('orders').update({ status }).eq('id', id)
   if (error) return { ok: false, error: error.message }
   return { ok: true }
+}
+
+/** Consulta pública de UN pedido por su código de rastreo (sin login, sin exponer datos personales). */
+export async function trackOrderByCode(code) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { data, error } = await supabase.rpc('track_order_by_code', { p_code: String(code || '').trim() })
+  if (error) return { ok: false, error: error.message }
+  const row = data?.[0]
+  if (!row) return { ok: false, error: 'No encontramos ningún pedido con ese código.' }
+  return {
+    ok: true,
+    order: {
+      trackingCode: row.tracking_code,
+      deliveryMethod: row.delivery_method,
+      courier: row.courier,
+      agencyLabel: row.agency_label,
+      shippingDate: row.shipping_date,
+      status: row.status,
+      createdAt: row.created_at,
+      businessName: row.business_name,
+    },
+  }
 }
 
 export const ORDER_STATUS_LABELS = {

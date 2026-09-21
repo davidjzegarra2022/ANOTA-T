@@ -114,18 +114,18 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
 
   return (
     <div ref={containerRef} className="relative">
-      <label className="mb-1.5 block text-sm font-semibold text-gray-200">
-        Busca tu Agencia <span className="text-red-400">*</span>
+      <label className="mb-1.5 block text-sm font-semibold text-ink">
+        Busca tu Agencia <span className="text-red-600">*</span>
       </label>
 
       <div
-        className={`flex items-center gap-2 rounded-xl border bg-white/5 px-3.5 py-3 backdrop-blur-sm transition ${
-          open ? 'border-amber-400/70 ring-2 ring-amber-400/20' : error ? 'border-red-400/60' : 'border-white/10'
+        className={`flex items-center gap-2 rounded-xl border bg-white px-3.5 py-3 transition ${
+          open ? 'border-brand-dark ring-2 ring-brand/25' : error ? 'border-red-500' : 'border-slate-200'
         }`}
       >
-        <IconSearch className="h-4.5 w-4.5 shrink-0 text-gray-500" />
+        <IconSearch className="h-4.5 w-4.5 shrink-0 text-muted" />
         {value ? (
-          <span className="min-w-0 flex-1 truncate text-[15px] text-white">{value.label}</span>
+          <span className="min-w-0 flex-1 truncate text-[15px] text-ink">{value.label}</span>
         ) : (
           <input
             type="text"
@@ -137,14 +137,14 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
               setNearMe(false)
               setOpen(true)
             }}
-            className="min-w-0 flex-1 bg-transparent text-[15px] text-white placeholder:text-gray-500 focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-muted focus:outline-none"
           />
         )}
         {(value || query) && (
           <button
             type="button"
             onClick={handleClear}
-            className="shrink-0 text-gray-500 hover:text-gray-300"
+            className="shrink-0 text-muted hover:text-ink"
             aria-label="Limpiar"
           >
             <IconX className="h-4 w-4" />
@@ -157,14 +157,14 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
           type="button"
           onClick={handleUseLocation}
           disabled={geoLoading}
-          className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 disabled:opacity-60"
+          className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-700 hover:text-cyan-800 disabled:opacity-60"
         >
           <IconPin className="h-3.5 w-3.5" />
           {geoLoading ? 'Buscando tu ubicación…' : 'Usar mi ubicación para ver las más cercanas'}
         </button>
       )}
-      {geoError && <p className="mt-1 text-xs text-amber-400">{geoError}</p>}
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {geoError && <p className="mt-1 text-xs text-brand-dark">{geoError}</p>}
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
 
       {open &&
         !value &&
@@ -173,15 +173,15 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
           <div
             ref={dropdownRef}
             style={{ position: 'fixed', top: rect.bottom + 6, left: rect.left, width: rect.width }}
-            className="z-50 max-h-60 overflow-y-auto rounded-xl border border-white/10 bg-gray-900 py-1 shadow-2xl shadow-black/60"
+            className="z-50 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-2xl shadow-slate-300/60"
           >
             {nearMe && results.length > 0 && (
-              <p className="px-3.5 pt-1.5 pb-1 text-[11px] font-bold tracking-wide text-gray-500 uppercase">
+              <p className="px-3.5 pt-1.5 pb-1 text-[11px] font-bold tracking-wide text-muted uppercase">
                 Más cercanas a ti
               </p>
             )}
             {results.length === 0 && (
-              <p className="px-3.5 py-3 text-sm text-gray-500">
+              <p className="px-3.5 py-3 text-sm text-muted">
                 {query.trim().length >= 2
                   ? `Sin resultados para "${query.trim()}".`
                   : 'Escribe al menos 2 letras o usa tu ubicación.'}
@@ -192,17 +192,17 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
                 key={agency.id}
                 type="button"
                 onClick={() => handleSelect(agency)}
-                className="flex w-full items-start justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-white/5"
+                className="flex w-full items-start justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-surface"
               >
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-white">{agency.label}</span>
-                  <span className="mt-0.5 block truncate text-xs text-gray-400">
+                  <span className="block text-sm font-semibold text-ink">{agency.label}</span>
+                  <span className="mt-0.5 block truncate text-xs text-muted">
                     {agency.address}
                     {agency.reference ? `, Ref: ${agency.reference}` : ''}
                   </span>
                 </span>
                 {typeof agency.distanceKm === 'number' && (
-                  <span className="mt-0.5 shrink-0 rounded-full bg-cyan-400/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-300">
+                  <span className="mt-0.5 shrink-0 rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-semibold text-cyan-700">
                     ~{formatDistance(agency.distanceKm)}
                   </span>
                 )}

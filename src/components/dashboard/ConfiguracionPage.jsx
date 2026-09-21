@@ -26,12 +26,12 @@ const TIMEZONES = [
 
 function Checkbox({ checked, onChange, label }) {
   return (
-    <label className="inline-flex items-center gap-1.5 text-sm text-gray-200">
+    <label className="inline-flex items-center gap-1.5 text-sm text-ink">
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="h-4 w-4 rounded border-white/20 bg-white/5 accent-amber-500"
+        className="h-4 w-4 rounded border-slate-300 bg-white accent-brand"
       />
       {label}
     </label>
@@ -118,16 +118,16 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Configuración</h1>
-        <p className="mt-1 text-sm text-gray-400">Tu logística y tu marca. Esto es lo que va a ver tu cliente cuando entre a tu link.</p>
+        <h1 className="text-2xl font-bold text-navy">Configuración</h1>
+        <p className="mt-1 text-sm text-muted">Tu logística y tu marca. Esto es lo que va a ver tu cliente cuando entre a tu link.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-          <p className="text-sm font-bold text-white">Logística</p>
+        <div className="card p-5">
+          <p className="text-sm font-bold text-navy">Logística</p>
 
           <div className="mt-3">
-            <span className="mb-1.5 block text-xs font-semibold text-gray-400 uppercase">Couriers activos</span>
+            <span className="mb-1.5 block text-xs font-semibold text-muted uppercase">Couriers activos</span>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
               {couriers.map((c) => (
                 <Checkbox
@@ -141,7 +141,7 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
           </div>
 
           <div className="mt-4">
-            <span className="mb-1.5 block text-xs font-semibold text-gray-400 uppercase">Días de despacho</span>
+            <span className="mb-1.5 block text-xs font-semibold text-muted uppercase">Días de despacho</span>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
               {WEEKDAYS.map((d) => (
                 <Checkbox key={d.value} label={d.label} checked={form.dispatchDays.includes(d.value)} onChange={() => toggleDay(d.value)} />
@@ -151,62 +151,62 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
 
           <div className="mt-4 grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-gray-400 uppercase">Hora de corte</span>
+              <span className="mb-1 block text-xs font-semibold text-muted uppercase">Hora de corte</span>
               <input
                 type="time"
                 value={`${String(form.cutoffHour).padStart(2, '0')}:00`}
                 onChange={(e) => setForm((f) => ({ ...f, cutoffHour: Number(e.target.value.split(':')[0]) }))}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+                className="input-field"
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-gray-400 uppercase">Anticipación (horas)</span>
+              <span className="mb-1 block text-xs font-semibold text-muted uppercase">Anticipación (horas)</span>
               <input
                 type="number"
                 min={0}
                 max={72}
                 value={form.leadTimeHours}
                 onChange={(e) => setForm((f) => ({ ...f, leadTimeHours: Number(e.target.value) || 0 }))}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+                className="input-field"
               />
             </label>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-          <p className="text-sm font-bold text-white">Marca</p>
+        <div className="card p-5">
+          <p className="text-sm font-bold text-navy">Marca</p>
 
           <label className="mt-3 block">
-            <span className="mb-1 block text-xs font-semibold text-gray-400 uppercase">Nombre de tu tienda</span>
+            <span className="mb-1 block text-xs font-semibold text-muted uppercase">Nombre de tu tienda</span>
             <input
               value={form.businessName}
               onChange={(e) => setForm((f) => ({ ...f, businessName: e.target.value }))}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+              className="input-field"
             />
           </label>
 
           <label className="mt-3 block">
-            <span className="mb-1 block text-xs font-semibold text-gray-400 uppercase">WhatsApp de tu tienda</span>
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 focus-within:border-amber-400/70">
-              <span className="font-semibold text-gray-500">+51</span>
+            <span className="mb-1 block text-xs font-semibold text-muted uppercase">WhatsApp de tu tienda</span>
+            <div className="input-field flex items-center gap-2">
+              <span className="font-semibold text-muted">+51</span>
               <input
                 value={form.whatsapp}
                 onChange={(e) => setForm((f) => ({ ...f, whatsapp: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
                 inputMode="numeric"
-                className="min-w-0 flex-1 bg-transparent text-sm text-white focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent focus:outline-none"
               />
             </div>
           </label>
 
           <label className="mt-3 block">
-            <span className="mb-1 block text-xs font-semibold text-gray-400 uppercase">Moneda en la que ves tus precios</span>
+            <span className="mb-1 block text-xs font-semibold text-muted uppercase">Moneda en la que ves tus precios</span>
             <select
               value={form.currency}
               onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+              className="input-field"
             >
               {CURRENCIES.map((c) => (
-                <option key={c.value} value={c.value} className="bg-gray-900">
+                <option key={c.value} value={c.value}>
                   {c.label}
                 </option>
               ))}
@@ -214,14 +214,14 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
           </label>
 
           <label className="mt-3 block">
-            <span className="mb-1 block text-xs font-semibold text-gray-400 uppercase">Zona horaria</span>
+            <span className="mb-1 block text-xs font-semibold text-muted uppercase">Zona horaria</span>
             <select
               value={form.timezone}
               onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+              className="input-field"
             >
               {TIMEZONES.map((tz) => (
-                <option key={tz.value} value={tz.value} className="bg-gray-900">
+                <option key={tz.value} value={tz.value}>
                   {tz.label}
                 </option>
               ))}
@@ -229,24 +229,24 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
           </label>
 
           <div className="mt-3">
-            <span className="mb-1 block text-xs font-semibold text-gray-400 uppercase">Logo (PNG, JPG o WEBP, máx. 2MB)</span>
+            <span className="mb-1 block text-xs font-semibold text-muted uppercase">Logo (PNG, JPG o WEBP, máx. 2MB)</span>
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
               onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-              className="block text-xs text-gray-400 file:mr-3 file:rounded-lg file:border file:border-white/10 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-gray-200"
+              className="block text-xs text-muted file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-surface file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink"
             />
           </div>
 
           <label className="mt-3 block">
-            <span className="mb-1 block text-xs font-semibold text-gray-400 uppercase">Tu link</span>
-            <div className="flex items-center rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
-              <span className="shrink-0 text-gray-500">{window.location.origin}/f/</span>
+            <span className="mb-1 block text-xs font-semibold text-muted uppercase">Tu link</span>
+            <div className="input-field flex items-center">
+              <span className="shrink-0 text-muted">{window.location.origin}/f/</span>
               <input
                 value={form.slug}
                 onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
                 spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-white focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent focus:outline-none"
               />
             </div>
           </label>
@@ -256,11 +256,11 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2 text-sm font-bold text-white transition hover:from-amber-400 hover:to-orange-500 disabled:opacity-60"
+            className="btn btn-primary"
           >
             <IconCheck className="h-4 w-4" /> {saving ? 'Guardando…' : 'Guardar cambios'}
           </button>
-          {msg && <span className={`text-sm font-semibold ${msg.ok ? 'text-emerald-400' : 'text-red-400'}`}>{msg.text}</span>}
+          {msg && <span className={`text-sm font-semibold ${msg.ok ? 'text-emerald-600' : 'text-red-600'}`}>{msg.text}</span>}
         </div>
       </form>
     </div>

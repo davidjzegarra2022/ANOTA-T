@@ -19,6 +19,7 @@ function fromRow(row) {
     cutoffHour: row.cutoff_hour,
     leadTimeHours: row.lead_time_hours,
     planId: row.plan_id,
+    planStartedAt: row.plan_started_at,
     active: row.active,
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import logoIcon from '../../assets/logo-icon.png'
 import { fetchMyMerchant } from '../../utils/merchantProfile'
 import {
   IconBox,
@@ -45,7 +46,7 @@ export default function DashboardLayout({ email, onLogout }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center gap-2 text-gray-400">
+      <div className="flex min-h-screen items-center justify-center gap-2 text-muted">
         <IconRefresh className="h-4 w-4 animate-spin" />
         <span className="text-sm">Cargando…</span>
       </div>
@@ -54,10 +55,10 @@ export default function DashboardLayout({ email, onLogout }) {
 
   if (merchant && !merchant.active) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="text-lg font-bold text-white">Tu cuenta está desactivada</p>
-        <p className="max-w-sm text-sm text-gray-400">Contacta al administrador de la plataforma para reactivarla.</p>
-        <button type="button" onClick={onLogout} className="mt-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-gray-200 hover:bg-white/10">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-surface px-6 text-center">
+        <p className="text-lg font-bold text-navy">Tu cuenta está desactivada</p>
+        <p className="max-w-sm text-sm text-muted">Contacta al administrador de la plataforma para reactivarla.</p>
+        <button type="button" onClick={onLogout} className="btn btn-outline mt-2">
           Salir
         </button>
       </div>
@@ -65,15 +66,15 @@ export default function DashboardLayout({ email, onLogout }) {
   }
 
   return (
-    <div className="relative z-10 flex min-h-screen">
+    <div className="flex min-h-screen bg-surface">
       <aside
-        className={`flex shrink-0 flex-col border-r border-white/10 bg-white/[0.03] backdrop-blur-xl transition-all ${
+        className={`flex shrink-0 flex-col border-r border-slate-200 bg-navy text-white transition-all ${
           collapsed ? 'w-16' : 'w-60'
         }`}
       >
         <div className="flex items-center gap-2.5 px-4 py-5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400/20 to-orange-500/20 text-amber-300 ring-1 ring-amber-400/30">
-            <IconBox className="h-4.5 w-4.5" />
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-white to-[#e6eef7] shadow-md">
+            <img src={logoIcon} alt="" className="h-5 w-5" />
           </span>
           {!collapsed && <p className="truncate text-base font-bold text-white">ANOTA-T</p>}
         </div>
@@ -86,7 +87,7 @@ export default function DashboardLayout({ email, onLogout }) {
               onClick={() => setTab(item.id)}
               title={item.label}
               className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                tab === item.id ? 'bg-amber-400/15 text-amber-300' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                tab === item.id ? 'bg-brand text-navy' : 'text-slate-300 hover:bg-white/10 hover:text-white'
               }`}
             >
               <item.icon className="h-4.5 w-4.5 shrink-0" />
@@ -96,7 +97,7 @@ export default function DashboardLayout({ email, onLogout }) {
         </nav>
 
         {!collapsed && merchant && (
-          <div className="mx-2.5 mb-3 rounded-lg bg-amber-400/10 px-3 py-1.5 text-center text-xs font-bold text-amber-300">
+          <div className="mx-2.5 mb-3 rounded-lg bg-white/10 px-3 py-1.5 text-center text-xs font-bold text-brand">
             {merchant.planId ? 'Plan activo' : 'Sin plan'}
           </div>
         )}
@@ -105,15 +106,15 @@ export default function DashboardLayout({ email, onLogout }) {
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-gray-400 transition hover:bg-white/5 hover:text-gray-200"
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
           >
             {collapsed ? '»' : '« Minimizar'}
           </button>
-          {!collapsed && <p className="truncate px-3 text-[11px] text-gray-500">{email}</p>}
+          {!collapsed && <p className="truncate px-3 text-[11px] text-slate-400">{email}</p>}
           <button
             type="button"
             onClick={onLogout}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-400/10"
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/15"
           >
             <IconLogout className="h-4.5 w-4.5 shrink-0" />
             {!collapsed && 'Salir'}
@@ -124,7 +125,7 @@ export default function DashboardLayout({ email, onLogout }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <main className="min-w-0 flex-1 overflow-y-auto px-6 py-8 sm:px-10">
           {!merchant ? (
-            <p className="text-sm text-red-400">No se pudo cargar tu perfil. Recarga la página.</p>
+            <p className="text-sm text-red-600">No se pudo cargar tu perfil. Recarga la página.</p>
           ) : (
             <>
               {tab === 'envios' && <EnviosPage merchant={merchant} />}

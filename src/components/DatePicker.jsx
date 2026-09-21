@@ -105,24 +105,24 @@ export default function DatePicker({ value, onChange, options, placeholder, erro
 
   return (
     <div className="relative">
-      <label className="mb-1.5 block text-sm font-semibold text-gray-200">
+      <label className="mb-1.5 block text-sm font-semibold text-ink">
         Fecha de Envío
-        {required && <span className="text-red-400"> *</span>}
+        {required && <span className="text-red-600"> *</span>}
       </label>
       <button
         type="button"
         onClick={handleToggle}
-        className={`flex w-full items-center gap-2.5 rounded-xl border bg-white/5 px-3.5 py-3 text-left backdrop-blur-sm transition ${
-          error ? 'border-red-400/60' : 'border-white/10 hover:border-white/20'
+        className={`flex w-full items-center gap-2.5 rounded-xl border bg-white px-3.5 py-3 text-left transition ${
+          error ? 'border-red-500' : 'border-slate-200 hover:border-slate-300'
         }`}
       >
-        <IconCalendar className="h-4.5 w-4.5 shrink-0 text-gray-500" />
-        <span className={`min-w-0 flex-1 truncate text-[15px] ${value ? 'text-white' : 'text-gray-500'}`}>
+        <IconCalendar className="h-4.5 w-4.5 shrink-0 text-muted" />
+        <span className={`min-w-0 flex-1 truncate text-[15px] ${value ? 'text-ink' : 'text-muted'}`}>
           {value ? value.label : placeholder}
         </span>
       </button>
-      {hint && <p className="mt-1.5 text-xs text-gray-500">{hint}</p>}
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {hint && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
 
       {/* Modal emergente: no ocupa espacio en el formulario mientras está
           cerrado, y al abrirse aparece por encima de todo con fondo oscuro
@@ -130,20 +130,20 @@ export default function DatePicker({ value, onChange, options, placeholder, erro
       {open &&
         createPortal(
           <div
-            className="animate-fade-in-up fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="animate-fade-in-up fixed inset-0 z-50 flex items-center justify-center bg-navy/60 p-4 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-2xl border border-white/10 bg-gray-900 p-4 shadow-2xl shadow-black/60"
+              className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-400/40"
             >
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-white">Elige una fecha</p>
+                <p className="text-sm font-bold text-navy">Elige una fecha</p>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
                   aria-label="Cerrar"
-                  className="rounded-lg p-1 text-gray-400 transition hover:bg-white/10 hover:text-white"
+                  className="rounded-lg p-1 text-muted transition hover:bg-surface hover:text-navy"
                 >
                   <IconX className="h-4 w-4" />
                 </button>
@@ -155,11 +155,11 @@ export default function DatePicker({ value, onChange, options, placeholder, erro
                   onClick={() => changeMonth(-1)}
                   disabled={atMin}
                   aria-label="Mes anterior"
-                  className="rounded-lg p-1.5 text-gray-300 transition hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
+                  className="rounded-lg p-1.5 text-ink transition hover:bg-surface disabled:opacity-30 disabled:hover:bg-transparent"
                 >
                   <IconChevronLeft className="h-4 w-4" />
                 </button>
-                <p className="text-sm font-semibold text-gray-200">
+                <p className="text-sm font-semibold text-ink">
                   {MONTH_NAMES[view.month]} {view.year}
                 </p>
                 <button
@@ -167,7 +167,7 @@ export default function DatePicker({ value, onChange, options, placeholder, erro
                   onClick={() => changeMonth(1)}
                   disabled={atMax}
                   aria-label="Mes siguiente"
-                  className="rounded-lg p-1.5 text-gray-300 transition hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
+                  className="rounded-lg p-1.5 text-ink transition hover:bg-surface disabled:opacity-30 disabled:hover:bg-transparent"
                 >
                   <IconChevronRight className="h-4 w-4" />
                 </button>
@@ -175,7 +175,7 @@ export default function DatePicker({ value, onChange, options, placeholder, erro
 
               <div className="mt-2 grid grid-cols-7 gap-1 text-center">
                 {WEEKDAY_SHORT.map((w, i) => (
-                  <span key={i} className="py-1 text-[11px] font-semibold text-gray-500">
+                  <span key={i} className="py-1 text-[11px] font-semibold text-muted">
                     {w}
                   </span>
                 ))}
@@ -190,10 +190,10 @@ export default function DatePicker({ value, onChange, options, placeholder, erro
                       onClick={() => handlePick(cell.dateValue)}
                       className={`aspect-square rounded-lg text-[13px] font-semibold transition ${
                         value?.value === cell.dateValue
-                          ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-[0_0_12px_-2px_rgba(251,191,36,0.7)]'
+                          ? 'bg-brand text-navy shadow-[0_0_12px_-2px_rgba(255,196,0,0.6)]'
                           : cell.available
-                            ? 'text-white hover:bg-amber-400/15'
-                            : 'text-gray-700 cursor-not-allowed'
+                            ? 'text-ink hover:bg-amber-100'
+                            : 'text-slate-300 cursor-not-allowed'
                       }`}
                     >
                       {cell.day}
