@@ -7,7 +7,6 @@
 // Ver README → "Base de datos compartida (Supabase)" para el SQL de la
 // tabla y las políticas de Row Level Security.
 import { geocodePlace } from '../data/peruGeo'
-import { getAdminSecret } from './adminSecret'
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient'
 
 const TABLE = 'agencies'
@@ -107,8 +106,8 @@ function normalizeForInsert(raw) {
 
 function rpcError(error) {
   const msg = String(error?.message || error || '')
-  if (/unauthorized/i.test(msg)) {
-    return 'Clave de administrador incorrecta o vacía (pestaña "Negociantes").'
+  if (/forbidden/i.test(msg)) {
+    return 'Tu cuenta no tiene permisos de administrador.'
   }
   return msg || 'Error desconocido.'
 }
@@ -118,8 +117,8 @@ function rpcError(error) {
  * `errors` trae un mensaje por lote fallido (el resto de los lotes se
  * intenta igual, no se detiene todo por un lote con problemas).
  *
- * Va por una RPC protegida con la clave de administrador: la tabla ya NO
- * acepta escritura pública, porque con la anon key (que viaja en el bundle)
+ * Va por una RPC que exige sesión de administrador: la tabla ya NO acepta
+ * escritura pública, porque con la anon key (que viaja en el bundle)
  * cualquiera podía inyectar o borrar el directorio entero.
  */
 export async function insertAgenciesToSupabase(rawList) {
@@ -134,7 +133,6 @@ export async function insertAgenciesToSupabase(rawList) {
   for (let i = 0; i < valid.length; i += BATCH_SIZE) {
     const batch = valid.slice(i, i + BATCH_SIZE)
     const { data, error } = await supabase.rpc('admin_insert_agencies', {
-      p_secret: getAdminSecret(),
       p_rows: batch,
     })
     if (error) errors.push(`Lote ${Math.floor(i / BATCH_SIZE) + 1}: ${rpcError(error)}`)
@@ -149,7 +147,6 @@ export async function deleteSupabaseAgenciesForCourier(courierId) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
   const { error } = await supabase.rpc('admin_delete_agencies_for_courier', {
-    p_secret: getAdminSecret(),
     p_courier: courierId,
   })
   invalidateSupabaseAgenciesCache()
