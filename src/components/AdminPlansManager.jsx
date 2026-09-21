@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured } from '../utils/supabaseClient'
 import { adminDeletePlan, adminListPlans, adminUpsertPlan } from '../utils/adminMerchants'
-import { getAdminSecret } from '../utils/adminSecret'
 import { IconCheck, IconPencil, IconRefresh, IconSparkles, IconTrash } from './icons'
 
 const emptyForm = { id: null, name: '', trialDays: '', pricePerDay: 0, monthlyOrderLimit: '', description: '', features: '', active: true }
@@ -28,7 +27,7 @@ export default function AdminPlansManager() {
   const [saving, setSaving] = useState(false)
 
   async function refresh() {
-    if (!configured || !getAdminSecret()) return
+    if (!configured) return
     setLoading(true)
     const res = await adminListPlans()
     setLoading(false)
@@ -175,7 +174,7 @@ export default function AdminPlansManager() {
           {plans.length === 0 ? (
             <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
               <p className="text-sm text-muted">
-                {getAdminSecret() ? 'Aún no hay planes creados.' : 'Ingresa la clave de administrador (pestaña Negociantes) para ver la lista.'}
+                Aún no hay planes creados.
               </p>
             </div>
           ) : (

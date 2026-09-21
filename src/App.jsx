@@ -11,8 +11,7 @@ import ShippingForm from './components/ShippingForm'
 import SuccessScreen from './components/SuccessScreen'
 import { fetchMerchantBySlug } from './utils/merchantProfile'
 import { createOrder } from './utils/orders'
-import { clearAdminAccess, getStoredAdminRole, setAdminUnlocked } from './utils/serial'
-import { getCurrentSession, onAuthStateChange, signOutMerchant } from './utils/supabaseAuth'
+import { getCurrentSession, isPlatformAdmin, onAuthStateChange, signOutMerchant } from './utils/supabaseAuth'
 
 // Merchant de muestra SOLO para que el administrador pueda previsualizar el
 // formulario ("Ver formulario" en su panel) — no está atado a ninguna
@@ -75,18 +74,32 @@ function PublicShippingRoute({ slug }) {
 }
 
 function AdminRoute() {
-  const [role, setRole] = useState(() => (getStoredAdminRole() === 'admin' ? 'admin' : null))
+  // `undefined` = todavía comprobando la sesión; `false` = no es admin.
+  const [isAdmin, setIsAdmin] = useState(undefined)
   const [adminView, setAdminView] = useState('dashboard') // 'dashboard' | 'form'
   const [submittedForm, setSubmittedForm] = useState(null)
 
+  // El rol de admin lo decide la base de datos (tabla `platform_admins`), no
+  // el navegador: aunque alguien fuerce este estado en memoria, las RPC
+  // `admin_*` siguen respondiendo `forbidden` sin la sesión correcta.
+  useEffect(() => {
+    let alive = true
+    getCurrentSession().then(async (session) => {
+      const admin = session ? await isPlatformAdmin() : false
+      if (alive) setIsAdmin(admin)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
   function handleUnlock() {
-    setAdminUnlocked()
-    setRole('admin')
+    setIsAdmin(true)
   }
 
-  function handleLogout() {
-    clearAdminAccess()
-    setRole(null)
+  async function handleLogout() {
+    await signOutMerchant()
+    setIsAdmin(false)
     setAdminView('dashboard')
     setSubmittedForm(null)
   }
@@ -96,7 +109,8 @@ function AdminRoute() {
     setAdminView('dashboard')
   }
 
-  if (!role) return <AccessGate onUnlock={handleUnlock} />
+  if (isAdmin === undefined) return <LoadingScreen />
+  if (!isAdmin) return <AccessGate onUnlock={handleUnlock} />
 
   const wide = adminView === 'dashboard'
 

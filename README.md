@@ -36,10 +36,11 @@ pudiendo sobreescribirlas.
 - **`tu-dominio.com/f/<slug>`** — el link que cada negociante comparte con
   sus propios clientes finales (sin login). Llenan el formulario y el
   pedido se manda por WhatsApp al negociante Y queda guardado en Supabase.
-- **`tu-dominio.com/admin`** — el dueño de la plataforma, con
-  usuario/contraseña fijos (`src/utils/serial.js`). Gestiona el directorio
-  de agencias, los negociantes (activar/desactivar, asignar plan) y los
-  planes disponibles.
+- **`tu-dominio.com/admin`** — el dueño de la plataforma. Entra con una
+  cuenta real de Supabase Auth marcada como administrador en la tabla
+  `platform_admins`; no hay usuario ni contraseña fijos en el código.
+  Gestiona el directorio de agencias, los negociantes (activar/desactivar,
+  asignar plan) y los planes disponibles.
 
 ## Cuentas de negociante (Supabase Auth)
 
@@ -166,10 +167,26 @@ dominios en caliente, sin redeploy.
 - **Planes** (`AdminPlansManager.jsx`) — crear/editar/eliminar planes
   (nombre, límite de pedidos al mes, precio de referencia en soles).
 
-Estas dos últimas usan el mismo patrón de seguridad que antes: funciones
-RPC de Postgres protegidas con una `admin_secret` que vive solo en la base
-de datos (tabla `app_settings`), nunca en el bundle del navegador — pega
-esa clave en el panel (pestaña "Negociantes") la primera vez.
+### Cómo se entra al panel
+
+No hay contraseña de administrador en el código. El acceso es una cuenta
+normal de Supabase Auth a la que se le dio el rol:
+
+1. Crea la cuenta con el registro normal de la app (o usa una que ya tengas).
+2. En Supabase → **SQL Editor**, córrelo una vez:
+   `select public.promote_to_admin('tu-correo@gmail.com');`
+3. Entra en `/admin` con ese correo y contraseña. La contraseña se recupera
+   por correo como cualquier otra cuenta.
+
+Para quitarle el rol a alguien: `select public.revoke_admin('correo@…');`
+
+Una cuenta puede ser admin **y** negociante a la vez: promover no borra su
+tienda ni sus pedidos.
+
+Todas las acciones del panel van por funciones RPC de Postgres que empiezan
+verificando `is_platform_admin()` — el rol lo decide la base de datos con la
+sesión real del usuario, no el navegador. Si entras sin ese rol, cada RPC
+responde `forbidden`.
 
 ## Base de datos (Supabase) — esquema completo
 
@@ -197,15 +214,12 @@ create policy "agencies_public_select" on public.agencies for select using (true
 create policy "agencies_public_insert" on public.agencies for insert with check (true);
 create policy "agencies_public_delete" on public.agencies for delete using (true);
 
--- Configuración interna del admin ---------------------------------------
+-- Configuración interna (sin claves: el admin es una cuenta de Auth) ----
 create table if not exists public.app_settings (
   key text primary key,
   value text not null
 );
 alter table public.app_settings enable row level security;
--- CAMBIA 'pon-aqui-una-clave-larga' antes de correr esto.
-insert into public.app_settings (key, value) values ('admin_secret', 'pon-aqui-una-clave-larga')
-  on conflict (key) do update set value = excluded.value;
 
 -- Planes -----------------------------------------------------------------
 -- Esquema por día (alineado a la landing): trial_days para planes de
@@ -378,70 +392,97 @@ language sql security definer set search_path = public as $$
 $$;
 grant execute on function public.track_order_by_code(text) to anon, authenticated;
 
+-- Administradores de plataforma --------------------------------------------
+-- El rol de admin NO vive en el navegador: vive en esta tabla, que nadie
+-- puede leer ni escribir desde el cliente. Las RPC `admin_*` lo consultan.
+create table if not exists public.platform_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.platform_admins enable row level security; -- sin políticas: nadie entra
+revoke all on public.platform_admins from anon, authenticated;
+
+create or replace function public.is_platform_admin()
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (select 1 from public.platform_admins where user_id = auth.uid());
+$$;
+revoke all on function public.is_platform_admin() from public, anon;
+grant execute on function public.is_platform_admin() to authenticated;
+
+-- Promover / revocar: SOLO desde el SQL Editor (no son invocables por la app)
+create or replace function public.promote_to_admin(p_email text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare uid uuid;
+begin
+  select id into uid from auth.users where lower(email) = lower(trim(p_email));
+  if uid is null then raise exception 'user_not_found: %', p_email; end if;
+  insert into public.platform_admins (user_id) values (uid) on conflict do nothing;
+  return uid;
+end; $$;
+revoke all on function public.promote_to_admin(text) from public, anon, authenticated;
+
+create or replace function public.revoke_admin(p_email text)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.platform_admins
+  where user_id = (select id from auth.users where lower(email) = lower(trim(p_email)));
+  return true;
+end; $$;
+revoke all on function public.revoke_admin(text) from public, anon, authenticated;
+
+-- Crea la cuenta con el registro normal de la app y luego córrelo acá:
+-- select public.promote_to_admin('tu-correo@gmail.com');
+
 -- RPCs de administrador (multi-tenant) --------------------------------------
-create or replace function public.admin_list_merchants(p_secret text)
+-- Ninguna recibe clave: todas verifican `is_platform_admin()` (la sesión
+-- del usuario), y solo están otorgadas al rol `authenticated`.
+create or replace function public.admin_list_merchants()
 returns table (id uuid, business_name text, whatsapp_number text, slug text, active boolean,
   plan_id bigint, plan_name text, created_at timestamptz, email text)
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is null or p_secret <> (select value from public.app_settings where key = 'admin_secret') then
-    raise exception 'unauthorized';
-  end if;
+  if not public.is_platform_admin() then raise exception 'forbidden'; end if;
   return query
-    select m.id, m.business_name, m.whatsapp_number, m.slug, m.active, m.plan_id, p.name, m.created_at, u.email
+    select m.id, m.business_name, m.whatsapp_number, m.slug, m.active,
+           m.plan_id, p.name, m.created_at, u.email::text
     from public.merchants m
     left join public.plans p on p.id = m.plan_id
     left join auth.users u on u.id = m.id
     order by m.created_at desc;
 end; $$;
-grant execute on function public.admin_list_merchants(text) to anon, authenticated;
 
-create or replace function public.admin_set_merchant_active(p_secret text, p_id uuid, p_active boolean)
+create or replace function public.admin_set_merchant_active(p_id uuid, p_active boolean)
 returns public.merchants language plpgsql security definer set search_path = public as $$
 declare r public.merchants;
 begin
-  if p_secret is null or p_secret <> (select value from public.app_settings where key = 'admin_secret') then
-    raise exception 'unauthorized';
-  end if;
+  if not public.is_platform_admin() then raise exception 'forbidden'; end if;
   update public.merchants set active = p_active where id = p_id returning * into r;
   return r;
 end; $$;
-grant execute on function public.admin_set_merchant_active(text, uuid, boolean) to anon, authenticated;
 
-create or replace function public.admin_set_merchant_plan(p_secret text, p_id uuid, p_plan_id bigint)
+create or replace function public.admin_set_merchant_plan(p_id uuid, p_plan_id bigint)
 returns public.merchants language plpgsql security definer set search_path = public as $$
 declare r public.merchants;
 begin
-  if p_secret is null or p_secret <> (select value from public.app_settings where key = 'admin_secret') then
-    raise exception 'unauthorized';
-  end if;
-  -- plan_started_at se reinicia para que un plan de prueba nuevo arranque su cuenta de días desde cero.
+  if not public.is_platform_admin() then raise exception 'forbidden'; end if;
   update public.merchants set plan_id = p_plan_id, plan_started_at = now() where id = p_id returning * into r;
   return r;
 end; $$;
-grant execute on function public.admin_set_merchant_plan(text, uuid, bigint) to anon, authenticated;
 
-create or replace function public.admin_list_plans(p_secret text)
+create or replace function public.admin_list_plans()
 returns setof public.plans language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is null or p_secret <> (select value from public.app_settings where key = 'admin_secret') then
-    raise exception 'unauthorized';
-  end if;
+  if not public.is_platform_admin() then raise exception 'forbidden'; end if;
   return query select * from public.plans order by price_per_day asc, created_at asc;
 end; $$;
-grant execute on function public.admin_list_plans(text) to anon, authenticated;
 
 create or replace function public.admin_upsert_plan(
-  p_secret text, p_id bigint, p_name text, p_trial_days integer,
-  p_price_per_day numeric, p_monthly_order_limit integer, p_description text,
-  p_features text[], p_active boolean
-)
+  p_id bigint, p_name text, p_trial_days integer, p_price_per_day numeric,
+  p_monthly_order_limit integer, p_description text, p_features text[], p_active boolean)
 returns public.plans language plpgsql security definer set search_path = public as $$
 declare r public.plans;
 begin
-  if p_secret is null or p_secret <> (select value from public.app_settings where key = 'admin_secret') then
-    raise exception 'unauthorized';
-  end if;
+  if not public.is_platform_admin() then raise exception 'forbidden'; end if;
   if p_id is null then
     insert into public.plans (name, trial_days, price_per_day, monthly_order_limit, description, features, active)
     values (p_name, p_trial_days, p_price_per_day, p_monthly_order_limit, p_description, coalesce(p_features, '{}'), coalesce(p_active, true))
@@ -455,18 +496,38 @@ begin
   end if;
   return r;
 end; $$;
-grant execute on function public.admin_upsert_plan(text, bigint, text, integer, numeric, integer, text, text[], boolean) to anon, authenticated;
 
-create or replace function public.admin_delete_plan(p_secret text, p_id bigint)
+create or replace function public.admin_delete_plan(p_id bigint)
 returns boolean language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is null or p_secret <> (select value from public.app_settings where key = 'admin_secret') then
-    raise exception 'unauthorized';
-  end if;
+  if not public.is_platform_admin() then raise exception 'forbidden'; end if;
   delete from public.plans where id = p_id;
   return true;
 end; $$;
-grant execute on function public.admin_delete_plan(text, bigint) to anon, authenticated;
+
+-- (`admin_list_email_domains`, `admin_add_email_domain`,
+--  `admin_delete_email_domain`, `admin_insert_agencies` y
+--  `admin_delete_agencies_for_courier` siguen exactamente el mismo patrón.)
+
+-- Las funciones de trigger no deben ser invocables por la API REST.
+revoke all on function public.handle_new_merchant() from public, anon, authenticated;
+revoke all on function public.protect_merchant_columns() from public, anon, authenticated;
+revoke all on function public.enforce_allowed_email_domain() from public, anon, authenticated;
+revoke all on function public.prepare_new_order() from public, anon, authenticated;
+
+-- Solo un usuario logueado puede siquiera invocarlas; adentro se valida el rol.
+do $$
+declare f record;
+begin
+  for f in
+    select p.oid::regprocedure as sig
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname like 'admin\_%'
+  loop
+    execute format('revoke all on function %s from public, anon', f.sig);
+    execute format('grant execute on function %s to authenticated', f.sig);
+  end loop;
+end $$;
 
 -- Storage: logos ------------------------------------------------------------
 insert into storage.buckets (id, name, public) values ('logos', 'logos', true) on conflict (id) do nothing;
@@ -483,11 +544,12 @@ que impide abusos es Row Level Security, no ocultar esa clave. Reglas:
 
 | Tabla | Anónimo (cliente final) | Negociante logueado | Admin |
 |---|---|---|---|
-| `agencies` | Solo **leer** | Solo leer | Escribe vía RPC con `admin_secret` |
+| `agencies` | Solo **leer** | Solo leer | Escribe vía RPC (exige sesión de admin) |
 | `merchants` | **Nada directo**; solo `get_merchant_public(slug)`, que devuelve UNA tienda por slug exacto | Lee/edita **su** fila (marca y logística) | Activa/desactiva y asigna plan vía RPC |
 | `orders` | Solo **insertar** su pedido, con topes de longitud y contra un negociante activo | Lee/edita **sus** pedidos | — |
 | `plans` | Leer los activos (se muestran en la landing) | Leer los activos | CRUD vía RPC |
 | `app_settings` | Nada | Nada | Solo vía funciones `security definer` |
+| `platform_admins` | Nada | Nada | Nada: solo el SQL Editor (`promote_to_admin`) |
 
 Detalles que conviene tener presentes:
 
@@ -497,7 +559,7 @@ Detalles que conviene tener presentes:
 - **Un negociante no puede cambiarse el plan ni reactivarse solo**: el
   trigger `protect_merchant_columns` revierte `plan_id`, `active` y
   `plan_started_at` si la edición viene de una sesión de negociante. Esas
-  columnas solo las mueven las RPC de admin (que corren sin `auth.uid()`).
+  columnas solo las mueven las RPC de admin.
 - **`merchants` no es enumerable**: si lo fuera, cualquiera podría
   descargar la lista completa de tus clientes con su WhatsApp.
 - **Registro restringido por dominio de correo**: el trigger
@@ -507,15 +569,14 @@ Detalles que conviene tener presentes:
 - **Storage**: el bucket `logos` limita a 2 MB y a PNG/JPEG/WEBP del lado
   del servidor, además de la validación del navegador.
 
-> **Lo que sigue siendo "seguridad de cliente":** la contraseña de
-> administrador (`src/utils/serial.js`) viaja en el bundle y cualquiera que
-> lo inspeccione puede leerla. Lo que realmente protege los datos de otros
-> negociantes es la `admin_secret` guardada en la base (nunca en el
-> bundle), que es lo que exigen todas las RPC `admin_*`. Aun así, esas RPC
-> son invocables por cualquiera y no tienen límite de intentos: usa una
-> clave larga y aleatoria. Si más adelante quieres cerrarlo del todo, el
-> camino es mover el admin a una cuenta real de Supabase Auth con un rol
-> propio — dilo y se hace.
+- **El admin ya no es "seguridad de cliente"**: no hay contraseña de
+  administrador en el bundle ni clave compartida que se pueda robar de un
+  navegador. El rol vive en `platform_admins` (tabla sin políticas RLS: ni
+  se lee ni se escribe desde la app) y cada RPC `admin_*` lo verifica con
+  `is_platform_admin()` usando la sesión real. Un negociante logueado que
+  llame a esas RPC recibe `forbidden`, y un anónimo ni siquiera tiene
+  permiso de ejecución. Promover o revocar admins solo se puede desde el
+  SQL Editor de Supabase.
 
 **Credenciales en Vercel** (Project Settings → Environment Variables):
 

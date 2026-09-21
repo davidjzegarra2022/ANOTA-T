@@ -95,3 +95,17 @@ export async function onAuthStateChange(callback) {
   const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session))
   return () => data.subscription.unsubscribe()
 }
+
+/**
+ * ¿El usuario logueado es administrador de la plataforma? El rol vive en la
+ * tabla `platform_admins` (ilegible desde el cliente) y se consulta por una
+ * función security definer. Ya NO hay contraseña de admin en el bundle: el
+ * navegador no puede "decir" que es admin, solo preguntarlo.
+ */
+export async function isPlatformAdmin() {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return false
+  const { data, error } = await supabase.rpc('is_platform_admin')
+  if (error) return false
+  return data === true
+}

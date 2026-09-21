@@ -9,7 +9,6 @@ import {
   adminSetMerchantActive,
   adminSetMerchantPlan,
 } from '../utils/adminMerchants'
-import { getAdminSecret, setAdminSecret } from '../utils/adminSecret'
 import { IconCheck, IconKey, IconRefresh, IconStore, IconX } from './icons'
 
 function fmtDate(iso) {
@@ -22,9 +21,6 @@ function fmtDate(iso) {
 
 export default function AdminMerchantsManager() {
   const configured = isSupabaseConfigured()
-  const [secretDraft, setSecretDraft] = useState(() => getAdminSecret())
-  const [secretSaved, setSecretSaved] = useState(false)
-
   const [merchants, setMerchants] = useState([])
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(false)
@@ -36,7 +32,7 @@ export default function AdminMerchantsManager() {
   const [domainMsg, setDomainMsg] = useState(null)
 
   async function refresh() {
-    if (!configured || !getAdminSecret()) return
+    if (!configured) return
     setLoading(true)
     setListError(null)
     const [merchantsRes, plansRes, domainsRes] = await Promise.all([
@@ -72,13 +68,6 @@ export default function AdminMerchantsManager() {
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al montar
   }, [])
-
-  function handleSaveSecret() {
-    setAdminSecret(secretDraft)
-    setSecretSaved(true)
-    setTimeout(() => setSecretSaved(false), 2000)
-    refresh()
-  }
 
   async function handleToggleActive(m) {
     setBusyId(m.id)
@@ -116,30 +105,6 @@ export default function AdminMerchantsManager() {
       )}
 
       {configured && (
-        <div className="card p-4">
-          <p className="text-sm font-semibold text-navy">Clave de administrador</p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <input
-              type="password"
-              value={secretDraft}
-              onChange={(e) => setSecretDraft(e.target.value)}
-              placeholder="Clave de administrador"
-              spellCheck={false}
-              className="input-field min-w-0 flex-1"
-            />
-            <button
-              type="button"
-              onClick={handleSaveSecret}
-              className="btn btn-primary shrink-0"
-            >
-              Guardar y probar
-            </button>
-          </div>
-          {secretSaved && <p className="mt-1.5 text-xs font-semibold text-emerald-600">Guardada.</p>}
-        </div>
-      )}
-
-      {configured && (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-semibold text-navy">Negociantes ({merchants.length})</p>
@@ -162,7 +127,7 @@ export default function AdminMerchantsManager() {
           {!listError && merchants.length === 0 && !loading && (
             <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
               <p className="text-sm text-muted">
-                {getAdminSecret() ? 'Aún no se ha registrado ningún negociante.' : 'Ingresa la clave de administrador arriba para ver la lista.'}
+                Aún no se ha registrado ningún negociante.
               </p>
             </div>
           )}
@@ -264,7 +229,7 @@ export default function AdminMerchantsManager() {
             ))}
             {domains.length === 0 && (
               <p className="text-xs text-muted">
-                {getAdminSecret() ? 'Sin dominios cargados.' : 'Ingresa la clave de administrador arriba para verlos.'}
+                Sin dominios cargados.
               </p>
             )}
           </div>
