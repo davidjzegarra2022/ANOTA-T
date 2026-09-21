@@ -136,11 +136,32 @@ function authScreenForPath(path) {
   return null
 }
 
+/**
+ * Supabase manda al usuario de vuelta con un hash según el tipo de link de
+ * correo: `type=signup` (confirmación de cuenta) o `type=recovery`
+ * (recuperar contraseña). Se lee una sola vez, antes del primer render.
+ */
+function readAuthHashType() {
+  const hash = window.location.hash || ''
+  if (hash.includes('type=recovery')) return 'recovery'
+  if (hash.includes('type=signup') || hash.includes('type=email_change')) return 'signup'
+  return null
+}
+
 function MerchantSaasRoute({ path }) {
+  const [hashType] = useState(readAuthHashType)
   const [session, setSession] = useState(undefined)
-  const [showResetScreen, setShowResetScreen] = useState(false)
 
   useEffect(() => {
+    // El link de confirmación SOLO debe confirmar la cuenta: Supabase abre
+    // una sesión automáticamente al validarlo, así que la cerramos y
+    // dejamos al usuario en el login para que entre con sus credenciales.
+    if (hashType === 'signup') {
+      window.history.replaceState(null, '', '/login')
+      signOutMerchant().finally(() => setSession(null))
+      return undefined
+    }
+
     let unsubscribe = () => {}
     getCurrentSession().then(setSession)
     onAuthStateChange((newSession) => {
@@ -148,10 +169,8 @@ function MerchantSaasRoute({ path }) {
     }).then((unsub) => {
       unsubscribe = unsub
     })
-    // Supabase entrega este hash cuando el usuario viene del link de "recuperar contraseña".
-    if (window.location.hash.includes('type=recovery')) setShowResetScreen(true)
     return () => unsubscribe()
-  }, [])
+  }, [hashType])
 
   async function handleLogout() {
     await signOutMerchant()
@@ -161,18 +180,18 @@ function MerchantSaasRoute({ path }) {
   if (session === undefined) return <LoadingScreen />
 
   // Con sesión activa, siempre al panel — sin importar si llegó a /login por error.
-  if (session && !showResetScreen) {
+  if (session && hashType !== 'recovery') {
     return <DashboardLayout email={session.user.email} onLogout={handleLogout} />
   }
 
-  const authScreen = authScreenForPath(path)
-  if (!authScreen && !showResetScreen) return <LandingPage />
+  const authScreen = hashType === 'recovery' ? 'reset' : hashType === 'signup' ? 'login' : authScreenForPath(path)
+  if (!authScreen) return <LandingPage />
 
   return (
     <AuthGate
-      initialScreen={showResetScreen ? 'reset' : authScreen}
+      initialScreen={authScreen}
+      notice={hashType === 'signup' ? 'Tu cuenta quedó confirmada. Ya puedes ingresar.' : null}
       onLoggedIn={() => {
-        setShowResetScreen(false)
         window.location.hash = ''
         window.history.replaceState(null, '', '/')
       }}

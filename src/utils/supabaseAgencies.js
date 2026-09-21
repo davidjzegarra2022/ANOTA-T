@@ -7,6 +7,7 @@
 // Ver README → "Base de datos compartida (Supabase)" para el SQL de la
 // tabla y las políticas de Row Level Security.
 import { geocodePlace } from '../data/peruGeo'
+import { getAdminSecret } from './adminSecret'
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient'
 
 const TABLE = 'agencies'
@@ -104,10 +105,22 @@ function normalizeForInsert(raw) {
   return { ...a, lat, lng }
 }
 
+function rpcError(error) {
+  const msg = String(error?.message || error || '')
+  if (/unauthorized/i.test(msg)) {
+    return 'Clave de administrador incorrecta o vacía (pestaña "Negociantes").'
+  }
+  return msg || 'Error desconocido.'
+}
+
 /**
  * Inserta agencias en Supabase en lotes. Devuelve { inserted, errors } —
  * `errors` trae un mensaje por lote fallido (el resto de los lotes se
  * intenta igual, no se detiene todo por un lote con problemas).
+ *
+ * Va por una RPC protegida con la clave de administrador: la tabla ya NO
+ * acepta escritura pública, porque con la anon key (que viaja en el bundle)
+ * cualquiera podía inyectar o borrar el directorio entero.
  */
 export async function insertAgenciesToSupabase(rawList) {
   const supabase = await getSupabaseClient()
@@ -120,9 +133,12 @@ export async function insertAgenciesToSupabase(rawList) {
   const errors = []
   for (let i = 0; i < valid.length; i += BATCH_SIZE) {
     const batch = valid.slice(i, i + BATCH_SIZE)
-    const { error, count } = await supabase.from(TABLE).insert(batch, { count: 'exact' })
-    if (error) errors.push(`Lote ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`)
-    else inserted += count ?? batch.length
+    const { data, error } = await supabase.rpc('admin_insert_agencies', {
+      p_secret: getAdminSecret(),
+      p_rows: batch,
+    })
+    if (error) errors.push(`Lote ${Math.floor(i / BATCH_SIZE) + 1}: ${rpcError(error)}`)
+    else inserted += data ?? batch.length
   }
   invalidateSupabaseAgenciesCache()
   return { inserted, errors }
@@ -132,16 +148,10 @@ export async function insertAgenciesToSupabase(rawList) {
 export async function deleteSupabaseAgenciesForCourier(courierId) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
-  const { error } = await supabase.from(TABLE).delete().eq('courier', courierId)
+  const { error } = await supabase.rpc('admin_delete_agencies_for_courier', {
+    p_secret: getAdminSecret(),
+    p_courier: courierId,
+  })
   invalidateSupabaseAgenciesCache()
-  return { ok: !error, error: error?.message }
-}
-
-/** Borra TODAS las agencias de TODOS los couriers en Supabase. Úsalo con cuidado: es compartido. */
-export async function deleteAllSupabaseAgencies() {
-  const supabase = await getSupabaseClient()
-  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
-  const { error } = await supabase.from(TABLE).delete().not('id', 'is', null)
-  invalidateSupabaseAgenciesCache()
-  return { ok: !error, error: error?.message }
+  return { ok: !error, error: error ? rpcError(error) : undefined }
 }

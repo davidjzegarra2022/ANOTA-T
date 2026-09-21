@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import logoIcon from '../../assets/logo-icon.png'
+import { checkEmailDomain } from '../../utils/emailDomains'
 import { signUpMerchant } from '../../utils/supabaseAuth'
 import { IconCheck } from '../icons'
 
@@ -20,6 +21,11 @@ export default function SignupScreen({ onGoToLogin }) {
     if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.')
 
     setLoading(true)
+    const domainCheck = await checkEmailDomain(email)
+    if (!domainCheck.ok) {
+      setLoading(false)
+      return setError(domainCheck.error)
+    }
     const res = await signUpMerchant({ email, password, businessName, whatsappNumber: whatsapp })
     setLoading(false)
     if (!res.ok) return setError(res.error)
