@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getKnownCouriers } from '../../data/agencies'
 import { updateMyMerchant, uploadMerchantLogo } from '../../utils/merchantProfile'
 import { IconCheck } from '../icons'
@@ -53,8 +53,23 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
     leadTimeHours: merchant.leadTimeHours,
   })
   const [logoFile, setLogoFile] = useState(null)
+  const [logoRemoved, setLogoRemoved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
+
+  // Vista previa: el archivo recién elegido (si hay uno), si no el logo ya
+  // guardado, a menos que el usuario lo haya quitado manualmente.
+  const logoPreviewUrl = useMemo(() => {
+    if (logoFile) return URL.createObjectURL(logoFile)
+    if (logoRemoved) return null
+    return form.logoUrl || null
+  }, [logoFile, logoRemoved, form.logoUrl])
+
+  useEffect(() => {
+    return () => {
+      if (logoFile) URL.revokeObjectURL(logoPreviewUrl)
+    }
+  }, [logoFile, logoPreviewUrl])
 
   const allCouriersSelected = form.couriersActive.length === 0
 
@@ -91,6 +106,8 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
         return
       }
       logoUrl = up.url
+    } else if (logoRemoved) {
+      logoUrl = null
     }
 
     const res = await updateMyMerchant({
@@ -112,6 +129,9 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
       return
     }
     setMsg({ ok: true, text: 'Cambios guardados.' })
+    setForm((f) => ({ ...f, logoUrl }))
+    setLogoFile(null)
+    setLogoRemoved(false)
     onSaved?.()
   }
 
@@ -230,12 +250,42 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
 
           <div className="mt-3">
             <span className="mb-1 block text-xs font-semibold text-muted uppercase">Logo (PNG, JPG o WEBP, máx. 2MB)</span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-              className="block text-xs text-muted file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-surface file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink"
-            />
+            <div className="flex items-center gap-3">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-surface">
+                {logoPreviewUrl ? (
+                  <img src={logoPreviewUrl} alt="Logo actual" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-[10px] font-semibold text-muted">Sin logo</span>
+                )}
+              </span>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(e) => {
+                    setLogoFile(e.target.files?.[0] || null)
+                    setLogoRemoved(false)
+                  }}
+                  className="block text-xs text-muted file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-surface file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink"
+                />
+                {logoPreviewUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLogoFile(null)
+                      setLogoRemoved(true)
+                    }}
+                    className="text-xs font-semibold text-red-600 hover:underline"
+                  >
+                    Quitar logo
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted">
+              Se guarda al presionar "Guardar cambios" y queda así hasta que subas otro o lo quites — es el logo que verán tus clientes en el
+              formulario.
+            </p>
           </div>
 
           <label className="mt-3 block">

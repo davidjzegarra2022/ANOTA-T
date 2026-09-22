@@ -60,7 +60,12 @@ function PublicShippingRoute({ slug }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      <Header businessName={merchant.businessName} subtitle="Formulario de Envío" minimal={Boolean(submittedForm)} />
+      <Header
+        businessName={merchant.businessName}
+        subtitle="Formulario de Envío"
+        minimal={Boolean(submittedForm)}
+        logoUrl={merchant.logoUrl}
+      />
       <main className="mx-auto w-full max-w-xl flex-1 px-5 py-6 sm:px-6">
         {submittedForm ? (
           <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} />
