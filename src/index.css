@@ -218,3 +218,29 @@ input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   .logo-float, .logo-ground { animation: none; }
 }
+
+/* Impresión del resumen de un pedido: la copia que va al portal de <body>
+   (#order-summary-print) es lo único que se imprime; el resto de la app se
+   oculta. Ver components/dashboard/OrderSummaryModal.jsx */
+#order-summary-print {
+  display: none;
+}
+
+@media print {
+  body > *:not(#order-summary-print) {
+    display: none !important;
+  }
+  #order-summary-print {
+    display: block !important;
+    padding: 0;
+  }
+  /* En papel el gris claro de la interfaz casi no se lee. */
+  #order-summary-print,
+  #order-summary-print dd,
+  #order-summary-print p {
+    color: #000;
+  }
+  #order-summary-print dt {
+    color: #444;
+  }
+}

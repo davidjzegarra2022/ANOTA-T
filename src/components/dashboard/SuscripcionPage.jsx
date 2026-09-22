@@ -37,7 +37,7 @@ export default function SuscripcionPage({ merchant }) {
   return (
     <div className="max-w-xl space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-navy">Suscripción</h1>
+        <h1 className="text-xl font-bold text-navy sm:text-2xl">Suscripción</h1>
         <p className="mt-1 text-sm text-muted">Tu plan actual y su uso este mes.</p>
       </div>
 

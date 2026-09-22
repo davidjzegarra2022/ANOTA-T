@@ -82,7 +82,7 @@ export default function ClientesPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-navy">Clientes</h1>
+        <h1 className="text-xl font-bold text-navy sm:text-2xl">Clientes</h1>
         <p className="mt-1 text-sm text-muted">Tu base de clientes: quién te compra, quién repite y a quién conviene reactivar.</p>
       </div>
 
@@ -133,7 +133,24 @@ export default function ClientesPage() {
           </p>
         </div>
       ) : (
-        <div className="card overflow-x-auto">
+        <>
+        {/* Móvil: una tarjeta por cliente en vez de scroll horizontal. */}
+        <ul className="space-y-2.5 sm:hidden">
+          {filtered.map((c) => (
+            <li key={c.phone || c.name} className="card flex items-center gap-3 p-3.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-ink">{c.name || '—'}</p>
+                <p className="truncate font-mono text-xs text-muted">{c.phone || '—'}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-sm font-bold text-navy">{c.count}</p>
+                <p className="text-[10px] text-muted">{new Date(c.lastAt).toLocaleDateString('es-PE')}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className="card hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[560px] text-left text-[13px]">
             <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
               <tr>
@@ -155,6 +172,7 @@ export default function ClientesPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   )
@@ -162,10 +180,10 @@ export default function ClientesPage() {
 
 function StatTile({ label, value, hint }) {
   return (
-    <div className="card p-3.5">
-      <p className="text-[11px] font-semibold tracking-wide text-muted uppercase">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-navy">{value}</p>
-      {hint && <p className="text-[10px] text-muted">{hint}</p>}
+    <div className="card p-3 sm:p-3.5">
+      <p className="text-[11px] leading-tight font-semibold text-muted sm:tracking-wide sm:uppercase">{label}</p>
+      <p className="mt-1 text-xl font-bold text-navy sm:text-2xl">{value}</p>
+      {hint && <p className="text-[10px] leading-tight text-muted">{hint}</p>}
     </div>
   )
 }

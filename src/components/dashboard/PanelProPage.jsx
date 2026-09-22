@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchMyOrders, ORDER_STATUS_LABELS } from '../../utils/orders'
+import { deliveryMethodLabel } from '../../utils/orderSummary'
 import { fetchActivePlans, trialEndsAt } from '../../utils/plans'
-import { IconRefresh } from '../icons'
+import { IconBox, IconRefresh } from '../icons'
+import OrderSummaryModal from './OrderSummaryModal'
 
 function startOfMonthIso() {
   const d = new Date()
@@ -20,6 +22,7 @@ function daysAgoIso(days) {
 export default function PanelProPage({ merchant }) {
   const [orders, setOrders] = useState(null)
   const [plan, setPlan] = useState(null)
+  const [summaryOrder, setSummaryOrder] = useState(null)
 
   useEffect(() => {
     fetchMyOrders().then(setOrders)
@@ -58,6 +61,8 @@ export default function PanelProPage({ merchant }) {
     }
   }, [orders])
 
+  const recentOrders = (orders || []).slice(0, 15)
+
   if (!stats) {
     return (
       <div className="flex items-center gap-2 text-muted">
@@ -75,7 +80,7 @@ export default function PanelProPage({ merchant }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-navy">Panel Pro</h1>
+        <h1 className="text-xl font-bold text-navy sm:text-2xl">Panel Pro</h1>
         <p className="mt-1 text-sm text-muted">Pedidos, couriers más usados y tus clientes recurrentes (los cancelados no cuentan).</p>
       </div>
 
@@ -98,7 +103,7 @@ export default function PanelProPage({ merchant }) {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard label="Hoy" value={stats.today} />
         <StatCard label="Últimos 7 días" value={stats.last7} />
         <StatCard label="Últimos 30 días" value={stats.last30} />
@@ -116,7 +121,7 @@ export default function PanelProPage({ merchant }) {
               const pctBar = Math.round((count / stats.last30Total) * 100)
               return (
                 <div key={status} className="flex items-center gap-2">
-                  <span className="w-24 shrink-0 text-xs text-ink">{label}</span>
+                  <span className="w-20 shrink-0 text-xs text-ink sm:w-24">{label}</span>
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
                     <div className="h-full rounded-full bg-navy" style={{ width: `${pctBar}%` }} />
                   </div>
@@ -144,6 +149,43 @@ export default function PanelProPage({ merchant }) {
           </div>
         )}
       </div>
+
+      <div className="card p-4">
+        <p className="text-sm font-bold text-navy">Pedidos recientes</p>
+        <p className="mt-1 text-xs text-muted">
+          Abre el resumen para ver todo lo que escribió el cliente, copiarlo o imprimirlo.
+        </p>
+
+        {recentOrders.length === 0 ? (
+          <div className="mt-4 text-center">
+            <IconBox className="mx-auto h-6 w-6 text-muted" />
+            <p className="mt-2 text-sm text-muted">Todavía no tienes pedidos.</p>
+          </div>
+        ) : (
+          <ul className="mt-3 divide-y divide-slate-100">
+            {recentOrders.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">{o.customerName}</p>
+                  <p className="truncate text-xs text-muted">
+                    <span className="font-mono text-brand-dark">{o.trackingCode}</span> · {deliveryMethodLabel(o)}
+                    {o.shippingDate ? ` · ${o.shippingDate}` : ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSummaryOrder(o)}
+                  className="btn btn-outline shrink-0 !px-3 !py-1.5 text-xs"
+                >
+                  Resumen
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {summaryOrder && <OrderSummaryModal order={summaryOrder} onClose={() => setSummaryOrder(null)} />}
     </div>
   )
 }
