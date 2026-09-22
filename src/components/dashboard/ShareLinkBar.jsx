@@ -25,12 +25,13 @@ export default function ShareLinkBar({ slug }) {
 
   return (
     <div className="border-t border-slate-200 bg-white px-4 py-2.5 sm:px-6">
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-2">
-        <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted">{link}</span>
+      <div className="mx-auto flex max-w-4xl flex-col gap-2 sm:flex-row sm:items-center">
+        <span className="min-w-0 flex-1 truncate text-center font-mono text-xs text-muted sm:text-left">{link}</span>
+        <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={handleCopy}
-          className="btn btn-outline shrink-0 !px-3 !py-1.5 text-xs"
+          className="btn btn-outline flex-1 shrink-0 !px-3 !py-1.5 text-xs sm:flex-none"
         >
           {copied ? <IconCheck className="h-3.5 w-3.5 text-emerald-600" /> : <IconCopy className="h-3.5 w-3.5" />}
           {copied ? 'Copiado' : 'Copiar link'}
@@ -39,10 +40,11 @@ export default function ShareLinkBar({ slug }) {
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-400"
+          className="inline-flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-400 sm:flex-none"
         >
-          <IconWhatsapp className="h-3.5 w-3.5" /> Reenviar por WhatsApp
+          <IconWhatsapp className="h-3.5 w-3.5" /> <span className="truncate">Reenviar por WhatsApp</span>
         </a>
+        </div>
       </div>
     </div>
   )

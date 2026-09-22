@@ -27,7 +27,7 @@ export default function PlanesPage({ merchant }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-navy">Planes</h1>
+        <h1 className="text-xl font-bold text-navy sm:text-2xl">Planes</h1>
         <p className="mt-1 text-sm text-muted">El plan lo asigna el administrador. Si quieres cambiar de plan, contáctalo por WhatsApp.</p>
       </div>
 

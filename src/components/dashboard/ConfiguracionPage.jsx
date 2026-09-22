@@ -118,7 +118,7 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-navy">Configuración</h1>
+        <h1 className="text-xl font-bold text-navy sm:text-2xl">Configuración</h1>
         <p className="mt-1 text-sm text-muted">Tu logística y tu marca. Esto es lo que va a ver tu cliente cuando entre a tu link.</p>
       </div>
 
