@@ -121,3 +121,22 @@ export const ORDER_STATUS_LABELS = {
   delivered: 'Entregado',
   cancelled: 'Cancelado',
 }
+
+/**
+ * "Te conocemos": nombre del cliente que ya compró antes con ese documento
+ * EN ESTA TIENDA. Va por una función security definer porque `orders` no es
+ * legible públicamente, y devuelve solo el nombre (ver README → seguridad).
+ * `null` si el documento no está registrado o no se pudo consultar.
+ */
+export async function lookupCustomerByDni(merchantId, dni) {
+  const clean = String(dni || '').trim()
+  if (!merchantId || clean.length < 8) return null
+  const supabase = await getSupabaseClient()
+  if (!supabase) return null
+  const { data, error } = await supabase.rpc('lookup_customer_by_dni', {
+    p_merchant_id: merchantId,
+    p_dni: clean,
+  })
+  if (error) return null
+  return data || null
+}

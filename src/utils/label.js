@@ -54,6 +54,9 @@ function divider(ctx, x, y, width) {
 }
 
 function buildOrderCode(form) {
+  // Los pedidos guardados traen el código real que fijó el servidor; el
+  // formulario recién llenado todavía no, así que se arma uno provisional.
+  if (form.trackingCode) return form.trackingCode
   const digits = (form.phone || '').slice(-6) || '000000'
   const dateFragment = form.shippingDate?.value ? form.shippingDate.value.slice(5).replace('-', '') : '0000'
   return `ANT-${digits}-${dateFragment}`
@@ -228,4 +231,39 @@ export async function downloadShippingLabel(form, merchant) {
   link.click()
   link.remove()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Convierte un pedido ya guardado (fila de `orders`) a la forma que espera
+ * el renderizador, que nació para el formulario en vivo. Lo usa Envíos para
+ * que el negociante imprima la etiqueta de cualquier pedido, incluso días
+ * después — el cliente final ya no descarga etiquetas.
+ */
+export function orderToLabelForm(order) {
+  return {
+    trackingCode: order.trackingCode,
+    fullName: order.customerName,
+    phone: order.customerPhone,
+    dni: order.customerDni,
+    deliveryMethod: order.deliveryMethod,
+    courier: order.courier,
+    agency: {
+      label: order.agencyLabel,
+      address: order.agencyAddress,
+      reference: order.agencyReference,
+      courierLabel: order.courier,
+    },
+    address: order.address,
+    department: order.department,
+    provinceDistrict: order.provinceDistrict,
+    reference: order.reference,
+    paymentMethod: order.paymentMethod,
+    notes: order.notes,
+    shippingDate: order.shippingDate ? { value: order.shippingDate, label: order.shippingDate } : null,
+  }
+}
+
+/** Etiqueta de un pedido guardado, para el panel del negociante. */
+export function downloadOrderLabel(order, merchant) {
+  return downloadShippingLabel(orderToLabelForm(order), merchant)
 }

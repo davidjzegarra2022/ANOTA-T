@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { fetchMyOrders, ORDER_STATUS_LABELS, updateOrderStatus } from '../../utils/orders'
+import { downloadOrderLabel } from '../../utils/label'
 import { deliveryMethodLabel } from '../../utils/orderSummary'
 import { exportOrdersToExcel } from '../../utils/ordersExport'
-import { IconChevronLeft, IconChevronRight, IconDownload, IconSearch } from '../icons'
+import { IconChevronLeft, IconChevronRight, IconCheck, IconDownload, IconSearch, IconTag } from '../icons'
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -26,7 +27,7 @@ const STATUS_BADGE = {
   cancelled: 'bg-red-100 text-red-700',
 }
 
-export default function EnviosPage() {
+export default function EnviosPage({ merchant }) {
   const [day, setDay] = useState(todayIso())
   const [rangeFrom, setRangeFrom] = useState('')
   const [rangeTo, setRangeTo] = useState('')
@@ -35,6 +36,7 @@ export default function EnviosPage() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
+  const [labelDone, setLabelDone] = useState(null)
 
   const usingRange = Boolean(rangeFrom || rangeTo)
 
@@ -54,6 +56,13 @@ export default function EnviosPage() {
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh usa el estado más reciente por closure
   }, [day, rangeFrom, rangeTo, status, search])
+
+  // La etiqueta la descarga el negociante, no el cliente final.
+  async function handleLabel(order) {
+    await downloadOrderLabel(order, merchant)
+    setLabelDone(order.id)
+    setTimeout(() => setLabelDone((id) => (id === order.id ? null : id)), 2000)
+  }
 
   async function handleStatusChange(id, newStatus) {
     setBusyId(id)
@@ -158,12 +167,20 @@ export default function EnviosPage() {
                   <dd className="min-w-0 text-ink">{o.shippingDate || '—'}</dd>
                 </div>
               </dl>
+              <button
+                type="button"
+                onClick={() => handleLabel(o)}
+                className="btn btn-outline mt-3 w-full !py-2 text-xs"
+              >
+                {labelDone === o.id ? <IconCheck className="h-4 w-4 text-emerald-600" /> : <IconTag className="h-4 w-4" />}
+                {labelDone === o.id ? 'Etiqueta descargada' : 'Descargar etiqueta'}
+              </button>
             </li>
           ))}
         </ul>
 
         <div className="card hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[820px] text-left text-[13px]">
+          <table className="w-full min-w-[920px] text-left text-[13px]">
             <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
               <tr>
                 <th className="px-3 py-2 font-semibold">Código</th>
@@ -172,6 +189,7 @@ export default function EnviosPage() {
                 <th className="px-3 py-2 font-semibold">Método</th>
                 <th className="px-3 py-2 font-semibold">Fecha envío</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
+                <th className="px-3 py-2 font-semibold">Etiqueta</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -193,6 +211,17 @@ export default function EnviosPage() {
                         <option key={value} value={value}>{label}</option>
                       ))}
                     </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => handleLabel(o)}
+                      title="Descargar la etiqueta para imprimir"
+                      className="btn btn-outline !px-2.5 !py-1.5 text-xs"
+                    >
+                      {labelDone === o.id ? <IconCheck className="h-3.5 w-3.5 text-emerald-600" /> : <IconTag className="h-3.5 w-3.5" />}
+                      {labelDone === o.id ? 'Listo' : 'Imprimir'}
+                    </button>
                   </td>
                 </tr>
               ))}

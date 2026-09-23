@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import AgencySearch from './AgencySearch'
 import DatePicker from './DatePicker'
-import { IconCalendar, IconChevronDown } from './icons'
+import { IconCalendar, IconCheck, IconChevronDown } from './icons'
 import { getKnownCouriers } from '../data/agencies'
 import { DEPARTMENTS } from '../data/departments'
 import { PAYMENT_METHODS } from '../data/paymentMethods'
 import { generateAvailableDates } from '../utils/dates'
 import { extractCouriersFromRows, fetchAllSupabaseAgencies } from '../utils/supabaseAgencies'
 import { isNonEmpty, isValidDni, isValidPeruPhone } from '../utils/validation'
+import { lookupCustomerByDni } from '../utils/orders'
 
 // El listado de couriers no es fijo: además de los de fábrica (Shalom,
 // Emtrafesa, Marvisur, Olva, Flores), un administrador puede sumar
@@ -130,6 +131,13 @@ export default function ShippingForm({ merchant, onSubmit }) {
   const [form, setForm] = useState(initialState)
   const [touched, setTouched] = useState({})
   const [attempted, setAttempted] = useState(false)
+  // "Te conocemos": aviso cuando el DNI ya compró antes en esta tienda.
+  const [knownCustomer, setKnownCustomer] = useState(false)
+  // Espejo de `form` para leer el valor actual después de un await, sin
+  // depender del closure (que queda viejo) ni de efectos dentro del
+  // updater de setForm (que React corre en fase de render).
+  const formRef = useRef(form)
+  formRef.current = form
   // Arranca con lo que ya se sabe sin red (de fábrica + local) y, apenas
   // responde Supabase, se suman los couriers nuevos que solo viven ahí.
   const [couriers, setCouriers] = useState(() => getKnownCouriers())
@@ -172,6 +180,24 @@ export default function ShippingForm({ merchant, onSubmit }) {
 
   function markTouched(field) {
     setTouched((t) => ({ ...t, [field]: true }))
+  }
+
+  /**
+   * Si el documento ya compró antes EN ESTA TIENDA, se completa el nombre
+   * solo. Nunca pisa lo que la persona ya escribió: si el campo tiene algo,
+   * se respeta.
+   */
+  async function autofillFromDni(dni) {
+    setKnownCustomer(false)
+    const clean = String(dni || '').trim()
+    if (clean.length < 8 || !merchant?.id) return
+    const name = await lookupCustomerByDni(merchant.id, clean)
+    if (!name) return
+    const current = formRef.current
+    if (String(current.dni || '').trim() !== clean) return // cambió mientras consultábamos
+    if (String(current.fullName || '').trim()) return // ya escribió su nombre: no se pisa
+    setForm((f) => ({ ...f, fullName: name }))
+    setKnownCustomer(true)
   }
 
   function handleDeliveryMethodChange(e) {
@@ -309,8 +335,16 @@ export default function ShippingForm({ merchant, onSubmit }) {
             required
             value={form.dni}
             placeholder="Documento de identidad"
-            onChange={(e) => set('dni', e.target.value.toUpperCase().slice(0, 12))}
-            onBlur={() => markTouched('dni')}
+            onChange={(e) => {
+              const value = e.target.value.toUpperCase().slice(0, 12)
+              set('dni', value)
+              setKnownCustomer(false)
+              autofillFromDni(value)
+            }}
+            onBlur={() => {
+              markTouched('dni')
+              autofillFromDni(form.dni)
+            }}
             error={showError('dni') ? errors.dni : null}
           />
         </div>
@@ -367,6 +401,12 @@ export default function ShippingForm({ merchant, onSubmit }) {
 
       {(isAgencyFlow || isHome || isStore) && (
         <div className="animate-fade-in-up">
+          {knownCustomer && (
+            <p className="animate-fade-in-up mb-2.5 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-[13px] font-semibold text-emerald-700">
+              <IconCheck className="h-4 w-4 shrink-0" />
+              Te conocemos, completamos esto por ti :)
+            </p>
+          )}
           <TextField
             label="Nombre y Apellidos"
             required
