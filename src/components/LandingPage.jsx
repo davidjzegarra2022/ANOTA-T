@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import logoFull from '../assets/logo-full.png'
+import registroExitoso from '../assets/registro-exitoso.jpg'
 import logoIcon from '../assets/logo-icon.png'
 import { fetchActivePlans } from '../utils/plans'
 import { trackOrderByCode, ORDER_STATUS_LABELS } from '../utils/orders'
@@ -97,6 +98,30 @@ export default function LandingPage() {
   useEffect(() => {
     fetchActivePlans().then(setPlans)
   }, [])
+
+  // Los bloques con class "reveal" nacen en opacity:0 y solo se muestran
+  // cuando se les agrega "is-visible". Faltaba quien lo hiciera, así que la
+  // sección de rastreo se veía como un rectángulo azul vacío. Si el
+  // navegador no soporta IntersectionObserver, se muestran de una.
+  useEffect(() => {
+    const items = document.querySelectorAll('.reveal')
+    if (typeof IntersectionObserver !== 'function') {
+      items.forEach((el) => el.classList.add('is-visible'))
+      return undefined
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          entry.target.classList.add('is-visible')
+          observer.unobserve(entry.target)
+        }
+      },
+      { rootMargin: '0px 0px -10% 0px' },
+    )
+    items.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [plans])
 
   return (
     <div className="bg-white text-ink">
@@ -209,7 +234,12 @@ export default function LandingPage() {
             <div className="mx-auto w-[270px] rounded-[38px] border-[9px] border-[#152f40] bg-navy p-3 shadow-xl">
               <div className="relative h-[420px] overflow-hidden rounded-[25px] bg-white">
                 <div className="bg-navy p-4 text-center font-extrabold text-brand">ANOTA-T</div>
-                <div className="relative h-[210px] bg-[#e8f0e8]" />
+                <img
+                  src={registroExitoso}
+                  alt="Pantalla de ANOTA-T confirmando un envío registrado"
+                  loading="lazy"
+                  className="h-[210px] w-full bg-[#e8f0e8] object-cover object-top"
+                />
                 <div className="p-4">
                   <span className="mb-3 inline-block rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-700">
                     Formulario listo

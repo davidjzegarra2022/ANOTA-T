@@ -172,23 +172,39 @@ function MerchantSaasRoute({ path }) {
   const [session, setSession] = useState(undefined)
 
   useEffect(() => {
-    // El link de confirmación SOLO debe confirmar la cuenta: Supabase abre
-    // una sesión automáticamente al validarlo, así que la cerramos y
-    // dejamos al usuario en el login para que entre con sus credenciales.
-    if (hashType === 'signup') {
-      window.history.replaceState(null, '', '/login')
-      signOutMerchant().finally(() => setSession(null))
-      return undefined
+    let cancelled = false
+    let unsubscribe = () => {}
+
+    async function init() {
+      // El link de confirmación SOLO debe confirmar la cuenta: Supabase abre
+      // una sesión automáticamente al validarlo, así que la cerramos y
+      // dejamos al usuario en el login para que entre con sus credenciales.
+      if (hashType === 'signup') {
+        window.history.replaceState(null, '', '/login')
+        await signOutMerchant()
+      }
+
+      // La suscripción se monta SIEMPRE, también al llegar del link de
+      // confirmación: sin ella nada volvía a tocar `session`, así que al
+      // ingresar el formulario se quedaba pegado sin redirigir al panel.
+      const unsub = await onAuthStateChange((newSession) => {
+        if (!cancelled) setSession(newSession)
+      })
+      if (cancelled) {
+        unsub()
+        return
+      }
+      unsubscribe = unsub
+
+      const current = hashType === 'signup' ? null : await getCurrentSession()
+      if (!cancelled) setSession(current)
     }
 
-    let unsubscribe = () => {}
-    getCurrentSession().then(setSession)
-    onAuthStateChange((newSession) => {
-      setSession(newSession)
-    }).then((unsub) => {
-      unsubscribe = unsub
-    })
-    return () => unsubscribe()
+    init()
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
   }, [hashType])
 
   async function handleLogout() {
@@ -210,9 +226,12 @@ function MerchantSaasRoute({ path }) {
     <AuthGate
       initialScreen={authScreen}
       notice={hashType === 'signup' ? 'Tu cuenta quedó confirmada. Ya puedes ingresar.' : null}
-      onLoggedIn={() => {
-        window.location.hash = ''
+      onLoggedIn={async () => {
+        // replaceState borra también el hash del link de correo. La sesión
+        // se pide de frente (sin esperar al listener) para que el panel
+        // aparezca apenas termina el login.
         window.history.replaceState(null, '', '/')
+        setSession(await getCurrentSession())
       }}
     />
   )
