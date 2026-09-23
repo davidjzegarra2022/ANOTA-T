@@ -244,3 +244,48 @@ input, select, textarea {
     color: #444;
   }
 }
+
+/* --- Líneas en movimiento detrás de los formularios ---
+   Un patrón de líneas diagonales que se desplaza despacio, al 70% de
+   opacidad y difuminado, detrás del formulario. Va en un ::before con
+   z-index negativo: los campos tienen fondo blanco propio, así que el
+   texto se sigue leyendo igual. No captura toques (pointer-events: none). */
+.form-lines {
+  position: relative;
+  isolation: isolate;
+}
+
+.form-lines::before {
+  content: '';
+  position: absolute;
+  inset: -28px -20px;
+  z-index: -1;
+  border-radius: 28px;
+  pointer-events: none;
+  opacity: 0.7;
+  filter: blur(5px);
+  background-image: repeating-linear-gradient(
+    115deg,
+    rgba(255, 196, 0, 0.55) 0px,
+    rgba(255, 196, 0, 0.55) 4px,
+    transparent 4px,
+    transparent 26px,
+    rgba(7, 29, 45, 0.3) 26px,
+    rgba(7, 29, 45, 0.3) 29px,
+    transparent 29px,
+    transparent 54px
+  );
+  background-size: 220px 220px;
+  animation: form-lines-drift 22s linear infinite;
+}
+
+@keyframes form-lines-drift {
+  from { background-position: 0 0; }
+  to { background-position: 220px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-lines::before {
+    animation: none;
+  }
+}
