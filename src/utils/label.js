@@ -1,5 +1,6 @@
 import { COURIERS } from '../data/agencies'
 import { PAYMENT_LABELS } from '../data/paymentMethods'
+import { dateFieldLabel } from './dates'
 
 // Etiqueta de envío en tamaño 4x6" (el estándar de courier) a 300dpi.
 const WIDTH = 1200
@@ -183,7 +184,7 @@ export function renderLabelCanvas(form, merchant) {
   y = divider(ctx, MARGIN, y, contentWidth)
 
   // Fecha
-  y = sectionLabel(ctx, 'Fecha de envío', MARGIN, y)
+  y = sectionLabel(ctx, dateFieldLabel(form.deliveryMethod), MARGIN, y)
   ctx.font = '700 32px Arial'
   y = drawWrapped(ctx, form.shippingDate?.label ?? '—', MARGIN, y + 36, contentWidth, 38)
 

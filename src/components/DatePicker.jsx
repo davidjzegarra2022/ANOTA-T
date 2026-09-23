@@ -24,7 +24,7 @@ function monthKey(year, month) {
   return year * 12 + month
 }
 
-export default function DatePicker({ value, onChange, options, placeholder, error, hint, required }) {
+export default function DatePicker({ value, onChange, options, placeholder, error, hint, required, label = 'Fecha de Envío' }) {
   const [open, setOpen] = useState(false)
 
   const byValue = useMemo(() => new Map(options.map((o) => [o.value, o])), [options])
@@ -106,7 +106,7 @@ export default function DatePicker({ value, onChange, options, placeholder, erro
   return (
     <div className="relative">
       <label className="mb-1.5 block text-sm font-semibold text-ink">
-        Fecha de Envío
+        {label}
         {required && <span className="text-red-600"> *</span>}
       </label>
       <button

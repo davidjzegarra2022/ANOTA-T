@@ -430,8 +430,13 @@ export default function ShippingForm({ merchant, onSubmit }) {
 
           <DatePicker
             required
+            label={isStore ? 'Fecha de Entrega' : 'Fecha de Envío'}
             placeholder="Elige una fecha…"
-            hint="(El envío puede estar en 24 a 48 horas, consulta siempre la página web del establecimiento)"
+            hint={
+              isStore
+                ? '(Coordina con la tienda antes de ir a recoger tu pedido)'
+                : '(El envío puede estar en 24 a 48 horas, consulta siempre la página web del establecimiento)'
+            }
             value={form.shippingDate}
             onChange={(picked) => {
               set('shippingDate', picked)

@@ -6,23 +6,55 @@ const MONTH_LABELS = [
 const DEFAULT_DISPATCH_DAYS = [1, 2, 3, 4, 5, 6] // lunes a sábado (0=domingo, ver Date#getDay)
 const DAYS_TO_SHOW = 14
 
+// Hora de corte para que el pedido salga AL DÍA SIGUIENTE. Es la que el
+// negociante edita en "Configuración"; por defecto las 4 de la tarde.
+const DEFAULT_NEXT_DAY_CUTOFF = 16
+// Para que el pedido salga HOY MISMO hay que pedir una hora antes del
+// corte (por defecto, las 3 de la tarde).
+const SAME_DAY_MARGIN_HOURS = 1
+
+export function nextDayCutoffHour(merchant) {
+  return merchant?.cutoffHour ?? DEFAULT_NEXT_DAY_CUTOFF
+}
+
+export function sameDayCutoffHour(merchant) {
+  return Math.max(0, nextDayCutoffHour(merchant) - SAME_DAY_MARGIN_HOURS)
+}
+
 export function isPastCutoff(merchant, now = new Date()) {
-  return now.getHours() >= (merchant.cutoffHour ?? 18)
+  return now.getHours() >= nextDayCutoffHour(merchant)
 }
 
 /**
- * Fechas de envío disponibles a partir de mañana, saltando los días que el
- * negociante no despache (`dispatchDays`, configurable en "Configuración").
- * Si ya pasó la hora de corte (+ anticipación en horas), arranca un día más
- * tarde.
+ * Primer día que se puede elegir, contado desde hoy:
+ *   antes de las 3pm → 0 (hoy mismo)
+ *   entre 3pm y 4pm  → 1 (mañana)
+ *   desde las 4pm    → 2 (pasado mañana)
+ * Las horas salen de la configuración del negociante; `leadTimeHours` se
+ * suma a la hora actual antes de comparar.
+ */
+export function earliestDayOffset(merchant, now = new Date()) {
+  const check = new Date(now)
+  check.setHours(check.getHours() + (merchant?.leadTimeHours || 0))
+  const hour = check.getHours()
+  if (hour < sameDayCutoffHour(merchant)) return 0
+  if (hour < nextDayCutoffHour(merchant)) return 1
+  return 2
+}
+
+/** "Fecha de entrega" cuando el cliente recoge en tienda; si no, "Fecha de envío". */
+export function dateFieldLabel(deliveryMethod) {
+  return String(deliveryMethod || '').startsWith('store') ? 'Fecha de entrega' : 'Fecha de envío'
+}
+
+/**
+ * Fechas disponibles, saltando los días que el negociante no despache
+ * (`dispatchDays`, configurable en "Configuración"). El primer día
+ * candidato lo decide `earliestDayOffset`.
  */
 export function generateAvailableDates(merchant, now = new Date()) {
   const dispatchDays = new Set(merchant.dispatchDays?.length ? merchant.dispatchDays : DEFAULT_DISPATCH_DAYS)
-  const leadHours = merchant.leadTimeHours || 0
-
-  const cutoffCheck = new Date(now)
-  cutoffCheck.setHours(cutoffCheck.getHours() + leadHours)
-  const startOffset = 1 + (isPastCutoff(merchant, cutoffCheck) ? 1 : 0)
+  const startOffset = earliestDayOffset(merchant, now)
 
   const results = []
   for (let offset = startOffset, scanned = 0; results.length < DAYS_TO_SHOW && scanned < 60; offset += 1, scanned += 1) {

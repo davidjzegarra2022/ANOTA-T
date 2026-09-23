@@ -1,6 +1,7 @@
 // Resumen de un pedido tal como lo llenó el cliente final: se usa para
 // mostrarlo en pantalla, copiarlo al portapapeles y mandarlo a imprimir.
 // Una sola fuente de verdad para los tres, así no se desincronizan.
+import { dateFieldLabel } from './dates'
 import { ORDER_STATUS_LABELS } from './orders'
 
 const DELIVERY_LABELS = {
@@ -46,7 +47,7 @@ export function orderSummarySections(order) {
       fields: [
         ['Código', order.trackingCode],
         ['Estado', ORDER_STATUS_LABELS[order.status] || order.status],
-        ['Fecha de envío', order.shippingDate],
+        [dateFieldLabel(order.deliveryMethod), order.shippingDate],
         ['Recibido', fmtDate(order.createdAt)],
       ],
     },

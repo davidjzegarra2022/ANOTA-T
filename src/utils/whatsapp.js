@@ -1,5 +1,6 @@
 import { COURIERS } from '../data/agencies'
 import { PAYMENT_LABELS } from '../data/paymentMethods'
+import { dateFieldLabel } from './dates'
 
 const DELIVERY_TITLES = {
   store: 'NUEVO PEDIDO (RECOJO EN TIENDA)',
@@ -37,7 +38,7 @@ export function buildWhatsAppSummary(form, merchant) {
   }
 
   lines.push('')
-  lines.push(line('📅', 'Fecha de envío', form.shippingDate?.shortLabel))
+  lines.push(line('📅', dateFieldLabel(form.deliveryMethod), form.shippingDate?.shortLabel))
   lines.push(line('🗒️', 'Notas', form.notes))
 
   return lines.filter((l) => l !== null).join('\n')
