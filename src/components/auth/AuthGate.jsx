@@ -12,7 +12,7 @@ export default function AuthGate({ initialScreen = 'login', notice = null, onLog
   const [screen, setScreen] = useState(initialScreen)
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-surface px-5 py-10">
+    <div className="form-lines flex min-h-screen w-full items-center justify-center bg-surface px-5 py-10">
       {screen === 'signup' ? (
         <SignupScreen onGoToLogin={() => setScreen('login')} />
       ) : screen === 'forgot' ? (

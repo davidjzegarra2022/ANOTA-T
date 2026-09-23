@@ -271,7 +271,7 @@ export default function ShippingForm({ merchant, onSubmit }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
+    <form onSubmit={handleSubmit} noValidate className="form-lines space-y-5">
       <TextField
         label="Tu WhatsApp"
         required
