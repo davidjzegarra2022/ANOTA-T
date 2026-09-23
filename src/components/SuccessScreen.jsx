@@ -2,9 +2,8 @@ import { useState } from 'react'
 import { COURIERS } from '../data/agencies'
 import { PAYMENT_LABELS } from '../data/paymentMethods'
 import { copyText } from '../utils/clipboard'
-import { downloadShippingLabel } from '../utils/label'
 import { buildWhatsAppSummary, buildWhatsAppUrl } from '../utils/whatsapp'
-import { IconArrowLeft, IconCheck, IconCopy, IconTag, IconWhatsapp } from './icons'
+import { IconArrowLeft, IconCheck, IconCopy, IconWhatsapp } from './icons'
 
 const DELIVERY_TITLES = {
   store: 'Recojo en tienda',
@@ -25,19 +24,11 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
   const message = buildWhatsAppSummary(form, merchant)
   const whatsappUrl = buildWhatsAppUrl(merchant.whatsappNumber, message)
   const [copied, setCopied] = useState(false)
-  const [labelSaved, setLabelSaved] = useState(false)
 
   function handleCopy() {
     copyText(message).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    })
-  }
-
-  function handleDownloadLabel() {
-    downloadShippingLabel(form, merchant).then(() => {
-      setLabelSaved(true)
-      setTimeout(() => setLabelSaved(false), 2000)
     })
   }
 
@@ -132,19 +123,6 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
         </button>
       </div>
       {copied && <p className="mt-2 text-xs font-medium text-emerald-600">Resumen copiado</p>}
-
-      <button
-        type="button"
-        onClick={handleDownloadLabel}
-        className={`mt-3 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-[14px] font-bold transition active:scale-[0.99] ${
-          labelSaved
-            ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
-            : 'border-brand/50 bg-amber-50 text-brand-dark hover:bg-amber-100'
-        }`}
-      >
-        {labelSaved ? 'Etiqueta descargada' : 'Descargar etiqueta para imprimir'}
-        {labelSaved ? <IconCheck className="h-4.5 w-4.5" /> : <IconTag className="h-4.5 w-4.5" />}
-      </button>
 
       <div className="mt-3 flex w-full items-center gap-2.5">
         {onBackToPanel && (

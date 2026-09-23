@@ -568,6 +568,14 @@ Detalles que conviene tener presentes:
   un mensaje claro; el candado real es el trigger).
 - **Storage**: el bucket `logos` limita a 2 MB y a PNG/JPEG/WEBP del lado
   del servidor, además de la validación del navegador.
+- **Autocompletado por documento** (`lookup_customer_by_dni`): el formulario
+  público completa el nombre cuando el DNI ya compró antes EN ESA tienda.
+  La función es `security definer` porque `orders` no es legible sin sesión,
+  y a propósito devuelve **solo el nombre** (ni teléfono ni dirección) y
+  exige el documento completo (8+ caracteres), para que no sirva como
+  directorio consultable de los clientes del negociante. Aun así es un dato
+  personal consultable por quien conozca un DNI: si algún día molesta, el
+  camino es pedir además los últimos dígitos del WhatsApp.
 - **Contraseñas filtradas** (`utils/passwordSecurity.js`): al registrarse o
   al cambiar la contraseña se exige un mínimo de 8 caracteres y se rechazan
   las que aparecen en filtraciones públicas, consultando la API de
