@@ -22,7 +22,29 @@ function fromRow(row) {
     planName: row.plan_name,
     createdAt: row.created_at,
     email: row.email,
+    planStartedAt: row.plan_started_at,
+    planTrialDays: row.plan_trial_days,
+    planPricePerDay: row.plan_price_per_day == null ? null : Number(row.plan_price_per_day),
+    lastSignInAt: row.last_sign_in_at,
   }
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Vigencia del plan de un negociante para la columna "Usuario conectado".
+ * Devuelve { kind, days } donde kind es:
+ *   'none'    — sin plan asignado
+ *   'trial'   — plan de prueba: `days` son los días que le quedan (0 = vencido)
+ *   'forever' — plan pago: no tiene fecha de vencimiento guardada
+ */
+export function planRemaining(merchant) {
+  if (!merchant.planId) return { kind: 'none', days: null }
+  if (!merchant.planTrialDays) return { kind: 'forever', days: null }
+  const start = merchant.planStartedAt ? new Date(merchant.planStartedAt).getTime() : null
+  if (!start || Number.isNaN(start)) return { kind: 'forever', days: null }
+  const elapsed = Math.floor((Date.now() - start) / DAY_MS)
+  return { kind: 'trial', days: Math.max(0, merchant.planTrialDays - elapsed) }
 }
 
 export async function adminListMerchants() {

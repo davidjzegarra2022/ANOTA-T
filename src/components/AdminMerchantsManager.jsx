@@ -8,6 +8,7 @@ import {
   adminListPlans,
   adminSetMerchantActive,
   adminSetMerchantPlan,
+  planRemaining,
 } from '../utils/adminMerchants'
 import { IconCheck, IconKey, IconRefresh, IconStore, IconX } from './icons'
 
@@ -134,13 +135,14 @@ export default function AdminMerchantsManager() {
 
           {merchants.length > 0 && (
             <div className="mt-3 card overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-[13px]">
+              <table className="w-full min-w-[900px] text-left text-[13px]">
                 <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
                   <tr>
                     <th className="px-3 py-2 font-semibold">Tienda</th>
                     <th className="px-3 py-2 font-semibold">Correo</th>
                     <th className="px-3 py-2 font-semibold">WhatsApp</th>
                     <th className="px-3 py-2 font-semibold">Plan</th>
+                    <th className="px-3 py-2 font-semibold">Usuario conectado</th>
                     <th className="px-3 py-2 font-semibold">Estado</th>
                     <th className="px-3 py-2 font-semibold">Desde</th>
                   </tr>
@@ -163,6 +165,9 @@ export default function AdminMerchantsManager() {
                             <option key={p.id} value={p.id}>{p.name}</option>
                           ))}
                         </select>
+                      </td>
+                      <td className="px-3 py-2">
+                        <RemainingCell merchant={m} />
                       </td>
                       <td className="px-3 py-2">
                         <button
@@ -235,6 +240,33 @@ export default function AdminMerchantsManager() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Días que le quedan al plan del negociante, en rojo, tipo temporizador. */
+function RemainingCell({ merchant }) {
+  const { kind, days } = planRemaining(merchant)
+
+  const label =
+    kind === 'none' ? (
+      <span className="text-xs text-muted">Sin plan</span>
+    ) : kind === 'forever' ? (
+      <span className="text-xs text-muted">Sin vencimiento</span>
+    ) : days === 0 ? (
+      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">Vencido</span>
+    ) : (
+      <span className="font-mono text-sm font-bold text-red-600 tabular-nums">
+        {days} {days === 1 ? 'día' : 'días'}
+      </span>
+    )
+
+  return (
+    <div className="leading-tight">
+      {label}
+      <p className="mt-0.5 text-[10px] text-muted">
+        {merchant.lastSignInAt ? `Últ. conexión ${fmtDate(merchant.lastSignInAt)}` : 'Nunca ingresó'}
+      </p>
     </div>
   )
 }
