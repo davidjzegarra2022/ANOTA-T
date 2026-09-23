@@ -142,6 +142,23 @@ dominios en caliente, sin redeploy.
   despacho, hora de corte, anticipación en horas, nombre de tienda,
   WhatsApp, moneda de visualización, zona horaria, logo (sube a Supabase
   Storage, bucket `logos`) y el slug de su link público.
+
+> **Cómo se decide qué fechas puede elegir el cliente** (`utils/dates.js`):
+> la "hora de corte" es el límite para que el pedido salga **al día
+> siguiente** (por defecto las 16:00), y una hora antes (15:00) es el
+> límite para pedir **para hoy mismo**. O sea:
+>
+> | Hora del pedido | Primera fecha elegible |
+> |---|---|
+> | antes de las 3pm | hoy mismo |
+> | entre 3pm y 4pm | mañana |
+> | desde las 4pm | pasado mañana |
+>
+> Encima de eso se saltan los días que el negociante no despache
+> (`dispatch_days`), y `lead_time_hours` se suma a la hora actual antes de
+> comparar. Cada negociante puede mover su hora de corte en
+> "Configuración"; el margen del mismo día se mueve con ella.
+
 - **Planes** (`PlanesPage.jsx`) — planes disponibles (los define el admin):
   días de prueba gratis y/o precio por día, con su lista de
   características. Sin pasarela de pago todavía — el cambio se pide por
@@ -271,7 +288,7 @@ create table if not exists public.merchants (
   slug text not null unique,
   couriers_active text[] not null default '{}'::text[],
   dispatch_days integer[] not null default '{1,2,3,4,5,6}'::integer[], -- 0=domingo … 6=sábado
-  cutoff_hour integer not null default 18,
+  cutoff_hour integer not null default 16,
   lead_time_hours integer not null default 0,
   plan_id bigint references public.plans(id),
   -- Desde cuándo corre el plan actual — con esto se calcula el vencimiento
