@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PasswordInput from '../PasswordInput'
 import logoIcon from '../../assets/logo-icon.png'
 import { signInMerchant } from '../../utils/supabaseAuth'
 import { logActivation } from '../../utils/telemetry'
@@ -64,13 +65,11 @@ export default function LoginScreen({ notice, onLoggedIn, onGoToSignup, onGoToFo
               ¿Olvidaste tu contraseña?
             </button>
           </div>
-          <input
-            type="password"
+          <PasswordInput
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
-            className="input-field"
           />
         </label>
 

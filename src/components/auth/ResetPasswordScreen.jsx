@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PasswordInput from '../PasswordInput'
 import logoIcon from '../../assets/logo-icon.png'
 import { checkNewPassword, MIN_PASSWORD_LENGTH } from '../../utils/passwordSecurity'
 import { updateMerchantPassword } from '../../utils/supabaseAuth'
@@ -37,15 +38,14 @@ export default function ResetPasswordScreen({ onDone }) {
       <h1 className="mt-5 text-2xl font-bold text-navy">Elige tu nueva contraseña</h1>
 
       <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
-        <input
-          type="password"
+        <PasswordInput
+          saveTip
           required
           autoFocus
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`}
           autoComplete="new-password"
-          className="input-field"
         />
         {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
         <button type="submit" disabled={loading} className="btn btn-primary w-full">
