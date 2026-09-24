@@ -66,6 +66,7 @@ export default function LoginScreen({ notice, onLoggedIn, onGoToSignup, onGoToFo
             </button>
           </div>
           <PasswordInput
+            saveTip
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}

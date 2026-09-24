@@ -193,7 +193,7 @@ export default function DatePicker({ value, onChange, options, placeholder, erro
                           ? 'bg-brand text-navy shadow-[0_0_12px_-2px_rgba(255,196,0,0.6)]'
                           : cell.available
                             ? 'text-ink hover:bg-amber-100'
-                            : 'text-slate-300 cursor-not-allowed'
+                            : 'day-off text-slate-300 cursor-not-allowed'
                       }`}
                     >
                       {cell.day}

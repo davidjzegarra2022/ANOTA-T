@@ -102,7 +102,7 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3.5 text-[15px] font-bold text-white shadow-[0_8px_30px_-8px_rgba(16,185,129,0.55)] transition hover:bg-emerald-400 active:scale-[0.99]"
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 py-3.5 text-[15px] font-bold text-white shadow-[0_8px_30px_-8px_rgba(16,185,129,0.55)] transition hover:bg-emerald-600 active:scale-[0.99]"
         >
           Enviar por WhatsApp
           <IconWhatsapp className="h-5 w-5" />
