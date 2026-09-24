@@ -488,7 +488,7 @@ export default function AgencyManager() {
               type="button"
               onClick={handleSaveExcelToSupabase}
               disabled={excelSaving || !sbConfig.source}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-40"
             >
               <IconCheck className="h-4 w-4" />
               {excelSaving ? 'Guardando…' : `Guardar ${excelRows.length} fila(s) en Supabase`}

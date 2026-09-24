@@ -40,7 +40,7 @@ export default function ShareLinkBar({ slug }) {
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-400 sm:flex-none"
+          className="inline-flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-600 sm:flex-none"
         >
           <IconWhatsapp className="h-3.5 w-3.5" /> <span className="truncate">Reenviar por WhatsApp</span>
         </a>

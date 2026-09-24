@@ -67,7 +67,7 @@ export default function PlanesPage({ merchant }) {
           href={`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(`Hola, quiero cambiar el plan de ${merchant.businessName}`)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-400"
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600"
         >
           <IconWhatsapp className="h-4 w-4" /> Contactar para cambiar de plan
         </a>

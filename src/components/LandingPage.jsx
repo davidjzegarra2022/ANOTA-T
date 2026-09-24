@@ -147,7 +147,7 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <section className="relative overflow-hidden bg-[linear-gradient(110deg,#071d2d_0%,#0b3046_50%,#163e50_100%)] text-white">
+        <section className="on-dark relative overflow-hidden bg-[linear-gradient(110deg,#071d2d_0%,#0b3046_50%,#163e50_100%)] text-white">
           <div className="mx-auto flex w-[92%] max-w-[1180px] flex-col items-center gap-10 py-14 md:flex-row md:justify-between">
             <div className="max-w-[650px]">
               <p className="mb-3 text-[13px] font-extrabold tracking-wide text-brand-dark">HERRAMIENTA DE FORMULARIOS PARA ENVÍOS</p>

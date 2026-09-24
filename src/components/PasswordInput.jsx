@@ -24,8 +24,8 @@ const SAVE_TIP_MS = 10_000
  * Campo de contraseña con "ojito" para mostrarla u ocultarla.
  *
  * Con `saveTip`, al enfocar el campo por primera vez aparece un recordatorio
- * para guardar la contraseña, que se va solo a los 10 segundos. Se usa donde
- * la contraseña se CREA (registro y nueva contraseña), no en el login.
+ * para guardar la contraseña, que se va solo a los 10 segundos. Se usa en el
+ * login, el registro y la pantalla de nueva contraseña.
  */
 export default function PasswordInput({ saveTip = false, className = 'input-field', onFocus, ...props }) {
   const [visible, setVisible] = useState(false)

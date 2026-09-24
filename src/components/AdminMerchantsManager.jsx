@@ -175,7 +175,7 @@ export default function AdminMerchantsManager() {
                           onClick={() => handleToggleActive(m)}
                           disabled={busyId === m.id}
                           className={`rounded-full px-2 py-0.5 text-[11px] font-semibold transition disabled:opacity-50 ${
-                            m.active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                            m.active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
                           }`}
                         >
                           {m.active ? 'Activo' : 'Inactivo'}
