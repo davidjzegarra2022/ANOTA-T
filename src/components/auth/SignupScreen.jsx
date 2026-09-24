@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PasswordInput from '../PasswordInput'
 import logoIcon from '../../assets/logo-icon.png'
 import { checkEmailDomain } from '../../utils/emailDomains'
 import { checkNewPassword, MIN_PASSWORD_LENGTH } from '../../utils/passwordSecurity'
@@ -109,14 +110,13 @@ export default function SignupScreen({ onGoToLogin }) {
 
         <label className="block">
           <span className="mb-1.5 block text-sm font-semibold text-ink">Contraseña</span>
-          <input
-            type="password"
+          <PasswordInput
+            saveTip
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
             placeholder={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`}
-            className="input-field"
           />
         </label>
 

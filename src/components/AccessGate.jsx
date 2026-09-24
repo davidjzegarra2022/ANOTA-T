@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PasswordInput from './PasswordInput'
 import logoIcon from '../assets/logo-icon.png'
 import { isPlatformAdmin, signInMerchant, signOutMerchant } from '../utils/supabaseAuth'
 import { logActivation } from '../utils/telemetry'
@@ -66,13 +67,12 @@ export default function AccessGate({ onUnlock }) {
             spellCheck={false}
             className={`input-field ${error ? 'has-error' : ''}`}
           />
-          <input
+          <PasswordInput
             value={password}
             onChange={(e) => {
               setPassword(e.target.value)
               setError(null)
             }}
-            type="password"
             placeholder="Contraseña"
             autoComplete="current-password"
             className={`input-field ${error ? 'has-error' : ''}`}

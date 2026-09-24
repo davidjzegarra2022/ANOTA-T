@@ -171,7 +171,7 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
 
           <div className="mt-4 grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-muted uppercase">Hora de corte</span>
+              <span className="mb-1 block text-xs font-semibold text-muted uppercase">Hora de cierre</span>
               <input
                 type="time"
                 value={`${String(form.cutoffHour).padStart(2, '0')}:00`}
