@@ -14,7 +14,11 @@ export default function Header({ businessName, subtitle, minimal = false, logoUr
   return (
     <header className="border-b border-slate-200 bg-navy text-white">
       <div className="mx-auto flex max-w-xl items-center gap-3 px-5 py-4 sm:px-6">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-white to-[#e6eef7] shadow-md">
+        <span
+          className={`flex shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-white to-[#e6eef7] shadow-md ${
+            showCustomLogo ? 'h-[49px] w-[49px] rounded-2xl' : 'h-9 w-9 rounded-xl'
+          }`}
+        >
           <img
             src={showCustomLogo ? logoUrl : logoIcon}
             alt=""
