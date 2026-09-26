@@ -232,21 +232,14 @@ export default function LandingPage() {
         <section id="como-funciona" className="bg-white py-20">
           <div className="mx-auto grid w-[92%] max-w-[1180px] grid-cols-1 items-center gap-16 lg:grid-cols-[0.8fr_1.2fr]">
             <div className="mx-auto w-[270px] rounded-[38px] border-[9px] border-[#152f40] bg-navy p-3 shadow-xl">
-              <div className="relative h-[420px] overflow-hidden rounded-[25px] bg-white">
-                <div className="bg-navy p-4 text-center font-extrabold text-brand">ANOTA-T</div>
+              <div className="overflow-hidden rounded-[25px] bg-white">
+                <div className="bg-navy p-3.5 text-center font-extrabold text-brand">ANOTA-T</div>
                 <img
                   src={registroExitoso}
                   alt="Pantalla de ANOTA-T confirmando un envío registrado"
                   loading="lazy"
-                  className="h-[210px] w-full bg-[#e8f0e8] object-cover object-top"
+                  className="block w-full"
                 />
-                <div className="p-4">
-                  <span className="mb-3 inline-block rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-700">
-                    Formulario listo
-                  </span>
-                  <h4 className="mb-2 text-sm font-bold">Tu formulario está generado</h4>
-                  <p className="text-[11px] text-muted">✓ Listo para entregar a tu agencia</p>
-                </div>
               </div>
             </div>
             <div>
