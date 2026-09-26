@@ -16,7 +16,7 @@ export default function Header({ businessName, subtitle, minimal = false, logoUr
       <div className="mx-auto flex max-w-xl items-center gap-3 px-5 py-4 sm:px-6">
         <span
           className={`flex shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-white to-[#e6eef7] shadow-md ${
-            showCustomLogo ? 'h-[49px] w-[49px] rounded-2xl' : 'h-9 w-9 rounded-xl'
+            showCustomLogo ? 'h-[66px] w-[66px] rounded-2xl' : 'h-9 w-9 rounded-xl'
           }`}
         >
           <img
