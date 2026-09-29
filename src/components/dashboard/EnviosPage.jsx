@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { fetchMyOrders, ORDER_STATUS_LABELS, updateOrderStatus } from '../../utils/orders'
-import { downloadOrderLabel } from '../../utils/label'
 import { deliveryMethodLabel } from '../../utils/orderSummary'
 import { exportOrdersToExcel, exportOrdersToPdf } from '../../utils/ordersExport'
-import { IconChevronLeft, IconChevronRight, IconCheck, IconDownload, IconFile, IconSearch, IconTag } from '../icons'
+import { IconChevronLeft, IconChevronRight, IconDownload, IconFile, IconSearch, IconTag } from '../icons'
+import PrintLabelsModal from './PrintLabelsModal'
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -52,7 +52,8 @@ export default function EnviosPage({ merchant }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
-  const [labelDone, setLabelDone] = useState(null)
+  // Pedidos preseleccionados al abrir el formato de impresión (null = cerrado).
+  const [printIds, setPrintIds] = useState(null)
   const [selected, setSelected] = useState(() => new Set())
   const [exporting, setExporting] = useState(null)
 
@@ -76,13 +77,6 @@ export default function EnviosPage({ merchant }) {
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh usa el estado más reciente por closure
   }, [day, rangeFrom, rangeTo, status, search])
-
-  // La etiqueta la descarga el negociante, no el cliente final.
-  async function handleLabel(order) {
-    await downloadOrderLabel(order, merchant)
-    setLabelDone(order.id)
-    setTimeout(() => setLabelDone((id) => (id === order.id ? null : id)), 2000)
-  }
 
   const selectedOrders = orders.filter((o) => selected.has(o.id))
   const allSelected = orders.length > 0 && selectedOrders.length === orders.length
@@ -184,6 +178,16 @@ export default function EnviosPage({ merchant }) {
         <div className="ml-auto flex w-full gap-2 sm:w-auto">
           <button
             type="button"
+            onClick={() => setPrintIds(selectedOrders.map((o) => o.id))}
+            disabled={!orders.length}
+            className="btn btn-outline flex-1 sm:flex-none"
+            title="Imprimir etiquetas de envío"
+          >
+            <IconTag className="h-4 w-4" />
+            Etiquetas{selectedOrders.length ? ` (${selectedOrders.length})` : ''}
+          </button>
+          <button
+            type="button"
             onClick={() => handleExport('excel')}
             disabled={!orders.length || Boolean(exporting)}
             className="btn btn-outline flex-1 sm:flex-none"
@@ -249,11 +253,10 @@ export default function EnviosPage({ merchant }) {
               </dl>
               <button
                 type="button"
-                onClick={() => handleLabel(o)}
+                onClick={() => setPrintIds([o.id])}
                 className="btn btn-outline mt-3 w-full !py-2 text-xs"
               >
-                {labelDone === o.id ? <IconCheck className="h-4 w-4 text-emerald-600" /> : <IconTag className="h-4 w-4" />}
-                {labelDone === o.id ? 'Etiqueta descargada' : 'Descargar etiqueta'}
+                <IconTag className="h-4 w-4" /> Imprimir etiqueta
               </button>
             </li>
           ))}
@@ -301,12 +304,11 @@ export default function EnviosPage({ merchant }) {
                   <td className="px-3 py-2">
                     <button
                       type="button"
-                      onClick={() => handleLabel(o)}
-                      title="Descargar la etiqueta para imprimir"
+                      onClick={() => setPrintIds([o.id])}
+                      title="Imprimir la etiqueta de envío"
                       className="btn btn-outline !px-2.5 !py-1.5 text-xs"
                     >
-                      {labelDone === o.id ? <IconCheck className="h-3.5 w-3.5 text-emerald-600" /> : <IconTag className="h-3.5 w-3.5" />}
-                      {labelDone === o.id ? 'Listo' : 'Imprimir'}
+                      <IconTag className="h-3.5 w-3.5" /> Imprimir
                     </button>
                   </td>
                 </tr>
@@ -315,6 +317,10 @@ export default function EnviosPage({ merchant }) {
           </table>
         </div>
         </>
+      )}
+
+      {printIds && (
+        <PrintLabelsModal orders={orders} initialSelected={printIds} merchant={merchant} onClose={() => setPrintIds(null)} />
       )}
     </div>
   )

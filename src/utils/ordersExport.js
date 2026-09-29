@@ -7,7 +7,7 @@ function stamp() {
 
 /** Exporta pedidos a un .xlsx descargable. Carga `xlsx` de forma dinámica —
  * igual que en AgencyManager— para que no viaje en el bundle principal. */
-export async function exportOrdersToExcel(orders, filename = 'envios') {
+export async function exportOrdersToExcel(orders, filename = 'envios', { dated = true } = {}) {
   const XLSX = await import('xlsx')
   const rows = orders.map((o) => ({
     'Código': o.trackingCode || '',
@@ -26,15 +26,16 @@ export async function exportOrdersToExcel(orders, filename = 'envios') {
   const sheet = XLSX.utils.json_to_sheet(rows)
   const book = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(book, sheet, 'Envíos')
-  XLSX.writeFile(book, `${filename}-${stamp()}.xlsx`)
+  XLSX.writeFile(book, dated ? `${filename}-${stamp()}.xlsx` : `${filename}.xlsx`)
 }
 
 /** Exporta pedidos a un PDF (A4 horizontal, una fila por pedido). `jspdf`
  * también se carga bajo demanda. */
-export async function exportOrdersToPdf(orders, { businessName, filename = 'envios' } = {}) {
+export async function exportOrdersToPdf(orders, { businessName, filename = 'envios', title: customTitle, period, dated = true } = {}) {
   const [{ jsPDF }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
-  const title = businessName ? `Envíos — ${businessName}` : 'Envíos'
+  const base = customTitle || 'Envíos'
+  const title = businessName ? `${base} — ${businessName}` : base
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(15)
@@ -44,7 +45,9 @@ export async function exportOrdersToPdf(orders, { businessName, filename = 'envi
   doc.setFontSize(9)
   doc.setTextColor(91, 107, 128)
   doc.text(
-    `${orders.length} pedido${orders.length === 1 ? '' : 's'} · generado el ${new Date().toLocaleString('es-PE')}`,
+    [period, `${orders.length} pedido${orders.length === 1 ? '' : 's'}`, `generado el ${new Date().toLocaleString('es-PE')}`]
+      .filter(Boolean)
+      .join(' · '),
     40,
     58,
   )
@@ -75,5 +78,5 @@ export async function exportOrdersToPdf(orders, { businessName, filename = 'envi
     },
   })
 
-  doc.save(`${filename}-${stamp()}.pdf`)
+  doc.save(dated ? `${filename}-${stamp()}.pdf` : `${filename}.pdf`)
 }

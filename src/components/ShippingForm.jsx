@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import AgencySearch from './AgencySearch'
 import DatePicker from './DatePicker'
-import { IconCalendar, IconCheck, IconChevronDown } from './icons'
+import { IconCalendar, IconCheck, IconChevronDown, IconWhatsapp } from './icons'
 import { getKnownCouriers } from '../data/agencies'
 import { DEPARTMENTS } from '../data/departments'
 import { PAYMENT_METHODS } from '../data/paymentMethods'
@@ -127,7 +127,36 @@ const initialState = {
   shippingDate: null,
 }
 
-export default function ShippingForm({ merchant, onSubmit }) {
+/**
+ * Aviso de tienda suspendida (suscripción vencida o cuenta desactivada):
+ * el cliente puede ver el formulario pero no agendar; se le ofrece el
+ * WhatsApp de la tienda para coordinar directamente. El candado real está
+ * en el servidor (is_active_merchant en la política de `orders`).
+ */
+function SuspendedNotice({ merchant }) {
+  const digits = String(merchant.whatsappNumber || '').replace(/\D/g, '')
+  return (
+    <div role="status" className="rounded-2xl border border-red-200 bg-red-50 p-4">
+      <p className="text-sm font-bold text-red-700">Pedidos en pausa</p>
+      <p className="mt-1 text-[13px] leading-relaxed text-red-700">
+        {merchant.businessName || 'Esta tienda'} no está recibiendo pedidos por este formulario en este momento.
+        Escríbele directamente por WhatsApp para coordinar tu compra.
+      </p>
+      {digits && (
+        <a
+          href={`https://wa.me/${digits}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-[13px] font-bold text-white transition hover:bg-emerald-600"
+        >
+          <IconWhatsapp className="h-4 w-4" /> Escribir por WhatsApp
+        </a>
+      )}
+    </div>
+  )
+}
+
+export default function ShippingForm({ merchant, onSubmit, suspended = false }) {
   const [form, setForm] = useState(initialState)
   const [touched, setTouched] = useState({})
   const [attempted, setAttempted] = useState(false)
@@ -244,6 +273,7 @@ export default function ShippingForm({ merchant, onSubmit }) {
 
   function handleSubmit(e) {
     e.preventDefault()
+    if (suspended) return
     setAttempted(true)
     if (Object.keys(getErrors()).length > 0) return
 
@@ -272,6 +302,7 @@ export default function ShippingForm({ merchant, onSubmit }) {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="form-lines space-y-5">
+      {suspended && <SuspendedNotice merchant={merchant} />}
       <TextField
         label="Tu WhatsApp"
         required
@@ -448,9 +479,16 @@ export default function ShippingForm({ merchant, onSubmit }) {
         </div>
       )}
 
+      {suspended && (
+        <p role="alert" className="text-[13px] leading-relaxed font-semibold text-red-700">
+          Esta tienda no está recibiendo pedidos por ahora. Escríbele directamente por WhatsApp para coordinar tu compra.
+        </p>
+      )}
+
       <button
         type="submit"
-        className="btn btn-primary w-full py-3.5 text-[15px]"
+        disabled={suspended}
+        className="btn btn-primary w-full py-3.5 text-[15px] disabled:cursor-not-allowed disabled:opacity-50"
       >
         Agendar y ver resumen
         <IconCalendar className="h-5 w-5" />

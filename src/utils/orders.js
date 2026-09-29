@@ -68,7 +68,8 @@ export async function createOrder(merchantId, form) {
     return { ok: false, error: res.error.message }
   }
   console.warn('[supabase] No se pudo guardar el pedido:', error.message)
-  return { ok: false, error: error.message }
+  // 42501 = la política RLS lo rechazó: la tienda está suspendida.
+  return { ok: false, error: error.message, suspended: error.code === '42501' }
 }
 
 /** Pedidos del negociante logueado, opcionalmente filtrados por fecha de envío (shipping_date). */
