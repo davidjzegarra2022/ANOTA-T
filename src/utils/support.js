@@ -56,6 +56,11 @@ const MESSAGES = {
     'Hola equipo ANOTA-T 👋',
     'Vengo desde su página web y necesito apoyo: quiero saber más sobre ANOTA-T para mi negocio.',
   ],
+  webSystem: () => [
+    'Hola equipo ANOTA-T 👋',
+    'Vi su sistema de formularios de envío y me gustaría un *sistema web para mi empresa*.',
+    '¿Me pueden dar más información? ¡Gracias!',
+  ],
   help: ({ merchant }) => ['Hola equipo ANOTA-T 👋', 'Necesito apoyo con mi cuenta.', storeLine(merchant)],
 }
 
