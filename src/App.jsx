@@ -38,19 +38,26 @@ function LoadingScreen() {
 function PublicShippingRoute({ slug }) {
   const [merchant, setMerchant] = useState(undefined)
   const [submittedForm, setSubmittedForm] = useState(null)
+  const [suspended, setSuspended] = useState(false)
 
   useEffect(() => {
-    fetchMerchantBySlug(slug).then(setMerchant)
+    fetchMerchantBySlug(slug).then((m) => {
+      setMerchant(m)
+      setSuspended(m ? m.acceptingOrders === false : false)
+    })
   }, [slug])
 
   async function handleSubmit(form) {
     const res = await createOrder(merchant.id, form)
+    // Si la suscripción venció mientras el cliente llenaba el formulario,
+    // el servidor rechaza el pedido: se muestra el aviso, no el éxito.
+    if (res.suspended) return setSuspended(true)
     setSubmittedForm(res.ok ? { ...form, trackingCode: res.trackingCode, orderStatus: res.status } : form)
   }
 
   if (merchant === undefined) return <LoadingScreen />
 
-  if (!merchant || !merchant.active) {
+  if (!merchant) {
     return (
       <div className="flex min-h-screen items-center justify-center px-6 text-center">
         <p className="text-sm text-muted">Este link no existe o ya no está disponible.</p>
@@ -70,7 +77,7 @@ function PublicShippingRoute({ slug }) {
         {submittedForm ? (
           <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} />
         ) : (
-          <ShippingForm merchant={merchant} onSubmit={handleSubmit} />
+          <ShippingForm merchant={merchant} onSubmit={handleSubmit} suspended={suspended} />
         )}
       </main>
       <Footer />

@@ -81,7 +81,7 @@ export default function OrderSummaryModal({ order, onClose }) {
     </div>
 
     {createPortal(
-      <div id="order-summary-print">
+      <div id="order-summary-print" className="print-root">
         <p className="mb-4 text-lg font-bold">Pedido {order.trackingCode}</p>
         <SummaryBody sections={sections} />
       </div>,

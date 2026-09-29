@@ -4,6 +4,7 @@ import { deliveryMethodLabel } from '../../utils/orderSummary'
 import { fetchActivePlans, trialEndsAt } from '../../utils/plans'
 import { IconBox, IconDownload, IconRefresh } from '../icons'
 import OrderSummaryModal from './OrderSummaryModal'
+import OrdersReportCard from './OrdersReportCard'
 
 // Plantillas de carga masiva de cada courier. `file` = null → aún no está
 // disponible (se muestra como "Próximamente"). Los archivos viven en
@@ -117,6 +118,8 @@ export default function PanelProPage({ merchant }) {
         <StatCard label="Últimos 7 días" value={stats.last7} />
         <StatCard label="Últimos 30 días" value={stats.last30} />
       </div>
+
+      <OrdersReportCard orders={orders} merchant={merchant} />
 
       <div className="card p-4">
         <p className="text-sm font-bold text-navy">Pedidos por estado</p>

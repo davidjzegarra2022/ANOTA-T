@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import logoIcon from '../../assets/logo-icon.png'
-import { fetchMyMerchant } from '../../utils/merchantProfile'
+import { fetchAcceptingOrders, fetchMyMerchant } from '../../utils/merchantProfile'
 import {
   IconBox,
   IconCard,
@@ -41,6 +41,7 @@ export default function DashboardLayout({ email, onLogout }) {
   const [tab, setTab] = useState('envios')
   const [merchant, setMerchant] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [acceptingOrders, setAcceptingOrders] = useState(true)
   // En escritorio el sidebar se minimiza; en móvil se abre como cajón sobre
   // el contenido (antes ocupaba 240px fijos y empujaba la página fuera de
   // la pantalla del teléfono).
@@ -49,7 +50,9 @@ export default function DashboardLayout({ email, onLogout }) {
 
   async function refreshMerchant() {
     setLoading(true)
-    setMerchant(await fetchMyMerchant())
+    const m = await fetchMyMerchant()
+    setMerchant(m)
+    if (m) setAcceptingOrders(await fetchAcceptingOrders(m.id))
     setLoading(false)
   }
 
@@ -196,6 +199,19 @@ export default function DashboardLayout({ email, onLogout }) {
             <p className="text-sm text-red-600">No se pudo cargar tu perfil. Recarga la página.</p>
           ) : (
             <>
+              {!acceptingOrders && (
+                <div role="alert" className="mb-5 flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-red-700">Tu suscripción venció: tu formulario está en pausa</p>
+                    <p className="mt-1 text-[13px] leading-relaxed text-red-700">
+                      Tus clientes ven un aviso de que la tienda no está recibiendo pedidos. Renueva tu plan para volver a recibirlos.
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => selectTab('planes')} className="btn btn-primary shrink-0">
+                    Renovar plan
+                  </button>
+                </div>
+              )}
               {tab === 'envios' && <EnviosPage merchant={merchant} />}
               {tab === 'clientes' && <ClientesPage merchant={merchant} />}
               {tab === 'panel' && <PanelProPage merchant={merchant} />}

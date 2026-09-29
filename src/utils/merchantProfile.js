@@ -21,6 +21,9 @@ function fromRow(row) {
     planId: row.plan_id,
     planStartedAt: row.plan_started_at,
     active: row.active,
+    // false = suscripción vencida o tienda desactivada: el formulario
+    // muestra el aviso de suspensión (ver get_merchant_public).
+    acceptingOrders: row.accepting_orders ?? row.active,
   }
 }
 
@@ -105,4 +108,13 @@ export async function uploadMerchantLogo(file) {
 
   const { data } = supabase.storage.from('logos').getPublicUrl(path)
   return { ok: true, url: data.publicUrl }
+}
+
+/** ¿El formulario público de este negociante está recibiendo pedidos? (false = suscripción vencida o cuenta desactivada) */
+export async function fetchAcceptingOrders(merchantId) {
+  const supabase = await getSupabaseClient()
+  if (!supabase || !merchantId) return true
+  const { data, error } = await supabase.rpc('merchant_accepts_orders', { p_id: merchantId })
+  if (error) return true
+  return data !== false
 }

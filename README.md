@@ -596,6 +596,15 @@ Detalles que conviene tener presentes:
 - **El estado y el código de rastreo de un pedido los fija el servidor**
   (trigger `prepare_new_order`), no el navegador: nadie puede crear un
   pedido ya marcado como "entregado" ni elegir su propio código.
+- **Suscripción vencida = tienda suspendida**: `merchant_accepts_orders(id)`
+  es verdadero solo si la tienda está activa y su plan sigue vigente (hoy
+  solo vencen los planes de prueba: `plan_started_at + trial_days`).
+  `is_active_merchant`, que usa la política de inserción de `orders`, delega
+  en ella, así que el servidor rechaza pedidos de una tienda vencida aunque
+  alguien se salte el aviso del navegador. `get_merchant_public` devuelve
+  también tiendas suspendidas con `accepting_orders = false`, para que el
+  formulario muestre el aviso de suspensión y el WhatsApp de la tienda. Se
+  renueva cuando el admin le asigna un plan (reinicia `plan_started_at`).
 - **El cliente final recibe su código sin poder leer `orders`**: el
   formulario inserta vía `submit_order(p jsonb)`, que es `security invoker`
   (el INSERT sigue pasando por la política `orders_insert_public`, con las
