@@ -155,3 +155,32 @@ export async function adminDeletePlan(id) {
   if (error) return { ok: false, error: adminError(error) }
   return { ok: true }
 }
+
+/** Deja constancia de que un admin inició sesión (registro de actividad). */
+export async function adminLogLogin() {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return
+  await supabase.rpc('admin_log_login')
+}
+
+/**
+ * Registro de actividad de los administradores: quién, cuándo y qué cambió.
+ * Lo escribe la base de datos (las RPC de admin y triggers), no el
+ * navegador, así que no se puede falsear desde el panel.
+ */
+export async function adminListActivity(limit = 100) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.', events: [] }
+  const { data, error } = await supabase.rpc('admin_list_activity', { p_limit: limit })
+  if (error) return { ok: false, error: adminError(error), events: [] }
+  return {
+    ok: true,
+    events: (data || []).map((r) => ({
+      id: r.id,
+      adminName: r.admin_name,
+      action: r.action,
+      details: r.details,
+      createdAt: r.created_at,
+    })),
+  }
+}

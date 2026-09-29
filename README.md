@@ -596,6 +596,18 @@ Detalles que conviene tener presentes:
 - **El estado y el código de rastreo de un pedido los fija el servidor**
   (trigger `prepare_new_order`), no el navegador: nadie puede crear un
   pedido ya marcado como "entregado" ni elegir su propio código.
+- **Los cambios del admin sobre negociantes** pasan el trigger
+  `protect_merchant_columns` porque `admin_set_merchant_plan` y
+  `admin_set_merchant_active` marcan la transacción con
+  `set_config('anota.admin_write', 'on', true)` y el trigger además exige
+  `is_platform_admin()`. (Antes el trigger revertía también los cambios del
+  admin: `auth.uid()` sigue siendo el del admin dentro de una función
+  `security definer`.)
+- **Registro de actividad de admins** (`admin_activity_log`, sin políticas
+  RLS: solo se escribe desde funciones). Cada RPC de negociantes deja su
+  entrada; planes, dominios y agencias quedan registrados por triggers; el
+  inicio de sesión llega por `admin_log_login()`. El panel lo lee con
+  `admin_list_activity()` y muestra el nombre de `platform_admins.display_name`.
 - **Suscripción vencida = tienda suspendida**: `merchant_accepts_orders(id)`
   es verdadero solo si la tienda está activa y su plan sigue vigente (hoy
   solo vencen los planes de prueba: `plan_started_at + trial_days`).

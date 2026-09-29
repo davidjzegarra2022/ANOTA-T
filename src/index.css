@@ -440,3 +440,25 @@ html.theme-anim, html.theme-anim * {
 /* Top couriers: en oscuro el número va en el color de texto (el color del
    courier ya lo llevan el punto y la barra; el navy no se leería). */
 .dark .courier-count { color: var(--color-ink) !important; }
+
+/* --- Pantalla de carga animada (components/ClaudeCodeLoader.jsx) --- */
+.ccl svg * { transform-box: fill-box; transform-origin: center; }
+.ccl-body { animation: ccl-bob 0.9s ease-in-out infinite; }
+.ccl-eyes { animation: ccl-blink 3.6s infinite; }
+.ccl-spark { animation: ccl-spin 2.4s linear infinite; }
+.ccl-arm-l { animation: ccl-type 0.28s ease-in-out infinite alternate; }
+.ccl-arm-r { animation: ccl-type 0.28s ease-in-out 0.14s infinite alternate; }
+.ccl-line { transform-origin: left center; animation: ccl-write 2.8s steps(12, end) infinite; }
+.ccl-cursor { animation: ccl-caret 0.9s steps(1) infinite; }
+.ccl-float text { opacity: 0; animation: ccl-rise 3.2s ease-out infinite; }
+@keyframes ccl-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes ccl-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes ccl-spin { to { transform: rotate(360deg); } }
+@keyframes ccl-type { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+@keyframes ccl-write { 0% { transform: scaleX(0); } 45%, 85% { transform: scaleX(1); } 100% { transform: scaleX(1); opacity: 0; } }
+@keyframes ccl-caret { 50% { opacity: 0; } }
+@keyframes ccl-rise { 0% { opacity: 0; transform: translateY(10px) scale(.8); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-26px) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) {
+  .ccl svg * { animation: none !important; }
+  .ccl-float text { opacity: .8; }
+}

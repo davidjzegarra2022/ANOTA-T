@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import PasswordInput from './PasswordInput'
 import logoIcon from '../assets/logo-icon.png'
+import { adminLogLogin } from '../utils/adminMerchants'
 import { isPlatformAdmin, signInMerchant, signOutMerchant } from '../utils/supabaseAuth'
 import { logActivation } from '../utils/telemetry'
 import { IconShield } from './icons'
@@ -35,6 +36,7 @@ export default function AccessGate({ onUnlock }) {
       return setError('Esta cuenta no tiene permisos de administrador.')
     }
     logActivation({ type: 'admin' }) // fire-and-forget
+    await adminLogLogin() // queda en el registro de actividad de los admins
     onUnlock()
   }
 
