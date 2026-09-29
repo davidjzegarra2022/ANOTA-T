@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { fetchMyOrders, ORDER_STATUS_LABELS, updateOrderStatus } from '../../utils/orders'
 import { downloadOrderLabel } from '../../utils/label'
 import { deliveryMethodLabel } from '../../utils/orderSummary'
-import { exportOrdersToExcel } from '../../utils/ordersExport'
-import { IconChevronLeft, IconChevronRight, IconCheck, IconDownload, IconSearch, IconTag } from '../icons'
+import { exportOrdersToExcel, exportOrdersToPdf } from '../../utils/ordersExport'
+import { IconChevronLeft, IconChevronRight, IconCheck, IconDownload, IconFile, IconSearch, IconTag } from '../icons'
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -27,6 +27,22 @@ const STATUS_BADGE = {
   cancelled: 'bg-red-100 text-red-700',
 }
 
+function SelectBox({ checked, indeterminate = false, onChange, disabled, label, className = '' }) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      ref={(el) => {
+        if (el) el.indeterminate = indeterminate
+      }}
+      onChange={onChange}
+      disabled={disabled}
+      aria-label={label}
+      className={`h-4 w-4 shrink-0 cursor-pointer rounded accent-[#a16207] ${className}`}
+    />
+  )
+}
+
 export default function EnviosPage({ merchant }) {
   const [day, setDay] = useState(todayIso())
   const [rangeFrom, setRangeFrom] = useState('')
@@ -37,6 +53,8 @@ export default function EnviosPage({ merchant }) {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
   const [labelDone, setLabelDone] = useState(null)
+  const [selected, setSelected] = useState(() => new Set())
+  const [exporting, setExporting] = useState(null)
 
   const usingRange = Boolean(rangeFrom || rangeTo)
 
@@ -49,6 +67,8 @@ export default function EnviosPage({ merchant }) {
       search,
     })
     setOrders(rows)
+    // Conserva solo la selección de pedidos que siguen en la lista.
+    setSelected((prev) => new Set(rows.filter((o) => prev.has(o.id)).map((o) => o.id)))
     setLoading(false)
   }
 
@@ -62,6 +82,35 @@ export default function EnviosPage({ merchant }) {
     await downloadOrderLabel(order, merchant)
     setLabelDone(order.id)
     setTimeout(() => setLabelDone((id) => (id === order.id ? null : id)), 2000)
+  }
+
+  const selectedOrders = orders.filter((o) => selected.has(o.id))
+  const allSelected = orders.length > 0 && selectedOrders.length === orders.length
+  const someSelected = selectedOrders.length > 0 && !allSelected
+  // Con pedidos marcados exporta solo esos; sin marcar, toda la lista visible.
+  const exportTarget = selectedOrders.length ? selectedOrders : orders
+
+  function toggleOne(id) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(orders.map((o) => o.id)))
+  }
+
+  async function handleExport(kind) {
+    setExporting(kind)
+    try {
+      if (kind === 'pdf') await exportOrdersToPdf(exportTarget, { businessName: merchant?.businessName })
+      else await exportOrdersToExcel(exportTarget)
+    } finally {
+      setExporting(null)
+    }
   }
 
   async function handleStatusChange(id, newStatus) {
@@ -113,18 +162,48 @@ export default function EnviosPage({ merchant }) {
             <input type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} className="input-field min-w-0 flex-1 sm:w-auto sm:flex-none" />
           </div>
 
-          <button
-            type="button"
-            onClick={() => exportOrdersToExcel(orders)}
-            disabled={!orders.length}
-            className="btn btn-outline w-full sm:ml-auto sm:w-auto"
-          >
-            <IconDownload className="h-4 w-4" /> Excel
-          </button>
         </div>
       </div>
 
-      <p className="text-sm text-muted">{loading ? 'Cargando…' : `${orders.length} pedidos`}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <label
+          className={`flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-ink select-none ${
+            !orders.length ? 'pointer-events-none opacity-50' : ''
+          }`}
+        >
+          <SelectBox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} disabled={!orders.length} label="Seleccionar todos los pedidos" />
+          Todo
+        </label>
+        <p className="text-sm text-muted">
+          {loading
+            ? 'Cargando…'
+            : selectedOrders.length
+              ? `${selectedOrders.length} de ${orders.length} seleccionados`
+              : `${orders.length} pedidos`}
+        </p>
+        <div className="ml-auto flex w-full gap-2 sm:w-auto">
+          <button
+            type="button"
+            onClick={() => handleExport('excel')}
+            disabled={!orders.length || Boolean(exporting)}
+            className="btn btn-outline flex-1 sm:flex-none"
+            title={selectedOrders.length ? 'Exportar los pedidos seleccionados a Excel' : 'Exportar todos los pedidos de la lista a Excel'}
+          >
+            <IconDownload className="h-4 w-4" />
+            {exporting === 'excel' ? 'Exportando…' : `Excel${selectedOrders.length ? ` (${selectedOrders.length})` : ''}`}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleExport('pdf')}
+            disabled={!orders.length || Boolean(exporting)}
+            className="btn btn-outline flex-1 sm:flex-none"
+            title={selectedOrders.length ? 'Exportar los pedidos seleccionados a PDF' : 'Exportar todos los pedidos de la lista a PDF'}
+          >
+            <IconFile className="h-4 w-4" />
+            {exporting === 'pdf' ? 'Exportando…' : `PDF${selectedOrders.length ? ` (${selectedOrders.length})` : ''}`}
+          </button>
+        </div>
+      </div>
 
       {!loading && orders.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
@@ -136,8 +215,9 @@ export default function EnviosPage({ merchant }) {
             una pantalla de teléfono sin scroll horizontal). */}
         <ul className="space-y-2.5 md:hidden">
           {orders.map((o) => (
-            <li key={o.id} className="card p-3.5">
-              <div className="flex items-start gap-2">
+            <li key={o.id} className={`card p-3.5 ${selected.has(o.id) ? 'ring-2 ring-brand/60' : ''}`}>
+              <div className="flex items-start gap-2.5">
+                <SelectBox checked={selected.has(o.id)} onChange={() => toggleOne(o.id)} label={`Seleccionar pedido ${o.trackingCode || o.id}`} className="mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-ink">{o.customerName}</p>
                   <p className="font-mono text-xs text-brand-dark">{o.trackingCode}</p>
@@ -183,6 +263,9 @@ export default function EnviosPage({ merchant }) {
           <table className="w-full min-w-[920px] text-left text-[13px]">
             <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
               <tr>
+                <th className="w-10 py-2 pr-1 pl-3">
+                  <SelectBox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} disabled={!orders.length} label="Seleccionar todos los pedidos" />
+                </th>
                 <th className="px-3 py-2 font-semibold">Código</th>
                 <th className="px-3 py-2 font-semibold">Cliente</th>
                 <th className="px-3 py-2 font-semibold">WhatsApp</th>
@@ -194,8 +277,11 @@ export default function EnviosPage({ merchant }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {orders.map((o) => (
-                <tr key={o.id} className="text-ink">
-                  <td className="px-3 py-2 font-mono text-xs text-brand-dark">{o.trackingCode}</td>
+                <tr key={o.id} className={`text-ink ${selected.has(o.id) ? 'bg-amber-50/60' : ''}`}>
+                  <td className="w-10 py-2 pr-1 pl-3">
+                    <SelectBox checked={selected.has(o.id)} onChange={() => toggleOne(o.id)} label={`Seleccionar pedido ${o.trackingCode || o.id}`} />
+                  </td>
+                  <td className="px-3 py-2 font-mono text-xs whitespace-nowrap text-brand-dark">{o.trackingCode}</td>
                   <td className="px-3 py-2">{o.customerName}</td>
                   <td className="px-3 py-2 font-mono text-xs">{o.customerPhone}</td>
                   <td className="px-3 py-2 text-xs">{deliveryMethodLabel(o)}</td>

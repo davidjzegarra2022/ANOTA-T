@@ -28,11 +28,16 @@ function fromRow(row) {
   }
 }
 
-/** Crea un pedido — lo llama el formulario público, sin sesión (cliente final). */
+/**
+ * Crea un pedido — lo llama el formulario público, sin sesión (cliente final).
+ * Va por `submit_order` (security invoker: el INSERT sigue pasando por la
+ * política RLS pública) porque el cliente no puede leer `orders`, y así
+ * recibe el código de rastreo y el estado que fija el servidor.
+ */
 export async function createOrder(merchantId, form) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
-  const { error } = await supabase.from('orders').insert({
+  const row = {
     merchant_id: merchantId,
     customer_name: form.fullName,
     customer_phone: form.phone,
@@ -49,12 +54,21 @@ export async function createOrder(merchantId, form) {
     payment_method: form.paymentMethod || null,
     notes: form.notes || null,
     shipping_date: form.shippingDate?.value || null,
-  })
-  if (error) {
-    console.warn('[supabase] No se pudo guardar el pedido:', error.message)
-    return { ok: false, error: error.message }
   }
-  return { ok: true }
+  const { data, error } = await supabase.rpc('submit_order', { p: row })
+  if (!error) {
+    const created = data?.[0]
+    return { ok: true, trackingCode: created?.tracking_code || null, status: created?.status || 'pending' }
+  }
+  // Si la función aún no existe en esta base, guarda igual el pedido (sin código).
+  if (error.code === 'PGRST202') {
+    const res = await supabase.from('orders').insert(row)
+    if (!res.error) return { ok: true, trackingCode: null, status: 'pending' }
+    console.warn('[supabase] No se pudo guardar el pedido:', res.error.message)
+    return { ok: false, error: res.error.message }
+  }
+  console.warn('[supabase] No se pudo guardar el pedido:', error.message)
+  return { ok: false, error: error.message }
 }
 
 /** Pedidos del negociante logueado, opcionalmente filtrados por fecha de envío (shipping_date). */

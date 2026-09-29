@@ -409,6 +409,29 @@ language sql security definer set search_path = public as $$
 $$;
 grant execute on function public.track_order_by_code(text) to anon, authenticated;
 
+-- Inserta un pedido desde el formulario público y devuelve su código y estado
+-- (security invoker: respeta RLS; ver "Modelo de seguridad"). El trigger
+-- prepare_new_order hace además:
+--   perform set_config('anota.last_tracking_code', code, true);
+create or replace function public.submit_order(p jsonb)
+returns table(tracking_code text, status text)
+language plpgsql security invoker set search_path = public as $$
+begin
+  insert into public.orders (
+    merchant_id, customer_name, customer_phone, customer_dni, delivery_method,
+    courier, agency_label, agency_address, agency_reference, address,
+    department, province_district, reference, payment_method, notes, shipping_date
+  ) values (
+    (p->>'merchant_id')::uuid, p->>'customer_name', p->>'customer_phone', p->>'customer_dni', p->>'delivery_method',
+    p->>'courier', p->>'agency_label', p->>'agency_address', p->>'agency_reference', p->>'address',
+    p->>'department', p->>'province_district', p->>'reference', p->>'payment_method', p->>'notes',
+    nullif(p->>'shipping_date', '')::date
+  );
+  return query select current_setting('anota.last_tracking_code', true), 'pending'::text;
+end; $$;
+revoke all on function public.submit_order(jsonb) from public;
+grant execute on function public.submit_order(jsonb) to anon, authenticated;
+
 -- Administradores de plataforma --------------------------------------------
 -- El rol de admin NO vive en el navegador: vive en esta tabla, que nadie
 -- puede leer ni escribir desde el cliente. Las RPC `admin_*` lo consultan.
@@ -573,6 +596,13 @@ Detalles que conviene tener presentes:
 - **El estado y el código de rastreo de un pedido los fija el servidor**
   (trigger `prepare_new_order`), no el navegador: nadie puede crear un
   pedido ya marcado como "entregado" ni elegir su propio código.
+- **El cliente final recibe su código sin poder leer `orders`**: el
+  formulario inserta vía `submit_order(p jsonb)`, que es `security invoker`
+  (el INSERT sigue pasando por la política `orders_insert_public`, con las
+  mismas validaciones) y devuelve solo `tracking_code` y `status` del pedido
+  recién creado. El trigger deja el código en una variable local de la
+  transacción (`set_config('anota.last_tracking_code', …, true)`), así no
+  hace falta `INSERT … RETURNING`, que exigiría permiso de lectura.
 - **Un negociante no puede cambiarse el plan ni reactivarse solo**: el
   trigger `protect_merchant_columns` revierte `plan_id`, `active` y
   `plan_started_at` si la edición viene de una sesión de negociante. Esas
