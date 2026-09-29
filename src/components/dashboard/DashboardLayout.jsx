@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import logoIcon from '../../assets/logo-icon.png'
 import { fetchAcceptingOrders, fetchMyMerchant } from '../../utils/merchantProfile'
 import { supportWhatsAppUrl } from '../../utils/support'
+import ClaudeCodeLoader from '../ClaudeCodeLoader'
 import {
   IconBox,
   IconCard,
   IconGrid,
   IconLogout,
-  IconRefresh,
   IconSettings,
   IconSparkles,
   IconWhatsapp,
@@ -79,9 +79,8 @@ export default function DashboardLayout({ email, onLogout }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center gap-2 text-muted">
-        <IconRefresh className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Cargando…</span>
+      <div className="flex min-h-screen items-center justify-center bg-surface px-6">
+        <ClaudeCodeLoader />
       </div>
     )
   }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import AdminActivityLog from './AdminActivityLog'
 import AdminMerchantsManager from './AdminMerchantsManager'
 import AdminPlansManager from './AdminPlansManager'
 import AgencyManager from './AgencyManager'
@@ -315,6 +316,8 @@ export default function AdminDashboard({ onLogout, onOpenForm }) {
       </p>
       </>
       )}
+
+      <AdminActivityLog />
     </div>
   )
 }

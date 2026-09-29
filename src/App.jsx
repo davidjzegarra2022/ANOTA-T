@@ -5,7 +5,7 @@ import AuthGate from './components/auth/AuthGate'
 import DashboardLayout from './components/dashboard/DashboardLayout'
 import Footer from './components/Footer'
 import Header from './components/Header'
-import { IconRefresh } from './components/icons'
+import ClaudeCodeLoader from './components/ClaudeCodeLoader'
 import LandingPage from './components/LandingPage'
 import ShippingForm from './components/ShippingForm'
 import SuccessScreen from './components/SuccessScreen'
@@ -28,9 +28,8 @@ const ADMIN_PREVIEW_MERCHANT = {
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-screen items-center justify-center gap-2 text-muted">
-      <IconRefresh className="h-4 w-4 animate-spin" />
-      <span className="text-sm">Cargando…</span>
+    <div className="flex min-h-screen items-center justify-center bg-surface px-6">
+      <ClaudeCodeLoader />
     </div>
   )
 }
