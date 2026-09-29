@@ -378,6 +378,13 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
             }}
             error={showError('dni') ? errors.dni : null}
           />
+          {/* Recordatorio apenas el documento está completo (8 dígitos DNI o CE válido). */}
+          {isValidDni(form.dni) && (
+            <p role="note" className="animate-fade-in-up flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[13px] leading-relaxed font-semibold text-amber-800">
+              <span aria-hidden="true">⚠️</span>
+              Recuerda colocar correctamente tus datos, evita inconvenientes en el futuro. Revisa si colocaste los datos correctamente.
+            </p>
+          )}
         </div>
       )}
 
