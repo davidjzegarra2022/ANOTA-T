@@ -267,7 +267,7 @@ export default function LandingPage() {
             <div className="reveal">
               <p className="mb-2 text-[13px] font-extrabold tracking-wide text-brand-dark">PANEL EN TIEMPO REAL</p>
               <h2 className="mb-3 text-[32px] font-extrabold tracking-tight sm:text-[40px]">
-                ¿Cómo va tu <span className="text-brand">formulario?</span>
+                ¿Cómo va tu <span className="text-brand">pedido?</span>
               </h2>
               <p className="text-slate-300">Ingresa tu código de formulario para consultar su estado.</p>
             </div>

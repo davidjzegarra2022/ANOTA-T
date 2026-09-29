@@ -44,8 +44,8 @@ function PublicShippingRoute({ slug }) {
   }, [slug])
 
   async function handleSubmit(form) {
-    await createOrder(merchant.id, form)
-    setSubmittedForm(form)
+    const res = await createOrder(merchant.id, form)
+    setSubmittedForm(res.ok ? { ...form, trackingCode: res.trackingCode, orderStatus: res.status } : form)
   }
 
   if (merchant === undefined) return <LoadingScreen />

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { COURIERS } from '../data/agencies'
 import { PAYMENT_LABELS } from '../data/paymentMethods'
 import { copyText } from '../utils/clipboard'
+import { ORDER_STATUS_LABELS } from '../utils/orders'
 import { buildWhatsAppSummary, buildWhatsAppUrl } from '../utils/whatsapp'
 import { IconArrowLeft, IconCheck, IconCopy, IconWhatsapp } from './icons'
 
@@ -45,6 +46,18 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
 
       <div className="animate-fade-in-up mt-6 w-full space-y-2.5 card p-5 text-left shadow-xl">
         <p className="text-[11px] font-bold tracking-wide text-muted uppercase">Resumen</p>
+
+        {form.trackingCode && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-semibold tracking-wide text-muted uppercase">Código de pedido</p>
+              <p className="font-mono text-sm font-bold text-brand-dark">{form.trackingCode}</p>
+            </div>
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+              {ORDER_STATUS_LABELS[form.orderStatus] ?? 'Pendiente'}
+            </span>
+          </div>
+        )}
 
         <p className="text-sm font-bold text-navy">
           📦 {DELIVERY_TITLES[form.deliveryMethod] ?? 'Nuevo pedido'}
@@ -123,6 +136,12 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
         </button>
       </div>
       {copied && <p className="mt-2 text-xs font-medium text-emerald-600">Resumen copiado</p>}
+      {form.trackingCode && (
+        <p className="mt-3 text-xs leading-relaxed text-muted">
+          Guarda tu código <span className="font-mono font-semibold text-ink">{form.trackingCode}</span> para consultar el estado de tu pedido en{' '}
+          <a href="/#rastreo" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-dark hover:underline">Rastrear pedido</a>.
+        </p>
+      )}
 
       <div className="mt-3 flex w-full items-center gap-2.5">
         {onBackToPanel && (

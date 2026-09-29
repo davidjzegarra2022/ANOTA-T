@@ -1,12 +1,15 @@
 import { COURIERS } from '../data/agencies'
 import { PAYMENT_LABELS } from '../data/paymentMethods'
 import { dateFieldLabel } from './dates'
+import { ORDER_STATUS_LABELS } from './orders'
 
 const DELIVERY_TITLES = {
   store: 'NUEVO PEDIDO (RECOJO EN TIENDA)',
   agency: 'NUEVO ENVÍO (AGENCIA)',
   home: 'NUEVO PEDIDO (ENVÍO A DOMICILIO)',
 }
+
+const TRACKING_URL = `${typeof window !== 'undefined' ? window.location.host : 'anotat.vercel.app'}/#rastreo`
 
 function line(emoji, label, value) {
   if (!value) return null
@@ -16,6 +19,9 @@ function line(emoji, label, value) {
 export function buildWhatsAppSummary(form, merchant) {
   const lines = [`📦 *${DELIVERY_TITLES[form.deliveryMethod] ?? 'NUEVO PEDIDO'}*`, '']
 
+  lines.push(line('🔖', 'Código', form.trackingCode))
+  lines.push(line('📌', 'Estado', form.trackingCode ? ORDER_STATUS_LABELS[form.orderStatus] ?? 'Pendiente' : null))
+  if (form.trackingCode) lines.push('')
   lines.push(line('🏪', 'Tienda', merchant?.businessName))
   lines.push(line('👤', 'Cliente', form.fullName))
   lines.push(line('📱', 'WhatsApp', form.phone ? `+51 ${form.phone}` : ''))
@@ -40,6 +46,11 @@ export function buildWhatsAppSummary(form, merchant) {
   lines.push('')
   lines.push(line('📅', dateFieldLabel(form.deliveryMethod), form.shippingDate?.shortLabel))
   lines.push(line('🗒️', 'Notas', form.notes))
+
+  if (form.trackingCode) {
+    lines.push('')
+    lines.push(`🔎 Consulta el estado de tu pedido en ${TRACKING_URL} con tu código ${form.trackingCode}`)
+  }
 
   return lines.filter((l) => l !== null).join('\n')
 }
