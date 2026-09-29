@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import logoIcon from '../../assets/logo-icon.png'
 import { fetchAcceptingOrders, fetchMyMerchant } from '../../utils/merchantProfile'
+import { supportWhatsAppUrl } from '../../utils/support'
 import {
   IconBox,
   IconCard,
@@ -9,6 +10,7 @@ import {
   IconRefresh,
   IconSettings,
   IconSparkles,
+  IconWhatsapp,
   IconUsers,
   IconX,
 } from '../icons'
@@ -88,8 +90,16 @@ export default function DashboardLayout({ email, onLogout }) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-surface px-6 text-center">
         <p className="text-lg font-bold text-navy">Tu cuenta está desactivada</p>
-        <p className="max-w-sm text-sm text-muted">Contacta al administrador de la plataforma para reactivarla.</p>
-        <button type="button" onClick={onLogout} className="btn btn-outline mt-2">
+        <p className="max-w-sm text-sm text-muted">Escríbenos por WhatsApp y te ayudamos a reactivarla.</p>
+        <a
+          href={supportWhatsAppUrl('reactivate', { email })}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600"
+        >
+          <IconWhatsapp className="h-4 w-4" /> Pedir apoyo por WhatsApp
+        </a>
+        <button type="button" onClick={onLogout} className="btn btn-outline">
           Salir
         </button>
       </div>
@@ -207,9 +217,14 @@ export default function DashboardLayout({ email, onLogout }) {
                       Tus clientes ven un aviso de que la tienda no está recibiendo pedidos. Renueva tu plan para volver a recibirlos.
                     </p>
                   </div>
-                  <button type="button" onClick={() => selectTab('planes')} className="btn btn-primary shrink-0">
-                    Renovar plan
-                  </button>
+                  <a
+                    href={supportWhatsAppUrl('renew', { merchant })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600"
+                  >
+                    <IconWhatsapp className="h-4 w-4" /> Renovar plan
+                  </a>
                 </div>
               )}
               {tab === 'envios' && <EnviosPage merchant={merchant} />}

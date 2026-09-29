@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { fetchMyOrders } from '../../utils/orders'
 import { fetchActivePlans, trialEndsAt } from '../../utils/plans'
-import { IconRefresh } from '../icons'
+import { supportWhatsAppUrl } from '../../utils/support'
+import { IconRefresh, IconWhatsapp } from '../icons'
 
 function startOfMonthIso() {
   const d = new Date()
@@ -44,8 +45,11 @@ export default function SuscripcionPage({ merchant }) {
       {!plan ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
           <p className="text-sm text-muted">
-            Todavía no tienes un plan asignado. Escríbele al administrador para que te active uno.
+            Todavía no tienes un plan asignado. Escríbenos y te activamos uno.
           </p>
+          <a href={supportWhatsAppUrl('activate', { merchant })} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600">
+            <IconWhatsapp className="h-4 w-4" /> Activar un plan
+          </a>
         </div>
       ) : (
         <div className="card p-5">
@@ -76,9 +80,23 @@ export default function SuscripcionPage({ merchant }) {
             )
           )}
 
+          <a
+            href={
+              trialEnd
+                ? supportWhatsAppUrl(trialDaysLeft > 0 ? 'upgrade' : 'renew', { merchant, daysLeft: trialDaysLeft })
+                : supportWhatsAppUrl('improve', { merchant, planName: plan.name })
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600"
+          >
+            <IconWhatsapp className="h-4 w-4" />
+            {trialEnd ? (trialDaysLeft > 0 ? 'Pasar a un plan pagado' : 'Renovar plan') : 'Mejorar mi plan'}
+          </a>
+
           <p className="mt-4 text-xs leading-relaxed text-muted">
-            El cobro y el cambio de plan los gestiona el administrador manualmente por ahora — no hay pasarela
-            de pago integrada. Ve a la pestaña "Planes" para ver las opciones disponibles.
+            El cobro y el cambio de plan los gestiona soporte de ANOTA-T por WhatsApp — no hay pasarela de pago
+            integrada. Ve a la pestaña "Planes" para ver las opciones disponibles.
           </p>
         </div>
       )}

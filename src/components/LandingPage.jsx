@@ -4,6 +4,7 @@ import registroExitoso from '../assets/registro-exitoso.jpg'
 import logoIcon from '../assets/logo-icon.png'
 import { fetchActivePlans } from '../utils/plans'
 import { trackOrderByCode, ORDER_STATUS_LABELS } from '../utils/orders'
+import { supportWhatsAppUrl } from '../utils/support'
 import { IconCheck } from './icons'
 
 const FEATURES = [
@@ -43,7 +44,12 @@ function PlanCard({ plan, featured }) {
           </li>
         ))}
       </ul>
-      <a href="/signup" className={`btn w-full ${featured ? 'btn-primary' : 'btn-dark'}`}>
+      {/* La prueba gratis se crea sola; los planes pagados los activa soporte. */}
+      <a
+        href={plan.trialDays ? '/signup' : supportWhatsAppUrl('interested', { planName: plan.name })}
+        {...(plan.trialDays ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+        className={`btn w-full ${featured ? 'btn-primary' : 'btn-dark'}`}
+      >
         {plan.trialDays ? 'Probar gratis' : `Elegir ${plan.name}`}
       </a>
     </article>
@@ -328,6 +334,7 @@ export default function LandingPage() {
           <div>
             <h4 className="mb-4 font-bold text-brand">Soporte</h4>
             <div className="space-y-2 text-[13px] text-slate-300">
+              <a href={supportWhatsAppUrl('info')} target="_blank" rel="noopener noreferrer" className="block hover:text-brand">Soporte por WhatsApp</a>
               <a href="#contacto" className="block hover:text-brand">Preguntas frecuentes</a>
               <a href="#contacto" className="block hover:text-brand">Términos y condiciones</a>
             </div>

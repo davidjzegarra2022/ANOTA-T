@@ -15,6 +15,26 @@ const TEMPLATES = [
   { courier: 'Marvisur', description: 'Carga masiva de envíos para Marvisur.', file: null },
 ]
 
+// Un color por estado (mismos tonos que las pastillas de Envíos).
+const STATUS_BAR = {
+  pending: 'bg-amber-500',
+  confirmed: 'bg-cyan-500',
+  shipped: 'bg-blue-600',
+  delivered: 'bg-emerald-500',
+  cancelled: 'bg-red-500',
+}
+
+// Color de cada courier en "Top couriers". `bar` pinta la barra y el punto;
+// `text` el número (con contraste suficiente sobre fondo blanco).
+const COURIER_COLORS = {
+  shalom: { bar: '#dc2626', text: '#b91c1c' }, // rojo
+  marvisur: { bar: 'linear-gradient(90deg, #d7dce2, #9aa3ad)', dot: '#a3acb6', text: '#5f6b77' }, // plata
+  emtrafesa: { bar: '#2563eb', text: '#1d4ed8' }, // azul
+  flores: { bar: '#facc15', text: '#a16207' }, // amarillo
+  olva: { bar: '#7c3aed', text: '#6d28d9' },
+}
+const DEFAULT_COURIER_COLOR = { bar: '#0c2c41', text: '#0c2c41' }
+
 function startOfMonthIso() {
   const d = new Date()
   d.setDate(1)
@@ -135,7 +155,7 @@ export default function PanelProPage({ merchant }) {
                 <div key={status} className="flex items-center gap-2">
                   <span className="w-20 shrink-0 text-xs text-ink sm:w-24">{label}</span>
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
-                    <div className="h-full rounded-full bg-navy" style={{ width: `${pctBar}%` }} />
+                    <div className={`h-full rounded-full ${STATUS_BAR[status] || 'bg-navy'}`} style={{ width: `${pctBar}%` }} />
                   </div>
                   <span className="w-6 shrink-0 text-right text-xs text-muted">{count}</span>
                 </div>
@@ -152,12 +172,22 @@ export default function PanelProPage({ merchant }) {
           <p className="mt-4 text-center text-sm text-muted">Aún no hay pedidos suficientes.</p>
         ) : (
           <div className="mt-3 space-y-2">
-            {stats.topCouriers.map(([courier, count]) => (
-              <div key={courier} className="flex items-center justify-between text-sm text-ink">
-                <span className="capitalize">{courier}</span>
-                <span className="font-semibold text-brand-dark">{count}</span>
-              </div>
-            ))}
+            {stats.topCouriers.map(([courier, count]) => {
+              const color = COURIER_COLORS[String(courier).toLowerCase()] || DEFAULT_COURIER_COLOR
+              const max = stats.topCouriers[0][1]
+              return (
+                <div key={courier} className="flex items-center gap-2 text-sm text-ink">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.dot || color.bar }} />
+                  <span className="w-24 shrink-0 capitalize sm:w-28">{courier}</span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
+                    <div className="h-full rounded-full" style={{ width: `${Math.round((count / max) * 100)}%`, background: color.bar }} />
+                  </div>
+                  <span className="courier-count w-6 shrink-0 text-right font-semibold" style={{ color: color.text }}>
+                    {count}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

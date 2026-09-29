@@ -437,3 +437,6 @@ html.theme-anim, html.theme-anim * {
 }
 .dark .text-slate-600 { color: var(--color-muted); }
 .dark .form-lines::before { opacity: .42; }
+/* Top couriers: en oscuro el número va en el color de texto (el color del
+   courier ya lo llevan el punto y la barra; el navy no se leería). */
+.dark .courier-count { color: var(--color-ink) !important; }
