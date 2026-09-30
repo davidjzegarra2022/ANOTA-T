@@ -21,6 +21,7 @@ import {
   fetchAllSupabaseAgencies,
   insertAgenciesToSupabase,
 } from '../utils/supabaseAgencies'
+import CourierAgenciesPanel from './CourierAgenciesPanel'
 import { IconBox, IconCheck, IconDownload, IconRefresh, IconTrash } from './icons'
 
 const NEW_COURIER = '__new__'
@@ -68,6 +69,10 @@ export default function AgencyManager() {
   const [couriers, setCouriers] = useState(() => getKnownCouriers())
   const [form, setForm] = useState(EMPTY)
   const [addMsg, setAddMsg] = useState(null)
+  // Lista desplegable de agencias por courier + contraseña de edición
+  // (vive solo en memoria mientras el panel está abierto).
+  const [openCourier, setOpenCourier] = useState(null)
+  const [editPin, setEditPin] = useState(null)
 
   const [importFormat, setImportFormat] = useState('listado')
   const [importCourier, setImportCourier] = useState('shalom')
@@ -326,18 +331,42 @@ export default function AgencyManager() {
       </div>
 
       {/* Resumen por courier */}
+      <p className="text-xs text-muted">Toca un courier para ver y modificar sus agencias.</p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {couriers.map((c) => (
-          <div key={c.id} className="card p-3">
-            <p className="text-sm font-semibold text-navy">{c.label}</p>
-            <p className="mt-1 space-x-1.5 text-xs text-muted">
-              <span>{counts.builtIn[c.id] || 0} oficiales</span>
-              {counts.shared[c.id] ? <span className="text-cyan-700">· {counts.shared[c.id]} Supabase</span> : null}
-              {counts.cust[c.id] ? <span className="text-brand-dark">· {counts.cust[c.id]} local</span> : null}
-            </p>
-          </div>
-        ))}
+        {couriers.map((c) => {
+          const isOpen = openCourier?.id === c.id
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setOpenCourier(isOpen ? null : c)}
+              aria-expanded={isOpen}
+              className={`card p-3 text-left transition hover:border-brand ${isOpen ? 'border-brand ring-2 ring-brand/40' : ''}`}
+            >
+              <p className="flex items-center justify-between gap-2 text-sm font-semibold text-navy">
+                {c.label}
+                <span className={`text-muted transition ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true">▾</span>
+              </p>
+              <p className="mt-1 space-x-1.5 text-xs text-muted">
+                <span>{counts.builtIn[c.id] || 0} oficiales</span>
+                {counts.shared[c.id] ? <span className="text-cyan-700">· {counts.shared[c.id]} Supabase</span> : null}
+                {counts.cust[c.id] ? <span className="text-brand-dark">· {counts.cust[c.id]} local</span> : null}
+              </p>
+            </button>
+          )
+        })}
       </div>
+
+      {openCourier && (
+        <CourierAgenciesPanel
+          courier={openCourier}
+          sbRows={sbRows}
+          pin={editPin}
+          onPin={setEditPin}
+          onClose={() => setOpenCourier(null)}
+          onSupabaseChanged={refreshSupabase}
+        />
+      )}
 
       {/* ---- Supabase: conexión ---- */}
       <div className="card p-4">

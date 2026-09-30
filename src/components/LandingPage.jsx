@@ -5,7 +5,7 @@ import logoIcon from '../assets/logo-icon.png'
 import { fetchActivePlans } from '../utils/plans'
 import { trackOrderByCode, ORDER_STATUS_LABELS } from '../utils/orders'
 import { supportWhatsAppUrl } from '../utils/support'
-import { IconCheck } from './icons'
+import { IconCheck, IconWhatsapp } from './icons'
 
 const FEATURES = [
   { icon: '▣', title: 'Formulario universal', text: 'Completa tus datos una sola vez y genera el formulario para cualquier agencia.' },
@@ -342,6 +342,14 @@ export default function LandingPage() {
           <div>
             <h4 className="mb-4 font-bold text-brand">Contáctanos</h4>
             <p className="mb-2 text-[13px] text-slate-300">✉ helpanotat@gmail.com</p>
+            <a
+              href={supportWhatsAppUrl('info')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold text-emerald-300 hover:text-brand"
+            >
+              <IconWhatsapp className="h-4 w-4" /> +51 970 804 662
+            </a>
             <p className="text-[13px] text-slate-300">📍 Lima, Perú</p>
           </div>
         </div>

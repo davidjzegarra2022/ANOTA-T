@@ -603,6 +603,15 @@ Detalles que conviene tener presentes:
   `is_platform_admin()`. (Antes el trigger revertía también los cambios del
   admin: `auth.uid()` sigue siendo el del admin dentro de una función
   `security definer`.)
+- **Edición de agencias con contraseña**: en /admin → Base de datos, cada
+  courier se despliega con sus agencias. Editar, ocultar o eliminar exige
+  sesión de admin **y** la contraseña de edición, que la base valida con
+  `check_edit_pin()` contra `admin_edit_pins` (solo guarda hashes bcrypt;
+  sin políticas RLS). Las agencias oficiales vienen en el código, así que
+  sus cambios se guardan como parches en `agency_overrides` (lectura
+  pública) y el formulario los aplica encima (`utils/agencyOverrides.js`);
+  las de Supabase se editan directo con `admin_update_agency` /
+  `admin_delete_agency`. Todo queda en el registro de actividad.
 - **Registro de actividad de admins** (`admin_activity_log`, sin políticas
   RLS: solo se escribe desde funciones). Cada RPC de negociantes deja su
   entrada; planes, dominios y agencias quedan registrados por triggers; el
