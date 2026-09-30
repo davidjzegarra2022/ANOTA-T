@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { getAgenciesForCourier } from '../data/agencies'
 import { formatDistance, getCurrentPosition, sortByDistance } from '../utils/geo'
 import { fetchSupabaseAgenciesForCourier } from '../utils/supabaseAgencies'
+import { applyAgencyOverrides, fetchAgencyOverrides } from '../utils/agencyOverrides'
 import { IconPin, IconSearch, IconX } from './icons'
 
 function normalize(s) {
@@ -29,6 +30,8 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
   // corresponden para no mostrar resultados de un courier anterior mientras
   // responde el fetch del nuevo (en vez de "limpiar" el estado a mano).
   const [supabaseState, setSupabaseState] = useState({ courierId: null, rows: [] })
+  // Cambios del admin sobre las agencias oficiales (editadas u ocultas).
+  const [overrides, setOverrides] = useState(null)
   const containerRef = useRef(null)
   const dropdownRef = useRef(null)
 
@@ -36,6 +39,9 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
     let alive = true
     fetchSupabaseAgenciesForCourier(courierId).then((rows) => {
       if (alive) setSupabaseState({ courierId, rows })
+    })
+    fetchAgencyOverrides().then((map) => {
+      if (alive) setOverrides(map)
     })
     return () => {
       alive = false
@@ -69,7 +75,7 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
   }, [open])
 
   const results = useMemo(() => {
-    const all = [...getAgenciesForCourier(courierId), ...supabaseAgencies]
+    const all = [...applyAgencyOverrides(getAgenciesForCourier(courierId), overrides), ...supabaseAgencies]
     const q = query.trim()
     let list = nearMe && userLoc ? sortByDistance(all, userLoc) : all
 
@@ -82,7 +88,7 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
       list = list.slice(0, 6)
     }
     return list.slice(0, 8)
-  }, [courierId, query, nearMe, userLoc, supabaseAgencies])
+  }, [courierId, query, nearMe, userLoc, supabaseAgencies, overrides])
 
   async function handleUseLocation() {
     setGeoLoading(true)
