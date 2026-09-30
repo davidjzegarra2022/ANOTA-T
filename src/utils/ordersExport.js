@@ -1,4 +1,4 @@
-import { ORDER_STATUS_LABELS } from './orders'
+import { ORDER_STATUS_LABELS, orderDayLabel, orderTimeLabel } from './orders'
 import { deliveryMethodLabel } from './orderSummary'
 
 function stamp() {
@@ -10,8 +10,9 @@ function stamp() {
 export async function exportOrdersToExcel(orders, filename = 'envios', { dated = true } = {}) {
   const XLSX = await import('xlsx')
   const rows = orders.map((o) => ({
+    'N° pedido': o.orderNumber ?? '',
+    'Hora de envío del formulario': o.createdAt ? `${orderDayLabel(o)} ${orderTimeLabel(o)}` : '',
     'Código': o.trackingCode || '',
-    'N° pedido': o.id,
     Cliente: o.customerName,
     WhatsApp: o.customerPhone,
     'DNI/CE': o.customerDni || '',
@@ -54,8 +55,10 @@ export async function exportOrdersToPdf(orders, { businessName, filename = 'envi
 
   autoTable(doc, {
     startY: 72,
-    head: [['Código', 'Cliente', 'WhatsApp', 'DNI/CE', 'Método', 'Agencia / Dirección', 'Fecha envío', 'Estado']],
+    head: [['N°', 'Hora', 'Código', 'Cliente', 'WhatsApp', 'DNI/CE', 'Método', 'Agencia / Dirección', 'Fecha envío', 'Estado']],
     body: orders.map((o) => [
+      o.orderNumber != null ? `#${o.orderNumber}` : '',
+      o.createdAt ? `${orderDayLabel(o)} ${orderTimeLabel(o)}` : '',
       o.trackingCode || '',
       o.customerName || '',
       o.customerPhone || '',
@@ -68,7 +71,7 @@ export async function exportOrdersToPdf(orders, { businessName, filename = 'envi
     styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 5, textColor: [30, 41, 59], overflow: 'linebreak' },
     headStyles: { fillColor: [11, 31, 58], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245, 247, 250] },
-    columnStyles: { 0: { font: 'courier', fontStyle: 'bold', textColor: [161, 98, 7] }, 5: { cellWidth: 190 } },
+    columnStyles: { 0: { fontStyle: 'bold' }, 2: { font: 'courier', fontStyle: 'bold', textColor: [161, 98, 7] }, 7: { cellWidth: 160 } },
     margin: { left: 40, right: 40 },
     didDrawPage: () => {
       const { width, height } = doc.internal.pageSize

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchMyOrders, ORDER_STATUS_LABELS, updateOrderStatus } from '../../utils/orders'
+import { fetchMyOrders, ORDER_STATUS_LABELS, orderDayLabel, orderTimeLabel, updateOrderStatus } from '../../utils/orders'
 import { deliveryMethodLabel } from '../../utils/orderSummary'
 import { exportOrdersToExcel, exportOrdersToPdf } from '../../utils/ordersExport'
 import { IconChevronLeft, IconChevronRight, IconDownload, IconFile, IconSearch, IconTag } from '../icons'
@@ -25,6 +25,14 @@ const STATUS_BADGE = {
   shipped: 'bg-blue-100 text-blue-700',
   delivered: 'bg-emerald-100 text-emerald-700',
   cancelled: 'bg-red-100 text-red-700',
+}
+
+function OrderNumber({ n }) {
+  return (
+    <span className="inline-flex min-w-7 shrink-0 items-center justify-center rounded-lg bg-navy px-1.5 py-0.5 font-mono text-[11px] font-bold text-brand tabular-nums">
+      #{n}
+    </span>
+  )
 }
 
 function SelectBox({ checked, indeterminate = false, onChange, disabled, label, className = '' }) {
@@ -58,12 +66,15 @@ export default function EnviosPage({ merchant }) {
   const [exporting, setExporting] = useState(null)
 
   const usingRange = Boolean(rangeFrom || rangeTo)
+  // Al buscar sin rango de fechas se busca en TODOS los días (para encontrar
+  // un pedido por número, nombre, día u hora aunque no sea de hoy).
+  const searchingAll = Boolean(search.trim()) && !usingRange
 
   async function refresh() {
     setLoading(true)
     const rows = await fetchMyOrders({
-      shippingDateFrom: usingRange ? rangeFrom || undefined : day,
-      shippingDateTo: usingRange ? rangeTo || undefined : day,
+      shippingDateFrom: usingRange ? rangeFrom || undefined : searchingAll ? undefined : day,
+      shippingDateTo: usingRange ? rangeTo || undefined : searchingAll ? undefined : day,
       status: status || undefined,
       search,
     })
@@ -127,10 +138,24 @@ export default function EnviosPage({ merchant }) {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar N° de pedido, cliente o WhatsApp…"
+            placeholder="Buscar N° de pedido, cliente, código, día u hora…"
+            maxLength={80}
+            enterKeyHint="search"
+            aria-label="Buscar pedidos"
             className="min-w-0 flex-1 bg-transparent focus:outline-none"
           />
+          {search && (
+            <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda" className="shrink-0 rounded-md px-1.5 text-muted hover:text-navy">
+              ✕
+            </button>
+          )}
         </div>
+        {searchingAll && (
+          <p className="mt-2 text-xs text-muted">
+            Buscando en <b>todas las fechas</b>. Prueba: <span className="font-mono">#12</span>, un nombre, <span className="font-mono">30/09</span>,{' '}
+            <span className="font-mono">lunes</span> o <span className="font-mono">10:26</span>.
+          </p>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="input-field w-full sm:w-auto">
@@ -223,8 +248,14 @@ export default function EnviosPage({ merchant }) {
               <div className="flex items-start gap-2.5">
                 <SelectBox checked={selected.has(o.id)} onChange={() => toggleOne(o.id)} label={`Seleccionar pedido ${o.trackingCode || o.id}`} className="mt-0.5" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-ink">{o.customerName}</p>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    {o.orderNumber != null && <OrderNumber n={o.orderNumber} />}
+                    <span className="truncate">{o.customerName}</span>
+                  </p>
                   <p className="font-mono text-xs text-brand-dark">{o.trackingCode}</p>
+                  <p className="text-[11px] text-muted">
+                    Enviado {orderDayLabel(o)} · {orderTimeLabel(o)}
+                  </p>
                 </div>
                 <select
                   value={o.status}
@@ -263,12 +294,14 @@ export default function EnviosPage({ merchant }) {
         </ul>
 
         <div className="card hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[920px] text-left text-[13px]">
+          <table className="w-full min-w-[1040px] text-left text-[13px]">
             <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
               <tr>
                 <th className="w-10 py-2 pr-1 pl-3">
                   <SelectBox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} disabled={!orders.length} label="Seleccionar todos los pedidos" />
                 </th>
+                <th className="px-3 py-2 font-semibold">N°</th>
+                <th className="px-3 py-2 font-semibold">Hora</th>
                 <th className="px-3 py-2 font-semibold">Código</th>
                 <th className="px-3 py-2 font-semibold">Cliente</th>
                 <th className="px-3 py-2 font-semibold">WhatsApp</th>
@@ -283,6 +316,11 @@ export default function EnviosPage({ merchant }) {
                 <tr key={o.id} className={`text-ink ${selected.has(o.id) ? 'bg-amber-50/60' : ''}`}>
                   <td className="w-10 py-2 pr-1 pl-3">
                     <SelectBox checked={selected.has(o.id)} onChange={() => toggleOne(o.id)} label={`Seleccionar pedido ${o.trackingCode || o.id}`} />
+                  </td>
+                  <td className="px-3 py-2">{o.orderNumber != null && <OrderNumber n={o.orderNumber} />}</td>
+                  <td className="px-3 py-2 text-xs whitespace-nowrap">
+                    <span className="font-semibold">{orderTimeLabel(o)}</span>
+                    <span className="block text-[11px] text-muted">{orderDayLabel(o)}</span>
                   </td>
                   <td className="px-3 py-2 font-mono text-xs whitespace-nowrap text-brand-dark">{o.trackingCode}</td>
                   <td className="px-3 py-2">{o.customerName}</td>

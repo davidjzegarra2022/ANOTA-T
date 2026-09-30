@@ -603,6 +603,25 @@ Detalles que conviene tener presentes:
   `is_platform_admin()`. (Antes el trigger revertía también los cambios del
   admin: `auth.uid()` sigue siendo el del admin dentro de una función
   `security definer`.)
+- **N° de pedido correlativo por tienda** (`orders.order_number`): lo fija el
+  trigger `prepare_new_order` (security definer, para ver todos los pedidos
+  de la tienda) con un candado por negociante contra duplicados, junto con
+  el código, el estado y la fecha. `protect_order_columns` impide que el
+  negociante reescriba número, código, tienda o fecha de un pedido.
+- **Cabeceras HTTP** (`vercel.json`): CSP estricta (solo scripts propios +
+  el hash del script del tema de `index.html`; si lo cambias, actualiza el
+  hash), `X-Frame-Options: DENY`, `nosniff`, HSTS, `Referrer-Policy` y
+  `Permissions-Policy`.
+- **Formulario público**: todo texto se limpia antes de enviarse
+  (`cleanText`: sin caracteres de control/invisibles ni RLO, con el mismo
+  tope de largo que valida la base) y React escapa todo lo que se muestra
+  (no hay `innerHTML`). La búsqueda de Envíos filtra en memoria: el texto
+  buscado nunca llega a la base.
+- **Pruebas de seguridad** (anon y negociante malicioso, en transacción con
+  rollback): lectura/edición/borrado de pedidos ajenos, autoasignarse plan
+  o rol admin, RPC de admin, inyección SQL, XSS, campos gigantes o vacíos,
+  estado/código/número falsificados y pedidos a tiendas suspendidas →
+  todo bloqueado o neutralizado.
 - **Edición de agencias con contraseña**: en /admin → Base de datos, cada
   courier se despliega con sus agencias. Editar, ocultar o eliminar exige
   sesión de admin **y** la contraseña de edición, que la base valida con

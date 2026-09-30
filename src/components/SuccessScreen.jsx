@@ -50,7 +50,9 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
         {form.trackingCode && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
             <div className="min-w-0">
-              <p className="text-[10.5px] font-semibold tracking-wide text-muted uppercase">Código de pedido</p>
+              <p className="text-[10.5px] font-semibold tracking-wide text-muted uppercase">
+                {form.orderNumber != null ? `Pedido N° ${form.orderNumber} · código` : 'Código de pedido'}
+              </p>
               <p className="font-mono text-sm font-bold text-brand-dark">{form.trackingCode}</p>
             </div>
             <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">

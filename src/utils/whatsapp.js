@@ -19,6 +19,7 @@ function line(emoji, label, value) {
 export function buildWhatsAppSummary(form, merchant) {
   const lines = [`📦 *${DELIVERY_TITLES[form.deliveryMethod] ?? 'NUEVO PEDIDO'}*`, '']
 
+  lines.push(line('#️⃣', 'N° de pedido', form.orderNumber != null ? String(form.orderNumber) : null))
   lines.push(line('🔖', 'Código', form.trackingCode))
   lines.push(line('📌', 'Estado', form.trackingCode ? ORDER_STATUS_LABELS[form.orderStatus] ?? 'Pendiente' : null))
   if (form.trackingCode) lines.push('')

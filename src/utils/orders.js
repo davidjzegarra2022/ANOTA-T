@@ -8,6 +8,7 @@ function fromRow(row) {
   return {
     id: row.id,
     trackingCode: row.tracking_code,
+    orderNumber: row.order_number,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerDni: row.customer_dni,
@@ -58,7 +59,12 @@ export async function createOrder(merchantId, form) {
   const { data, error } = await supabase.rpc('submit_order', { p: row })
   if (!error) {
     const created = data?.[0]
-    return { ok: true, trackingCode: created?.tracking_code || null, status: created?.status || 'pending' }
+    return {
+      ok: true,
+      trackingCode: created?.tracking_code || null,
+      orderNumber: created?.order_number ?? null,
+      status: created?.status || 'pending',
+    }
   }
   // Si la función aún no existe en esta base, guarda igual el pedido (sin código).
   if (error.code === 'PGRST202') {
@@ -70,6 +76,81 @@ export async function createOrder(merchantId, form) {
   console.warn('[supabase] No se pudo guardar el pedido:', error.message)
   // 42501 = la política RLS lo rechazó: la tienda está suspendida.
   return { ok: false, error: error.message, suspended: error.code === '42501' }
+}
+
+const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+function norm(text) {
+  return String(text ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+function pad(n) {
+  return String(n).padStart(2, '0')
+}
+
+/** Todas las formas en que alguien podría escribir una fecha/hora al buscar. */
+function dateTerms(date, withTime) {
+  if (!date || Number.isNaN(date.getTime())) return ''
+  const d = pad(date.getDate())
+  const m = pad(date.getMonth() + 1)
+  const y = date.getFullYear()
+  const parts = [`${y}-${m}-${d}`, `${d}/${m}/${y}`, `${d}/${m}`, `${d}-${m}`, WEEKDAYS[date.getDay()], MONTHS[date.getMonth()]]
+  if (withTime) {
+    const h = date.getHours()
+    const h12 = h % 12 || 12
+    const ampm = h < 12 ? 'am a.m. a. m.' : 'pm p.m. p. m.'
+    parts.push(`${pad(h)}:${pad(date.getMinutes())}`, `${h}:${pad(date.getMinutes())}`, `${h12}:${pad(date.getMinutes())} ${ampm}`)
+  }
+  return parts.join(' ')
+}
+
+/** Hora en que el cliente envió el formulario, ej. "10:26 a. m.". */
+export function orderTimeLabel(order) {
+  if (!order?.createdAt) return ''
+  return new Date(order.createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+}
+
+/** Fecha corta del envío del formulario, ej. "30/09". */
+export function orderDayLabel(order) {
+  if (!order?.createdAt) return ''
+  const d = new Date(order.createdAt)
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`
+}
+
+/**
+ * Búsqueda de Envíos: N° de pedido, código, cliente, WhatsApp, DNI, día y
+ * hora (del envío del formulario y de la fecha de envío). Cada palabra
+ * escrita tiene que aparecer. "#5", "n° 5" o "pedido 5" buscan EXACTAMENTE
+ * el pedido número 5. Solo filtra en memoria: el texto nunca viaja a la
+ * base de datos, así que no hay nada que inyectar.
+ */
+export function orderMatchesSearch(order, rawQuery) {
+  let q = norm(rawQuery).trim().slice(0, 80)
+  if (!q) return true
+  const exact = q.match(/^(?:#|n[°o.º]?\s*|pedido\s*(?:n[°o.º]?\s*)?)(\d+)$/)
+  if (exact) return Number(exact[1]) === Number(order.orderNumber)
+  const created = order.createdAt ? new Date(order.createdAt) : null
+  const shipping = order.shippingDate ? new Date(order.shippingDate + 'T00:00:00') : null
+  const haystack = norm(
+    [
+      order.orderNumber != null ? `#${order.orderNumber} ${order.orderNumber}` : '',
+      order.trackingCode,
+      order.customerName,
+      order.customerPhone,
+      order.customerDni,
+      order.courier,
+      order.agencyLabel,
+      order.address,
+      ORDER_STATUS_LABELS[order.status],
+      dateTerms(created, true),
+      dateTerms(shipping, false),
+    ].join(' '),
+  )
+  return q.split(/\s+/).every((word) => haystack.includes(word))
 }
 
 /** Pedidos del negociante logueado, opcionalmente filtrados por fecha de envío (shipping_date). */
@@ -85,17 +166,8 @@ export async function fetchMyOrders({ shippingDateFrom, shippingDateTo, status, 
     console.warn('[supabase] No se pudo leer los pedidos:', error.message)
     return []
   }
-  let rows = (data || []).map(fromRow)
-  if (search?.trim()) {
-    const q = search.trim().toLowerCase()
-    rows = rows.filter(
-      (o) =>
-        String(o.id).includes(q) ||
-        o.customerName?.toLowerCase().includes(q) ||
-        o.customerPhone?.toLowerCase().includes(q),
-    )
-  }
-  return rows
+  const rows = (data || []).map(fromRow)
+  return search?.trim() ? rows.filter((o) => orderMatchesSearch(o, search)) : rows
 }
 
 export async function updateOrderStatus(id, status) {
