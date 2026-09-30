@@ -68,7 +68,10 @@ function Label({ order, merchant }) {
       </div>
       <footer className="lbl-foot">
         <span className="lbl-courier">{courierName(order)}</span>
-        <span className="lbl-code">{order.trackingCode}</span>
+        <span className="lbl-code">
+          {order.orderNumber != null ? `#${order.orderNumber} · ` : ''}
+          {order.trackingCode}
+        </span>
         <span className="lbl-date">{fmtShippingDate(order.shippingDate)}</span>
       </footer>
     </article>

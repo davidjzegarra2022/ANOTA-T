@@ -136,6 +136,7 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
           <input
             type="text"
             value={query}
+            maxLength={80}
             placeholder="Escribe tu distrito o zona…"
             onFocus={() => setOpen(true)}
             onChange={(e) => {

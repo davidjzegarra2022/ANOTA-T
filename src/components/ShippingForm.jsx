@@ -7,7 +7,7 @@ import { DEPARTMENTS } from '../data/departments'
 import { PAYMENT_METHODS } from '../data/paymentMethods'
 import { generateAvailableDates } from '../utils/dates'
 import { extractCouriersFromRows, fetchAllSupabaseAgencies } from '../utils/supabaseAgencies'
-import { isNonEmpty, isValidDni, isValidPeruPhone } from '../utils/validation'
+import { cleanText, isNonEmpty, isValidDni, isValidPeruPhone, normalizePeruPhone } from '../utils/validation'
 import { lookupCustomerByDni } from '../utils/orders'
 
 // El listado de couriers no es fijo: además de los de fábrica (Shalom,
@@ -283,19 +283,27 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
         ? { label: form.manualAgencyName, address: form.manualAddress, reference: '' }
         : null
 
+    // Todo texto libre sale limpio y con el mismo tope que exige la base.
     onSubmit({
-      phone: form.phone,
+      phone: cleanText(form.phone, 20),
       deliveryMethod: isAgencyFlow ? 'agency' : form.deliveryMethod,
       courier: isAgencyFlow ? courierId : null,
-      agency,
-      dni: form.dni,
-      fullName: form.fullName,
-      address: form.address,
-      department: form.department,
-      provinceDistrict: form.provinceDistrict,
-      reference: form.reference,
-      paymentMethod: form.paymentMethod,
-      notes: form.notes,
+      agency: agency
+        ? {
+            ...agency,
+            label: cleanText(agency.label, 200),
+            address: cleanText(agency.address, 300),
+            reference: cleanText(agency.reference, 300),
+          }
+        : null,
+      dni: cleanText(form.dni, 12),
+      fullName: cleanText(form.fullName, 120),
+      address: cleanText(form.address, 300),
+      department: cleanText(form.department, 100),
+      provinceDistrict: cleanText(form.provinceDistrict, 150),
+      reference: cleanText(form.reference, 300),
+      paymentMethod: cleanText(form.paymentMethod, 50),
+      notes: cleanText(form.notes, 500),
       shippingDate: form.shippingDate,
     })
   }
@@ -309,10 +317,10 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
         prefix="+51"
         type="tel"
         inputMode="numeric"
-        maxLength={9}
+        maxLength={20}
         value={form.phone}
         placeholder="9XXXXXXXX"
-        onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 9))}
+        onChange={(e) => set('phone', normalizePeruPhone(e.target.value))}
         onBlur={() => markTouched('phone')}
         error={showError('phone') ? errors.phone : null}
       />
@@ -342,6 +350,7 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
             <>
               <TextField
                 label="Nombre de la agencia"
+            maxLength={200}
                 required
                 value={form.manualAgencyName}
                 placeholder="Ej: Encomiendas El Rápido"
@@ -351,6 +360,7 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
               />
               <TextField
                 label="Dirección de recojo"
+            maxLength={300}
                 required
                 value={form.manualAddress}
                 placeholder="Av., calle, referencia…"
@@ -367,7 +377,7 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
             value={form.dni}
             placeholder="Documento de identidad"
             onChange={(e) => {
-              const value = e.target.value.toUpperCase().slice(0, 12)
+              const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12)
               set('dni', value)
               setKnownCustomer(false)
               autofillFromDni(value)
@@ -392,6 +402,7 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
         <div className="animate-fade-in-up space-y-5">
           <TextField
             label="Dirección exacta de entrega"
+            maxLength={300}
             required
             value={form.address}
             placeholder="Av./Jr./Calle, número, urbanización…"
@@ -411,6 +422,7 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
           />
           <TextField
             label="Provincia / Distrito"
+            maxLength={150}
             required
             value={form.provinceDistrict}
             placeholder="Ej: Trujillo / El Porvenir"
@@ -420,6 +432,7 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
           />
           <TextField
             label="Referencia para la entrega"
+            maxLength={300}
             value={form.reference}
             placeholder="Ej: Frente al parque, casa color azul"
             onChange={(e) => set('reference', e.target.value)}
@@ -447,6 +460,7 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
           )}
           <TextField
             label="Nombre y Apellidos"
+            maxLength={120}
             required
             value={form.fullName}
             placeholder="Tu nombre completo"
@@ -461,6 +475,7 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
         <div className="animate-fade-in-up space-y-5">
           <TextField
             label="Notas / Observaciones para el repartidor"
+            maxLength={500}
             value={form.notes}
             placeholder="Opcional"
             onChange={(e) => set('notes', e.target.value)}

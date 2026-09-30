@@ -51,7 +51,9 @@ function PublicShippingRoute({ slug }) {
     // Si la suscripción venció mientras el cliente llenaba el formulario,
     // el servidor rechaza el pedido: se muestra el aviso, no el éxito.
     if (res.suspended) return setSuspended(true)
-    setSubmittedForm(res.ok ? { ...form, trackingCode: res.trackingCode, orderStatus: res.status } : form)
+    setSubmittedForm(
+      res.ok ? { ...form, trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status } : form,
+    )
   }
 
   if (merchant === undefined) return <LoadingScreen />

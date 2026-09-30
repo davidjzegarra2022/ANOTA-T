@@ -79,7 +79,8 @@ function TrackingBox() {
         <input
           id="trackingCode"
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 14))}
+          maxLength={14}
           placeholder="Ej. ANOTA-4F8K2"
           className="input-field min-w-0 flex-1"
         />
