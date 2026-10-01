@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ORDER_STATUS_LABELS } from '../../utils/orders'
 import { deliveryMethodLabel } from '../../utils/orderSummary'
 import { exportOrdersToExcel, exportOrdersToPdf } from '../../utils/ordersExport'
 import { IconChevronLeft, IconChevronRight, IconDownload, IconFile } from '../icons'
+import { isShalomOrder } from '../../utils/shalomExport'
+import ShalomExportDialog from './ShalomExportDialog'
 
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
@@ -76,6 +78,38 @@ export default function OrdersReportCard({ orders, merchant }) {
   const [basis, setBasis] = useState('created')
   const [anchor, setAnchor] = useState(() => new Date())
   const [exporting, setExporting] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [shalomOpen, setShalomOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  // El menú de Excel se cierra al tocar fuera o con Escape.
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    function onDown(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false)
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
+
+  async function handleGeneralExcel() {
+    setMenuOpen(false)
+    setExporting('excel')
+    try {
+      // Todo el historial, del más antiguo al más reciente.
+      const history = [...orders].sort((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0))
+      await exportOrdersToExcel(history, 'historial-pedidos')
+    } finally {
+      setExporting(null)
+    }
+  }
 
   const range = useMemo(() => periodRange(mode, anchor), [mode, anchor])
   const label = periodLabel(mode, range)
@@ -178,13 +212,52 @@ export default function OrdersReportCard({ orders, merchant }) {
       )}
 
       <div className="mt-3 flex gap-2">
-        <button type="button" onClick={() => handleExport('excel')} disabled={!rows.length || Boolean(exporting)} className="btn btn-outline flex-1 sm:flex-none">
-          <IconDownload className="h-4 w-4" /> {exporting === 'excel' ? 'Exportando…' : 'Excel'}
-        </button>
+        <div ref={menuRef} className="relative flex-1 sm:flex-none">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            disabled={!orders.length || Boolean(exporting)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className="btn btn-outline w-full"
+          >
+            <IconDownload className="h-4 w-4" /> {exporting === 'excel' ? 'Exportando…' : 'Excel'} <span aria-hidden="true">▾</span>
+          </button>
+          {menuOpen && (
+            <div role="menu" className="animate-fade-in-up absolute bottom-full left-0 z-30 mb-2 w-72 max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl">
+              <button type="button" role="menuitem" onClick={handleGeneralExcel} className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-sm font-bold text-emerald-700">X</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-navy">General</span>
+                  <span className="block text-xs text-muted">Todo el historial de pedidos · {orders.length}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setShalomOpen(true)
+                }}
+                className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface"
+              >
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-sm font-bold text-red-700">S</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-navy">Formato Shalom</span>
+                  <span className="block text-xs text-muted">Carga masiva Shalom Pro · {orders.filter(isShalomOrder).length} pedidos</span>
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
         <button type="button" onClick={() => handleExport('pdf')} disabled={!rows.length || Boolean(exporting)} className="btn btn-outline flex-1 sm:flex-none">
           <IconFile className="h-4 w-4" /> {exporting === 'pdf' ? 'Exportando…' : 'PDF'}
         </button>
       </div>
+
+      {shalomOpen && (
+        <ShalomExportDialog merchant={merchant} periodOrders={rows} periodLabel={label} allOrders={orders} onClose={() => setShalomOpen(false)} />
+      )}
     </div>
   )
 }
