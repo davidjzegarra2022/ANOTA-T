@@ -3,6 +3,7 @@ import logoIcon from '../../assets/logo-icon.png'
 import { fetchAcceptingOrders, fetchMyMerchant } from '../../utils/merchantProfile'
 import { supportWhatsAppUrl } from '../../utils/support'
 import ClaudeCodeLoader from '../ClaudeCodeLoader'
+import ShareMenu from './ShareMenu'
 import {
   IconBox,
   IconCard,
@@ -154,6 +155,9 @@ export default function DashboardLayout({ email, onLogout }) {
               <span className={`truncate ${collapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
             </button>
           ))}
+          {merchant?.slug && (
+            <ShareMenu slug={merchant.slug} businessName={merchant.businessName} collapsed={collapsed} onExpand={() => setCollapsed(false)} />
+          )}
         </nav>
 
         {merchant && (

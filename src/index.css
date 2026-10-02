@@ -259,6 +259,10 @@ input, select, textarea {
 .lbl-cols-1 { grid-template-columns: 1fr; }
 .lbl-cols-2 { grid-template-columns: 1fr 1fr; }
 .lbl {
+  /* Un texto sin espacios (un link largo en las notas) no debe desbordar:
+     el navegador achicaría TODA la hoja para que entre. */
+  overflow-wrap: anywhere;
+  min-width: 0;
   break-inside: avoid;
   page-break-inside: avoid;
   border: 1.5px solid #000;
@@ -411,6 +415,8 @@ input, select, textarea {
 .dark .border-amber-200, .dark .border-amber-300 { border-color: rgb(255 196 0 / .35); }
 .dark .text-cyan-700, .dark .hover\:text-cyan-800:hover { color: #67e8f9; }
 .dark .bg-cyan-100 { background-color: rgb(34 211 238 / .15); }
+.dark .text-violet-700 { color: #c4b5fd; }
+.dark .bg-violet-100 { background-color: rgb(167 139 250 / .16); }
 .dark .text-blue-700 { color: #93c5fd; }
 .dark .bg-blue-100 { background-color: rgb(59 130 246 / .18); }
 .dark .bg-brand\/20 { background-color: rgb(255 196 0 / .18); }
@@ -462,3 +468,31 @@ html.theme-anim, html.theme-anim * {
   .ccl svg * { animation: none !important; }
   .ccl-float text { opacity: .8; }
 }
+
+/* Etiqueta térmica 10×15 cm: una por página, letra más grande. */
+.lbl-thermal { grid-template-columns: 1fr; gap: 0; }
+.lbl-thermal .lbl {
+  display: flex;
+  flex-direction: column;
+  height: 141mm;
+  border-width: 2px;
+  break-after: page;
+  page-break-after: always;
+}
+.lbl-thermal .lbl:last-child { break-after: auto; page-break-after: auto; }
+.lbl-thermal .lbl-body { flex: 1; }
+.lbl-thermal .lbl-key { font-size: 8pt; margin-top: 3mm; }
+.lbl-thermal .lbl-shop { font-size: 13pt; }
+.lbl-thermal .lbl-name { font-size: 19pt; }
+.lbl-thermal .lbl-ids { font-size: 12pt; flex-direction: column; row-gap: 1mm; }
+.lbl-thermal .lbl-text { font-size: 10.5pt; }
+.lbl-thermal .lbl-place { font-size: 13pt; }
+.lbl-thermal .lbl-small { font-size: 9pt; }
+.lbl-thermal .lbl-foot { flex-wrap: wrap; row-gap: 1.5mm; }
+.lbl-thermal .lbl-courier { font-size: 12pt; padding: 1mm 3mm; }
+.lbl-thermal .lbl-code { font-size: 10pt; }
+.lbl-thermal .lbl-date { font-size: 12pt; }
+/* Resumen del pedido en papel térmico: una columna, letra compacta. */
+.summary-thermal { font-size: 10pt; }
+.summary-thermal dl > div { flex-direction: column !important; gap: 0 !important; }
+.summary-thermal dt { width: auto !important; }

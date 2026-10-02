@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { copyText } from '../../utils/clipboard'
 import { orderSummarySections, orderSummaryText } from '../../utils/orderSummary'
 import { IconCheck, IconCopy, IconX } from '../icons'
+import { pageRule, readPrintFormat, savePrintFormat } from './PrintLabelsModal'
 
 function IconPrinter({ className }) {
   return (
@@ -26,6 +27,13 @@ function IconPrinter({ className }) {
  */
 export default function OrderSummaryModal({ order, onClose }) {
   const [copied, setCopied] = useState(false)
+  // Papel: térmica 10×15 o A4 (comparte el predeterminado con las etiquetas).
+  const [paper, setPaperState] = useState(() => (readPrintFormat() === 'thermal' ? 'thermal' : 'a4'))
+
+  function setPaper(value) {
+    setPaperState(value)
+    savePrintFormat(value === 'thermal' ? 'thermal' : 'a4x2')
+  }
   const sections = orderSummarySections(order)
 
   useEffect(() => {
@@ -73,15 +81,34 @@ export default function OrderSummaryModal({ order, onClose }) {
             {copied ? <IconCheck className="h-4 w-4" /> : <IconCopy className="h-4 w-4" />}
             {copied ? 'Copiado' : 'Copiar texto'}
           </button>
-          <button type="button" onClick={() => window.print()} className="btn btn-outline w-full sm:w-auto">
-            <IconPrinter className="h-4 w-4" /> Imprimir
-          </button>
+          <div className="flex w-full gap-2 sm:w-auto">
+            <div className="inline-flex shrink-0 rounded-xl border border-slate-200 bg-white p-1" role="group" aria-label="Papel">
+              {[
+                ['a4', 'A4'],
+                ['thermal', 'Térmica 10×15'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPaper(value)}
+                  aria-pressed={paper === value}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${paper === value ? 'bg-navy text-white' : 'text-muted hover:text-navy'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={() => window.print()} className="btn btn-outline flex-1 sm:flex-none">
+              <IconPrinter className="h-4 w-4" /> Imprimir
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
     {createPortal(
-      <div id="order-summary-print" className="print-root">
+      <div id="order-summary-print" className={`print-root ${paper === 'thermal' ? 'summary-thermal' : ''}`}>
+        <style>{pageRule(paper === 'thermal' ? 'thermal' : 'a4x2')}</style>
         <p className="mb-4 text-lg font-bold">Pedido {order.trackingCode}</p>
         <SummaryBody sections={sections} />
       </div>,

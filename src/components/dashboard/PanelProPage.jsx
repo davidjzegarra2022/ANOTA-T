@@ -18,9 +18,8 @@ const TEMPLATES = [
 // Un color por estado (mismos tonos que las pastillas de Envíos).
 const STATUS_BAR = {
   pending: 'bg-amber-500',
-  confirmed: 'bg-cyan-500',
+  packed: 'bg-violet-500',
   shipped: 'bg-blue-600',
-  delivered: 'bg-emerald-500',
   cancelled: 'bg-red-500',
 }
 

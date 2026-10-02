@@ -603,6 +603,15 @@ Detalles que conviene tener presentes:
   `is_platform_admin()`. (Antes el trigger revertía también los cambios del
   admin: `auth.uid()` sigue siendo el del admin dentro de una función
   `security definer`.)
+- **Vista previa del link de tienda** (`api/store-page.js`): WhatsApp y las
+  redes no ejecutan JavaScript, así que `/f/:slug` pasa por una función de
+  Vercel que devuelve el mismo `index.html` con las etiquetas Open Graph de
+  la tienda (nombre y logo de Configuración). El slug se valida, todo texto
+  se escapa, el logo solo se usa si es `https:` y el HTML base viaja con la
+  función (`includeFiles`) en vez de descargarse de un Host arbitrario.
+- **Estados de pedido**: solo `pending` (Pendiente), `packed` (Empacado),
+  `shipped` (Enviado) y `cancelled` (Cancelado); la restricción
+  `orders_status_check` rechaza cualquier otro.
 - **N° de pedido correlativo por tienda** (`orders.order_number`): lo fija el
   trigger `prepare_new_order` (security definer, para ver todos los pedidos
   de la tienda) con un candado por negociante contra duplicados, junto con
