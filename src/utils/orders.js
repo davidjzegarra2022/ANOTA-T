@@ -201,11 +201,15 @@ export async function trackOrderByCode(code) {
   }
 }
 
+// Solo 4 estados (la base de datos no acepta otros):
+//   pending   → la orden de compra ingresa
+//   packed    → los artículos ya fueron embalados
+//   shipped   → el pedido salió a la agencia
+//   cancelled → el pedido se detiene
 export const ORDER_STATUS_LABELS = {
   pending: 'Pendiente',
-  confirmed: 'Confirmado',
+  packed: 'Empacado',
   shipped: 'Enviado',
-  delivered: 'Entregado',
   cancelled: 'Cancelado',
 }
 
