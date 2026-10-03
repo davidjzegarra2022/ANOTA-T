@@ -166,6 +166,7 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
   // depender del closure (que queda viejo) ni de efectos dentro del
   // updater de setForm (que React corre en fase de render).
   const formRef = useRef(form)
+  const lastLookup = useRef('')
   formRef.current = form
   // Arranca con lo que ya se sabe sin red (de fábrica + local) y, apenas
   // responde Supabase, se suman los couriers nuevos que solo viven ahí.
@@ -217,8 +218,13 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
    * se respeta.
    */
   async function autofillFromDni(dni) {
-    setKnownCustomer(false)
     const clean = String(dni || '').trim()
+    // Al salir del campo con el mismo DNI no se vuelve a consultar: ocultar y
+    // re-mostrar el aviso movía la página y el toque en el siguiente botón
+    // (ej. la fecha) caía fuera de él.
+    if (clean === lastLookup.current) return
+    lastLookup.current = clean
+    setKnownCustomer(false)
     if (clean.length < 8 || !merchant?.id) return
     const name = await lookupCustomerByDni(merchant.id, clean)
     if (!name) return
@@ -231,6 +237,8 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
 
   function handleDeliveryMethodChange(e) {
     const value = e.target.value
+    lastLookup.current = '' // el formulario se reinicia: el DNI se vuelve a consultar
+    setKnownCustomer(false)
     setForm((f) => ({
       ...initialState,
       phone: f.phone,

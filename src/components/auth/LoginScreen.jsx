@@ -58,21 +58,27 @@ export default function LoginScreen({ notice, onLoggedIn, onGoToSignup, onGoToFo
           />
         </label>
 
-        <label className="block">
+        {/* No envolver todo en un <label>: el navegador le reenviaba el clic
+            del campo al botón "¿Olvidaste tu contraseña?" y saltaba a esa
+            pantalla al tocar la contraseña. */}
+        <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-sm font-semibold text-ink">Contraseña</span>
+            <label htmlFor="login-password" className="text-sm font-semibold text-ink">
+              Contraseña
+            </label>
             <button type="button" onClick={onGoToForgotPassword} className="text-xs font-semibold text-brand-dark hover:underline">
               ¿Olvidaste tu contraseña?
             </button>
           </div>
           <PasswordInput
+            id="login-password"
             saveTip
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
           />
-        </label>
+        </div>
 
         {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
 
