@@ -30,7 +30,7 @@ export default function PlanesPage({ merchant }) {
         <p className="mt-1 text-sm text-muted">El plan lo activa soporte de ANOTA-T. Elige uno y te escribimos por WhatsApp con un mensaje listo para enviar.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${plans.length > 2 ? 'lg:grid-cols-3' : 'max-w-3xl'}`}>
         {plans.map((p) => {
           const isCurrent = p.id === merchant.planId
           const priceLabel = p.trialDays ? `${p.trialDays} días` : `S/ ${p.pricePerDay.toFixed(2)}`

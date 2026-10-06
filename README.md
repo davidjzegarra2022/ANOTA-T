@@ -164,7 +164,7 @@ dominios en caliente, sin redeploy.
   características. Sin pasarela de pago todavía — el cambio se pide por
   WhatsApp a un número tuyo que configuras en el propio archivo
   (`ADMIN_WHATSAPP` en `PlanesPage.jsx`, vacío por defecto). La landing
-  menciona Culqi como método de pago del plan Gold — el terreno está
+  menciona Culqi como método de pago del plan Emprendedor — el terreno está
   preparado en el esquema de planes, pero la integración de cobro en sí
   no está hecha; pídela aparte cuando quieras activarla.
 - **Suscripción** (`SuscripcionPage.jsx`) — plan actual, días de prueba
@@ -259,23 +259,22 @@ create policy "plans_authenticated_select" on public.plans
 
 insert into public.plans (name, trial_days, price_per_day, description, features)
 select 'Prueba Free', 7, 0, 'Prueba gratis por 7 días.',
-  array['Te registras', 'Con tu número de WhatsApp']
+  array['Todo el plan Emprendedor', 'Sin tarjeta de crédito', 'Con tu correo y número de WhatsApp']
 where not exists (select 1 from public.plans where name = 'Prueba Free');
 
+-- Un solo plan pagado (antes Pro + Gold, unificados en «Emprendedor»).
 insert into public.plans (name, price_per_day, description, features)
-select 'Pro', 1.00, 'Todo lo esencial para operar tu tienda.',
-  array['Link con tu marca', 'Formulario de datos universal',
+select 'Emprendedor', 1.50, 'Todo lo que necesitas para vender y despachar sin errores.',
+  array['Link con tu marca y tu logo', 'Formulario de datos universal',
         'Base de datos oficial de las agencias más conocidas a nivel nacional',
         'Panel de control de estados de envío',
-        'Plantillas de Excel para envíos masivos Shalom y Olva',
-        'Impresión de etiquetas desde tu móvil']
-where not exists (select 1 from public.plans where name = 'Pro');
-
-insert into public.plans (name, price_per_day, description, features)
-select 'Gold', 1.50, 'Todo el plan Pro, con seguimiento en tiempo real y pagos.',
-  array['Todo el plan Pro', 'Seguimiento de envío en tiempo real', 'Dashboard del negocio',
+        'Seguimiento de envío en tiempo real («¿Cómo va tu pedido?»)',
+        'Panel Pro con indicadores por día, semana y mes',
+        'Reportes en Excel y PDF + formato masivo Shalom',
+        'Impresión de etiquetas (térmica 10×15 y A4) desde tu móvil',
+        'Soporte por WhatsApp',
         'Pasarela de pagos por Culqi (Yape, Plin, BCP, etc.) — próximamente']
-where not exists (select 1 from public.plans where name = 'Gold');
+where not exists (select 1 from public.plans where name = 'Emprendedor');
 
 -- Negociantes (1 fila por cuenta de Supabase Auth) ----------------------
 create table if not exists public.merchants (
