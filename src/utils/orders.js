@@ -9,6 +9,7 @@ function fromRow(row) {
     id: row.id,
     trackingCode: row.tracking_code,
     orderNumber: row.order_number,
+    dailyNumber: row.daily_number,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerDni: row.customer_dni,
@@ -128,16 +129,17 @@ export function orderDayLabel(order) {
  * el pedido número 5. Solo filtra en memoria: el texto nunca viaja a la
  * base de datos, así que no hay nada que inyectar.
  */
-export function orderMatchesSearch(order, rawQuery) {
+export function orderMatchesSearch(order, rawQuery, { daily = false } = {}) {
   let q = norm(rawQuery).trim().slice(0, 80)
   if (!q) return true
   const exact = q.match(/^(?:#|n[°o.º]?\s*|pedido\s*(?:n[°o.º]?\s*)?)(\d+)$/)
-  if (exact) return Number(exact[1]) === Number(order.orderNumber)
+  // En Envíos se busca por el número del día (el que se ve en la lista).
+  if (exact) return Number(exact[1]) === Number(daily ? order.dailyNumber : order.orderNumber)
   const created = order.createdAt ? new Date(order.createdAt) : null
   const shipping = order.shippingDate ? new Date(order.shippingDate + 'T00:00:00') : null
   const haystack = norm(
     [
-      order.orderNumber != null ? `#${order.orderNumber} ${order.orderNumber}` : '',
+      daily ? (order.dailyNumber != null ? `#${order.dailyNumber}` : '') : order.orderNumber != null ? `#${order.orderNumber} ${order.orderNumber}` : '',
       order.trackingCode,
       order.customerName,
       order.customerPhone,
@@ -154,7 +156,7 @@ export function orderMatchesSearch(order, rawQuery) {
 }
 
 /** Pedidos del negociante logueado, opcionalmente filtrados por fecha de envío (shipping_date). */
-export async function fetchMyOrders({ shippingDateFrom, shippingDateTo, status, search } = {}) {
+export async function fetchMyOrders({ shippingDateFrom, shippingDateTo, status, search, dailySearch = false } = {}) {
   const supabase = await getSupabaseClient()
   if (!supabase) return []
   let query = supabase.from('orders').select('*').order('created_at', { ascending: false })
@@ -167,7 +169,7 @@ export async function fetchMyOrders({ shippingDateFrom, shippingDateTo, status, 
     return []
   }
   const rows = (data || []).map(fromRow)
-  return search?.trim() ? rows.filter((o) => orderMatchesSearch(o, search)) : rows
+  return search?.trim() ? rows.filter((o) => orderMatchesSearch(o, search, { daily: dailySearch })) : rows
 }
 
 export async function updateOrderStatus(id, status) {
@@ -176,6 +178,19 @@ export async function updateOrderStatus(id, status) {
   const { error } = await supabase.from('orders').update({ status }).eq('id', id)
   if (error) return { ok: false, error: error.message }
   return { ok: true }
+}
+
+/**
+ * Elimina pedidos del negociante logueado (la política RLS solo deja borrar
+ * los propios). Devuelve cuántos se borraron de verdad.
+ */
+export async function deleteOrders(ids) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  if (!ids?.length) return { ok: true, deleted: 0 }
+  const { data, error } = await supabase.from('orders').delete().in('id', ids).select('id')
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, deleted: data?.length || 0 }
 }
 
 /** Consulta pública de UN pedido por su código de rastreo (sin login, sin exponer datos personales). */
