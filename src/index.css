@@ -496,3 +496,37 @@ html.theme-anim, html.theme-anim * {
 .summary-thermal { font-size: 10pt; }
 .summary-thermal dl > div { flex-direction: column !important; gap: 0 !important; }
 .summary-thermal dt { width: auto !important; }
+
+/* =====================================================================
+   GRÁFICOS DEL PANEL PRO — colores por rol (validados para daltonismo
+   en claro y en oscuro). Ciudades: categóricos 1-5 en orden fijo + gris
+   para "Otros". Superficie de la tarjeta para el espacio entre porciones.
+   ===================================================================== */
+:root {
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-5: #e87ba4;
+  --viz-other: #a3acb6;
+  --viz-neutral: #0c2c41;
+  --viz-bar: #0c2c41;
+  --viz-bar-hi: #e9aa00;
+  --viz-grid: #e2e8f0;
+  --viz-gap: #ffffff;
+}
+:root.dark {
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-5: #d55181;
+  --viz-other: #6b7f93;
+  --viz-neutral: #a5b6c8;
+  --viz-bar: #5598e7;
+  --viz-bar-hi: #ffc400;
+  --viz-grid: #22405a;
+  --viz-gap: #102436;
+}
+/* Segmento elegido (Día/Semana/Mes…): en oscuro el navy se perdía sobre la tarjeta. */
+.dark .seg-on { background-color: var(--color-brand); color: var(--color-navy); }

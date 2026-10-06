@@ -3,6 +3,7 @@ import { fetchMyOrders, ORDER_STATUS_LABELS, orderDayLabel, orderTimeLabel, upda
 import { deliveryMethodLabel } from '../../utils/orderSummary'
 import { exportOrdersToExcel, exportOrdersToPdf } from '../../utils/ordersExport'
 import { IconChevronLeft, IconChevronRight, IconDownload, IconFile, IconSearch, IconTag } from '../icons'
+import CourierTemplatesCard from './CourierTemplatesCard'
 import PrintLabelsModal from './PrintLabelsModal'
 
 function todayIso() {
@@ -355,6 +356,8 @@ export default function EnviosPage({ merchant }) {
         </div>
         </>
       )}
+
+      <CourierTemplatesCard />
 
       {printIds && (
         <PrintLabelsModal orders={orders} initialSelected={printIds} merchant={merchant} onClose={() => setPrintIds(null)} />
