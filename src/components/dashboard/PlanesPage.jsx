@@ -37,13 +37,18 @@ export default function PlanesPage({ merchant }) {
           const priceSuffix = p.trialDays ? 'gratis' : 'x día'
           const trialEnd = isCurrent ? trialEndsAt(merchant, p) : null
           const expired = trialEnd ? trialEnd <= new Date() : false
-          const cta = isCurrent
-            ? expired
-              ? { label: 'Renovar plan', url: supportWhatsAppUrl('renew', { merchant }) }
-              : null
-            : { label: `Solicitar ${p.name}`, url: supportWhatsAppUrl('changePlan', { merchant, planName: p.name }) }
+          // La prueba gratis se usa una sola vez (al registrarse): si ya no es
+          // tu plan actual, ya la usaste. El servidor tampoco deja reasignarla.
+          const trialUsed = Boolean(p.trialDays) && !isCurrent
+          const cta = trialUsed
+            ? null
+            : isCurrent
+              ? expired && !p.trialDays
+                ? { label: 'Renovar plan', url: supportWhatsAppUrl('renew', { merchant }) }
+                : null
+              : { label: `Solicitar ${p.name}`, url: supportWhatsAppUrl('changePlan', { merchant, planName: p.name }) }
           return (
-            <div key={p.id} className={`card flex flex-col p-5 ${isCurrent ? 'border-brand bg-amber-50/60' : ''}`}>
+            <div key={p.id} className={`card flex flex-col p-5 ${isCurrent ? 'border-brand bg-amber-50/60' : ''} ${trialUsed ? 'opacity-60' : ''}`}>
               {isCurrent && (
                 <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-brand/20 px-2 py-0.5 text-[11px] font-bold text-brand-dark">
                   <IconCheck className="h-3 w-3" /> Tu plan actual
@@ -62,6 +67,16 @@ export default function PlanesPage({ merchant }) {
                     </li>
                   ))}
                 </ul>
+              )}
+              {trialUsed && (
+                <div className="mt-auto pt-4">
+                  <span className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-xl border border-dashed border-slate-300 px-4 py-2.5 text-sm font-bold text-muted">
+                    Prueba gratis ya utilizada
+                  </span>
+                </div>
+              )}
+              {isCurrent && p.trialDays && expired && (
+                <p className="mt-auto pt-4 text-xs font-semibold text-red-600">Tu prueba gratis terminó: solicita el plan Emprendedor para seguir.</p>
               )}
               {cta && (
                 <div className="mt-auto pt-4">

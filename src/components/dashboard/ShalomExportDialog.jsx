@@ -27,7 +27,8 @@ function savePref(key, value) {
 export default function ShalomExportDialog({ merchant, periodOrders, periodLabel, allOrders, onClose }) {
   const prefKey = `anotat-shalom-${merchant?.id || 'x'}`
   // Si el periodo del reporte no tiene pedidos Shalom, arranca en todo el historial.
-  const [scope, setScope] = useState(() => (periodOrders.some(isShalomOrder) ? 'period' : 'all'))
+  // Sin `allOrders` (Envíos) solo se exportan los pedidos recibidos.
+  const [scope, setScope] = useState(() => (!allOrders || periodOrders.some(isShalomOrder) ? 'period' : 'all'))
   const [origen, setOrigen] = useState(() => readPref(`${prefKey}-origen`, ''))
   const [mercaderia, setMercaderia] = useState(() => readPref(`${prefKey}-mercaderia`, 'PAQUETE S'))
   const [agencies, setAgencies] = useState([])
@@ -50,7 +51,7 @@ export default function ShalomExportDialog({ merchant, periodOrders, periodLabel
   }, [onClose])
 
   const periodCount = useMemo(() => periodOrders.filter(isShalomOrder).length, [periodOrders])
-  const allCount = useMemo(() => allOrders.filter(isShalomOrder).length, [allOrders])
+  const allCount = useMemo(() => (allOrders || []).filter(isShalomOrder).length, [allOrders])
   const selectedCount = scope === 'period' ? periodCount : allCount
   const origenValid = !origen || agencies.length === 0 || agencies.some((a) => a.toLowerCase() === origen.trim().toLowerCase())
 
@@ -89,8 +90,13 @@ export default function ShalomExportDialog({ merchant, periodOrders, periodLabel
           origen, destino y mercadería. Las medidas las calcula la propia plantilla.
         </p>
 
-        <p className="mt-4 text-[11px] font-bold tracking-wide text-muted uppercase">Pedidos a incluir</p>
-        <div className="mt-2 grid grid-cols-1 gap-2">
+        {allOrders && <p className="mt-4 text-[11px] font-bold tracking-wide text-muted uppercase">Pedidos a incluir</p>}
+        {!allOrders && (
+          <p className="mt-4 rounded-xl bg-surface px-3 py-2.5 text-sm font-semibold text-ink">
+            {periodLabel}: <b>{periodCount}</b> pedido{periodCount === 1 ? '' : 's'} Shalom
+          </p>
+        )}
+        <div className={`mt-2 grid grid-cols-1 gap-2 ${allOrders ? '' : 'hidden'}`}>
           {[
             ['period', `Este periodo · ${periodLabel}`, periodCount],
             ['all', 'Todo el historial', allCount],

@@ -259,21 +259,21 @@ create policy "plans_authenticated_select" on public.plans
 
 insert into public.plans (name, trial_days, price_per_day, description, features)
 select 'Prueba Free', 7, 0, 'Prueba gratis por 7 días.',
-  array['Todo el plan Emprendedor', 'Sin tarjeta de crédito', 'Con tu correo y número de WhatsApp']
+  array['Todo el plan Emprendedor', 'Sin contratos ni tarjeta de crédito', 'Con tu correo y número de WhatsApp']
 where not exists (select 1 from public.plans where name = 'Prueba Free');
 
 -- Un solo plan pagado (antes Pro + Gold, unificados en «Emprendedor»).
 insert into public.plans (name, price_per_day, description, features)
 select 'Emprendedor', 1.50, 'Todo lo que necesitas para vender y despachar sin errores.',
   array['Link con tu marca y tu logo', 'Formulario de datos universal',
-        'Base de datos oficial de las agencias más conocidas a nivel nacional',
         'Panel de control de estados de envío',
-        'Seguimiento de envío en tiempo real («¿Cómo va tu pedido?»)',
-        'Panel Pro con indicadores por día, semana y mes',
-        'Reportes en Excel y PDF + formato masivo Shalom',
-        'Impresión de etiquetas (térmica 10×15 y A4) desde tu móvil',
+        'Base de datos de las agencias a nivel nacional',
+        'Panel PRO con indicadores de ventas por día, semana y mes',
+        'Reportes en Excel o PDF y formatos usados para envíos masivos',
+        'Impresión de etiquetas (térmicas 10 x 15 o formato A4) desde tu móvil',
+        'Seguimiento del estado de tu pedido en nuestra página con tu código ANOTA-T',
         'Soporte por WhatsApp',
-        'Pasarela de pagos por Culqi (Yape, Plin, BCP, etc.) — próximamente']
+        'Pasarela de pagos (Yape, Plin, BCP, etc.) próximamente']
 where not exists (select 1 from public.plans where name = 'Emprendedor');
 
 -- Negociantes (1 fila por cuenta de Supabase Auth) ----------------------

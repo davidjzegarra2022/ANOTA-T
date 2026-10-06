@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { fetchMyOrders, ORDER_STATUS_LABELS, orderDayLabel, orderTimeLabel, updateOrderStatus } from '../../utils/orders'
 import { deliveryMethodLabel } from '../../utils/orderSummary'
-import { exportOrdersToExcel, exportOrdersToPdf } from '../../utils/ordersExport'
-import { IconChevronLeft, IconChevronRight, IconDownload, IconFile, IconSearch, IconTag } from '../icons'
+import { exportOrdersToPdf } from '../../utils/ordersExport'
+import { IconChevronLeft, IconChevronRight, IconEye, IconFile, IconSearch, IconTag, IconTrash } from '../icons'
 import CourierTemplatesCard from './CourierTemplatesCard'
+import DeleteOrdersDialog from './DeleteOrdersDialog'
+import ExcelExportMenu from './ExcelExportMenu'
+import OrderSummaryModal from './OrderSummaryModal'
 import PrintLabelsModal from './PrintLabelsModal'
 
 function todayIso() {
@@ -27,9 +30,15 @@ const STATUS_BADGE = {
   cancelled: 'bg-red-100 text-red-700',
 }
 
-function OrderNumber({ n }) {
+// N° del día: se reinicia cada medianoche (hora de Lima). El correlativo
+// general de la tienda queda en el título por si se necesita.
+function OrderNumber({ order }) {
+  const n = order.dailyNumber ?? order.orderNumber
+  if (n == null) return null
   return (
-    <span className="inline-flex min-w-7 shrink-0 items-center justify-center rounded-lg bg-navy px-1.5 py-0.5 font-mono text-[11px] font-bold text-brand tabular-nums">
+    <span
+      title={order.orderNumber != null ? `Pedido N° ${n} del día · N° general #${order.orderNumber}` : undefined}
+      className="inline-flex min-w-7 shrink-0 items-center justify-center rounded-lg bg-navy px-1.5 py-0.5 font-mono text-[11px] font-bold text-brand tabular-nums">
       #{n}
     </span>
   )
@@ -64,6 +73,10 @@ export default function EnviosPage({ merchant }) {
   const [printIds, setPrintIds] = useState(null)
   const [selected, setSelected] = useState(() => new Set())
   const [exporting, setExporting] = useState(null)
+  const [summaryOrder, setSummaryOrder] = useState(null)
+  // Pedidos a borrar (null = diálogo cerrado).
+  const [toDelete, setToDelete] = useState(null)
+  const [notice, setNotice] = useState(null)
 
   const usingRange = Boolean(rangeFrom || rangeTo)
   // Al buscar sin rango de fechas se busca en TODOS los días (para encontrar
@@ -77,6 +90,7 @@ export default function EnviosPage({ merchant }) {
       shippingDateTo: usingRange ? rangeTo || undefined : searchingAll ? undefined : day,
       status: status || undefined,
       search,
+      dailySearch: true,
     })
     setOrders(rows)
     // Conserva solo la selección de pedidos que siguen en la lista.
@@ -108,14 +122,20 @@ export default function EnviosPage({ merchant }) {
     setSelected(allSelected ? new Set() : new Set(orders.map((o) => o.id)))
   }
 
-  async function handleExport(kind) {
-    setExporting(kind)
+  async function handleExportPdf() {
+    setExporting('pdf')
     try {
-      if (kind === 'pdf') await exportOrdersToPdf(exportTarget, { businessName: merchant?.businessName })
-      else await exportOrdersToExcel(exportTarget)
+      await exportOrdersToPdf(exportTarget, { businessName: merchant?.businessName })
     } finally {
       setExporting(null)
     }
+  }
+
+  async function handleDeleted(count) {
+    setToDelete(null)
+    setNotice(`${count} pedido${count === 1 ? '' : 's'} eliminado${count === 1 ? '' : 's'}.`)
+    setTimeout(() => setNotice(null), 4000)
+    await refresh()
   }
 
   async function handleStatusChange(id, newStatus) {
@@ -200,7 +220,7 @@ export default function EnviosPage({ merchant }) {
               ? `${selectedOrders.length} de ${orders.length} seleccionados`
               : `${orders.length} pedidos`}
         </p>
-        <div className="ml-auto flex w-full gap-2 sm:w-auto">
+        <div className="ml-auto flex w-full flex-wrap gap-2 sm:w-auto">
           <button
             type="button"
             onClick={() => setPrintIds(selectedOrders.map((o) => o.id))}
@@ -211,19 +231,15 @@ export default function EnviosPage({ merchant }) {
             <IconTag className="h-4 w-4" />
             Etiquetas{selectedOrders.length ? ` (${selectedOrders.length})` : ''}
           </button>
-          <button
-            type="button"
-            onClick={() => handleExport('excel')}
+          <ExcelExportMenu
+            orders={exportTarget}
+            merchant={merchant}
             disabled={!orders.length || Boolean(exporting)}
-            className="btn btn-outline flex-1 sm:flex-none"
-            title={selectedOrders.length ? 'Exportar los pedidos seleccionados a Excel' : 'Exportar todos los pedidos de la lista a Excel'}
-          >
-            <IconDownload className="h-4 w-4" />
-            {exporting === 'excel' ? 'Exportando…' : `Excel${selectedOrders.length ? ` (${selectedOrders.length})` : ''}`}
-          </button>
+            label={`Excel${selectedOrders.length ? ` (${selectedOrders.length})` : ''}`}
+          />
           <button
             type="button"
-            onClick={() => handleExport('pdf')}
+            onClick={handleExportPdf}
             disabled={!orders.length || Boolean(exporting)}
             className="btn btn-outline flex-1 sm:flex-none"
             title={selectedOrders.length ? 'Exportar los pedidos seleccionados a PDF' : 'Exportar todos los pedidos de la lista a PDF'}
@@ -231,6 +247,16 @@ export default function EnviosPage({ merchant }) {
             <IconFile className="h-4 w-4" />
             {exporting === 'pdf' ? 'Exportando…' : `PDF${selectedOrders.length ? ` (${selectedOrders.length})` : ''}`}
           </button>
+          {selectedOrders.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setToDelete(selectedOrders)}
+              className="btn flex-1 border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 sm:flex-none"
+              title="Eliminar los pedidos seleccionados"
+            >
+              <IconTrash className="h-4 w-4" /> Eliminar ({selectedOrders.length})
+            </button>
+          )}
         </div>
       </div>
 
@@ -249,7 +275,7 @@ export default function EnviosPage({ merchant }) {
                 <SelectBox checked={selected.has(o.id)} onChange={() => toggleOne(o.id)} label={`Seleccionar pedido ${o.trackingCode || o.id}`} className="mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-                    {o.orderNumber != null && <OrderNumber n={o.orderNumber} />}
+                    <OrderNumber order={o} />
                     <span className="truncate">{o.customerName}</span>
                   </p>
                   <p className="font-mono text-xs text-brand-dark">{o.trackingCode}</p>
@@ -282,25 +308,29 @@ export default function EnviosPage({ merchant }) {
                   <dd className="min-w-0 text-ink">{o.shippingDate || '—'}</dd>
                 </div>
               </dl>
-              <button
-                type="button"
-                onClick={() => setPrintIds([o.id])}
-                className="btn btn-outline mt-3 w-full !py-2 text-xs"
-              >
-                <IconTag className="h-4 w-4" /> Imprimir etiqueta
-              </button>
+              <div className="mt-3 flex gap-2">
+                <button type="button" onClick={() => setPrintIds([o.id])} className="btn btn-outline flex-1 !py-2 text-xs">
+                  <IconTag className="h-4 w-4" /> Imprimir etiqueta
+                </button>
+                <RowIcon label="Ver resumen" onClick={() => setSummaryOrder(o)}>
+                  <IconEye className="h-4 w-4" />
+                </RowIcon>
+                <RowIcon label="Eliminar pedido" danger onClick={() => setToDelete([o])}>
+                  <IconTrash className="h-4 w-4" />
+                </RowIcon>
+              </div>
             </li>
           ))}
         </ul>
 
         <div className="card hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[1040px] text-left text-[13px]">
+          <table className="w-full min-w-[1000px] text-left text-[13px]">
             <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
               <tr>
                 <th className="w-10 py-2 pr-1 pl-3">
                   <SelectBox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} disabled={!orders.length} label="Seleccionar todos los pedidos" />
                 </th>
-                <th className="px-3 py-2 font-semibold">N°</th>
+                <th className="px-3 py-2 font-semibold" title="Número del pedido en el día">N° día</th>
                 <th className="px-3 py-2 font-semibold">Hora</th>
                 <th className="px-3 py-2 font-semibold">Código</th>
                 <th className="px-3 py-2 font-semibold">Cliente</th>
@@ -308,7 +338,7 @@ export default function EnviosPage({ merchant }) {
                 <th className="px-3 py-2 font-semibold">Método</th>
                 <th className="px-3 py-2 font-semibold">Fecha envío</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
-                <th className="px-3 py-2 font-semibold">Etiqueta</th>
+                <th className="px-3 py-2 font-semibold">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -317,7 +347,7 @@ export default function EnviosPage({ merchant }) {
                   <td className="w-10 py-2 pr-1 pl-3">
                     <SelectBox checked={selected.has(o.id)} onChange={() => toggleOne(o.id)} label={`Seleccionar pedido ${o.trackingCode || o.id}`} />
                   </td>
-                  <td className="px-3 py-2">{o.orderNumber != null && <OrderNumber n={o.orderNumber} />}</td>
+                  <td className="px-3 py-2"><OrderNumber order={o} /></td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap">
                     <span className="font-semibold">{orderTimeLabel(o)}</span>
                     <span className="block text-[11px] text-muted">{orderDayLabel(o)}</span>
@@ -326,7 +356,7 @@ export default function EnviosPage({ merchant }) {
                   <td className="px-3 py-2">{o.customerName}</td>
                   <td className="px-3 py-2 font-mono text-xs">{o.customerPhone}</td>
                   <td className="px-3 py-2 text-xs">{deliveryMethodLabel(o)}</td>
-                  <td className="px-3 py-2 text-xs">{o.shippingDate}</td>
+                  <td className="px-3 py-2 text-xs whitespace-nowrap">{o.shippingDate}</td>
                   <td className="px-3 py-2">
                     <select
                       value={o.status}
@@ -340,14 +370,17 @@ export default function EnviosPage({ merchant }) {
                     </select>
                   </td>
                   <td className="px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => setPrintIds([o.id])}
-                      title="Imprimir la etiqueta de envío"
-                      className="btn btn-outline !px-2.5 !py-1.5 text-xs"
-                    >
-                      <IconTag className="h-3.5 w-3.5" /> Imprimir
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <RowIcon label="Imprimir la etiqueta de envío" small onClick={() => setPrintIds([o.id])}>
+                        <IconTag className="h-4 w-4" />
+                      </RowIcon>
+                      <RowIcon label="Ver resumen" small onClick={() => setSummaryOrder(o)}>
+                        <IconEye className="h-4 w-4" />
+                      </RowIcon>
+                      <RowIcon label="Eliminar pedido" small danger onClick={() => setToDelete([o])}>
+                        <IconTrash className="h-4 w-4" />
+                      </RowIcon>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -359,9 +392,34 @@ export default function EnviosPage({ merchant }) {
 
       <CourierTemplatesCard />
 
+      {notice && (
+        <div role="status" className="animate-fade-in-up fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-xl">
+          ✓ {notice}
+        </div>
+      )}
+      {summaryOrder && <OrderSummaryModal order={summaryOrder} onClose={() => setSummaryOrder(null)} />}
+      {toDelete && (
+        <DeleteOrdersDialog orders={toDelete} businessName={merchant?.businessName} onClose={() => setToDelete(null)} onDeleted={handleDeleted} />
+      )}
       {printIds && (
         <PrintLabelsModal orders={orders} initialSelected={printIds} merchant={merchant} onClose={() => setPrintIds(null)} />
       )}
     </div>
+  )
+}
+
+function RowIcon({ label, onClick, danger, small, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className={`inline-flex shrink-0 items-center justify-center rounded-xl border transition ${small ? 'h-8 w-8' : 'h-9 w-10'} ${
+        danger ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-slate-200 text-navy hover:bg-surface'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
