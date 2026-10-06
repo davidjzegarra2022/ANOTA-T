@@ -1,0 +1,38 @@
+name: Mantener activo Supabase
+
+# Supabase pausa automáticamente los proyectos sin actividad por más de
+# 7 días. Este workflow hace una lectura mínima e inofensiva a la base de
+# datos dos veces al día (madrugada y mañana, hora Perú) para que el
+# proyecto siempre cuente con actividad reciente y nunca llegue a
+# pausarse. No modifica ningún dato: solo consulta 1 fila de la tabla
+# "plans" usando la clave pública (la misma que usa el frontend vía
+# VITE_SUPABASE_ANON_KEY, protegida por RLS).
+on:
+  schedule:
+    - cron: "0 9 * * *"   # 04:00 hora Perú (madrugada)
+    - cron: "0 13 * * *"  # 08:00 hora Perú (mañana)
+  workflow_dispatch: {}    # permite ejecutarlo manualmente desde la pestaña Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar Supabase para generar actividad
+        run: |
+          SUPABASE_URL="https://stdnqpiejjjfrrlxphyi.supabase.co"
+          SUPABASE_PUBLISHABLE_KEY="sb_publishable_szV-33WSjEGBe9M5sBMbIQ_E-O5iqMQ"
+
+          http_code=$(curl -s -o /tmp/respuesta.json -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/plans?select=id&limit=1" \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY")
+
+          echo "Código de respuesta: $http_code"
+          cat /tmp/respuesta.json
+
+          if [ "$http_code" -ge 500 ]; then
+            echo "Supabase respondió con error de servidor ($http_code)."
+            exit 1
+          fi
+
+          echo "Ping de actividad enviado correctamente."
