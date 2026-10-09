@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchMyOrders, ORDER_STATUS_LABELS, orderDayLabel, orderTimeLabel, updateOrderStatus } from '../../utils/orders'
+import { fetchMyOrders, limaTodayIso, ORDER_STATUS_LABELS, orderDayLabel, orderTimeLabel, updateOrderStatus } from '../../utils/orders'
 import { deliveryMethodLabel } from '../../utils/orderSummary'
 import { exportOrdersToPdf } from '../../utils/ordersExport'
 import { IconChevronLeft, IconChevronRight, IconEye, IconFile, IconSearch, IconTag, IconTrash } from '../icons'
@@ -10,17 +10,17 @@ import OrderSummaryModal from './OrderSummaryModal'
 import PrintLabelsModal from './PrintLabelsModal'
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  return limaTodayIso()
 }
 
 function addDays(iso, delta) {
-  const d = new Date(iso + 'T00:00:00')
-  d.setDate(d.getDate() + delta)
+  const d = new Date(iso + 'T12:00:00Z')
+  d.setUTCDate(d.getUTCDate() + delta)
   return d.toISOString().slice(0, 10)
 }
 
 function fmtDay(iso) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: '2-digit', month: 'short' })
+  return new Date(iso + 'T12:00:00Z').toLocaleDateString('es-PE', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' })
 }
 
 const STATUS_BADGE = {
@@ -86,8 +86,9 @@ export default function EnviosPage({ merchant }) {
   async function refresh() {
     setLoading(true)
     const rows = await fetchMyOrders({
-      shippingDateFrom: usingRange ? rangeFrom || undefined : searchingAll ? undefined : day,
-      shippingDateTo: usingRange ? rangeTo || undefined : searchingAll ? undefined : day,
+      // Día (o rango) en que el cliente llenó el formulario, no la fecha de envío.
+      createdFrom: usingRange ? rangeFrom || undefined : searchingAll ? undefined : day,
+      createdTo: usingRange ? rangeTo || undefined : searchingAll ? undefined : day,
       status: status || undefined,
       search,
       dailySearch: true,
@@ -149,7 +150,7 @@ export default function EnviosPage({ merchant }) {
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-bold text-navy sm:text-2xl">Envíos</h1>
-        <p className="mt-1 text-sm text-muted">Todos los pedidos que agendaron tus clientes. Gestiónalos por estado o por courier.</p>
+        <p className="mt-1 text-sm text-muted">Los pedidos según el día y la hora en que tu cliente llenó el formulario. Gestiónalos por estado o por courier.</p>
       </div>
 
       <div className="card p-4">
@@ -262,7 +263,7 @@ export default function EnviosPage({ merchant }) {
 
       {!loading && orders.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
-          <p className="text-sm text-muted">No tienes pedidos pendientes por despachar. Usa las flechas para revisar otros días.</p>
+          <p className="text-sm text-muted">No hay pedidos registrados este día. Usa las flechas para revisar otros días.</p>
         </div>
       ) : (
         <>
@@ -280,7 +281,7 @@ export default function EnviosPage({ merchant }) {
                   </p>
                   <p className="font-mono text-xs text-brand-dark">{o.trackingCode}</p>
                   <p className="text-[11px] text-muted">
-                    Enviado {orderDayLabel(o)} · {orderTimeLabel(o)}
+                    Registrado {orderDayLabel(o)} · {orderTimeLabel(o)}
                   </p>
                 </div>
                 <select
@@ -331,7 +332,7 @@ export default function EnviosPage({ merchant }) {
                   <SelectBox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} disabled={!orders.length} label="Seleccionar todos los pedidos" />
                 </th>
                 <th className="px-3 py-2 font-semibold" title="Número del pedido en el día">N° día</th>
-                <th className="px-3 py-2 font-semibold">Hora</th>
+                <th className="px-3 py-2 font-semibold">Registrado</th>
                 <th className="px-3 py-2 font-semibold">Código</th>
                 <th className="px-3 py-2 font-semibold">Cliente</th>
                 <th className="px-3 py-2 font-semibold">WhatsApp</th>

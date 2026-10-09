@@ -155,13 +155,31 @@ export function orderMatchesSearch(order, rawQuery, { daily = false } = {}) {
   return q.split(/\s+/).every((word) => haystack.includes(word))
 }
 
-/** Pedidos del negociante logueado, opcionalmente filtrados por fecha de envío (shipping_date). */
-export async function fetchMyOrders({ shippingDateFrom, shippingDateTo, status, search, dailySearch = false } = {}) {
+// Perú no tiene horario de verano: un día de Lima va de 00:00 a 24:00 en UTC-5.
+const LIMA_OFFSET = '-05:00'
+
+/** Fecha de hoy en Lima como 'YYYY-MM-DD'. */
+export function limaTodayIso(now = new Date()) {
+  return new Date(now.getTime() - 5 * 3600 * 1000).toISOString().slice(0, 10)
+}
+
+function nextDayIso(iso) {
+  const d = new Date(iso + 'T12:00:00Z')
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Pedidos del negociante logueado. `createdFrom` / `createdTo` ('YYYY-MM-DD',
+ * ambos incluidos) filtran por el DÍA EN QUE EL CLIENTE LLENÓ EL FORMULARIO
+ * (hora de Lima, de 00:00 a 24:00). La fecha de envío es solo informativa.
+ */
+export async function fetchMyOrders({ createdFrom, createdTo, status, search, dailySearch = false } = {}) {
   const supabase = await getSupabaseClient()
   if (!supabase) return []
   let query = supabase.from('orders').select('*').order('created_at', { ascending: false })
-  if (shippingDateFrom) query = query.gte('shipping_date', shippingDateFrom)
-  if (shippingDateTo) query = query.lte('shipping_date', shippingDateTo)
+  if (createdFrom) query = query.gte('created_at', `${createdFrom}T00:00:00${LIMA_OFFSET}`)
+  if (createdTo) query = query.lt('created_at', `${nextDayIso(createdTo)}T00:00:00${LIMA_OFFSET}`)
   if (status) query = query.eq('status', status)
   const { data, error } = await query
   if (error) {
