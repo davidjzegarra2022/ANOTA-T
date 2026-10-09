@@ -132,7 +132,7 @@ export default function LandingPage() {
 
   return (
     <div className="bg-white text-ink">
-      <header className="sticky top-0 z-20 bg-navy text-white">
+      <header className="glass-nav sticky top-0 z-20 bg-navy text-white">
         <nav className="mx-auto flex min-h-[76px] w-[92%] max-w-[1180px] items-center justify-between gap-6">
           <a href="/" className="inline-flex items-center gap-2.5 text-[22px] font-extrabold tracking-tight">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-white to-[#e6eef7] shadow-lg">
