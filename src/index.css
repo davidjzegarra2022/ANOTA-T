@@ -24,7 +24,14 @@ html {
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: var(--color-surface);
+  /* Luz ambiental suave detrás de los paneles de vidrio (Liquid Glass). */
+  background:
+    radial-gradient(900px 620px at 6% -8%, rgba(255, 196, 0, 0.28), transparent 62%),
+    radial-gradient(820px 620px at 104% 6%, rgba(56, 148, 255, 0.22), transparent 60%),
+    radial-gradient(760px 560px at 30% 60%, rgba(16, 185, 129, 0.08), transparent 60%),
+    radial-gradient(1000px 760px at 70% 112%, rgba(22, 62, 80, 0.18), transparent 62%),
+    var(--color-surface);
+  background-attachment: fixed;
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -60,11 +67,33 @@ input, select, textarea {
    de Tailwind, ganan por orden de aparición en la hoja de estilos y
    utilidades como "sm:hidden" dejan de funcionar sobre estos elementos. */
 @layer components {
+  /* Liquid Glass: el vidrio (desenfoque + reflejo) va en ::before para que
+     la tarjeta NO se vuelva el contenedor de los modales `fixed` que tenga
+     adentro (backdrop-filter en el propio elemento los encerraría). */
   .card {
+    position: relative;
+    isolation: isolate;
     border-radius: 18px;
-    border: 1px solid #e6ecf1;
-    background: #ffffff;
-    box-shadow: 0 12px 35px rgba(7, 29, 45, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    background: transparent;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+      0 14px 38px rgba(7, 29, 45, 0.08),
+      0 2px 6px rgba(7, 29, 45, 0.04);
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 60% at 10% 0%, rgba(255, 255, 255, 0.65), transparent 55%),
+      linear-gradient(150deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.58));
+    -webkit-backdrop-filter: blur(22px) saturate(175%);
+    backdrop-filter: blur(22px) saturate(175%);
   }
 
   .btn {
@@ -85,11 +114,15 @@ input, select, textarea {
     cursor: default;
   }
   .btn-primary {
-    background: var(--color-brand);
+    background: linear-gradient(180deg, #ffd95e 0%, #ffc400 52%, #f4b700 100%);
     color: var(--color-navy);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.65),
+      inset 0 -2px 4px rgba(170, 110, 0, 0.18),
+      0 8px 18px rgba(233, 170, 0, 0.28);
   }
   .btn-primary:hover:not(:disabled) {
-    background: var(--color-brand-light);
+    background: linear-gradient(180deg, #ffe17f 0%, #ffd54c 55%, #ffc400 100%);
     transform: translateY(-1px);
   }
   .btn-dark {
@@ -100,19 +133,25 @@ input, select, textarea {
     background: var(--color-navy-2);
   }
   .btn-outline {
-    background: #ffffff;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.55));
     color: var(--color-navy);
-    border: 1px solid #dbe4eb;
+    border: 1px solid rgba(203, 216, 226, 0.9);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 4px 12px rgba(7, 29, 45, 0.05);
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
+    backdrop-filter: blur(14px) saturate(170%);
   }
   .btn-outline:hover:not(:disabled) {
-    background: var(--color-surface);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.72));
   }
 
   .input-field {
     width: 100%;
     border-radius: 12px;
-    border: 1px solid #dbe4eb;
-    background: #ffffff;
+    border: 1px solid rgba(203, 216, 226, 0.95);
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: inset 0 1px 2px rgba(7, 29, 45, 0.04);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    backdrop-filter: blur(12px) saturate(160%);
     padding: 12px 14px;
     font-size: 15px;
     color: var(--color-ink);
@@ -308,50 +347,6 @@ input, select, textarea {
 .lbl-code { font-family: 'Courier New', monospace; font-size: 8pt; font-weight: 700; }
 .lbl-date { font-size: 9pt; font-weight: 700; }
 
-/* --- Líneas en movimiento detrás de los formularios ---
-   Un patrón de líneas diagonales que se desplaza despacio, al 70% de
-   opacidad y difuminado, detrás del formulario. Va en un ::before con
-   z-index negativo: los campos tienen fondo blanco propio, así que el
-   texto se sigue leyendo igual. No captura toques (pointer-events: none). */
-.form-lines {
-  position: relative;
-  isolation: isolate;
-}
-
-.form-lines::before {
-  content: '';
-  position: absolute;
-  inset: -28px -20px;
-  z-index: -1;
-  border-radius: 28px;
-  pointer-events: none;
-  opacity: 0.7;
-  filter: blur(5px);
-  background-image: repeating-linear-gradient(
-    115deg,
-    rgba(255, 196, 0, 0.55) 0px,
-    rgba(255, 196, 0, 0.55) 4px,
-    transparent 4px,
-    transparent 26px,
-    rgba(7, 29, 45, 0.3) 26px,
-    rgba(7, 29, 45, 0.3) 29px,
-    transparent 29px,
-    transparent 54px
-  );
-  background-size: 220px 220px;
-  animation: form-lines-drift 22s linear infinite;
-}
-
-@keyframes form-lines-drift {
-  from { background-position: 0 0; }
-  to { background-position: 220px 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .form-lines::before {
-    animation: none;
-  }
-}
 
 /* Legibilidad (WCAG AA): el dorado #e9aa00 como TEXTO sobre blanco da 2:1.
    Como texto usamos un dorado más profundo; como fondo/borde/ícono sigue
@@ -425,10 +420,18 @@ input, select, textarea {
 .dark .shadow-slate-300\/60, .dark .shadow-slate-400\/40 { --tw-shadow-color: rgb(0 0 0 / .5); }
 
 /* Clases propias de la app */
-.dark .card { background: var(--dk-card); border-color: var(--dk-line); box-shadow: 0 12px 35px rgb(0 0 0 / .35); }
-.dark .btn-outline { background: var(--dk-card); color: var(--color-ink); border-color: var(--dk-line-2); }
-.dark .btn-outline:hover:not(:disabled) { background: var(--dk-card-2); }
-.dark .input-field { background: #0c1f30; border-color: var(--dk-line-2); color: var(--color-ink); }
+.dark .card {
+  border-color: rgb(255 255 255 / .09);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 16px 40px rgb(0 0 0 / .38);
+}
+.dark .card::before {
+  background:
+    radial-gradient(120% 60% at 10% 0%, rgb(255 255 255 / .06), transparent 55%),
+    linear-gradient(150deg, rgb(22 48 74 / .78), rgb(16 36 54 / .6));
+}
+.dark .btn-outline { background: linear-gradient(180deg, rgb(28 56 84 / .75), rgb(16 36 54 / .6)); color: var(--color-ink); border-color: rgb(255 255 255 / .12); box-shadow: inset 0 1px 0 rgb(255 255 255 / .07); }
+.dark .btn-outline:hover:not(:disabled) { background: rgb(34 64 90 / .85); }
+.dark .input-field { background: rgb(10 26 42 / .62); border-color: rgb(255 255 255 / .12); color: var(--color-ink); }
 .dark .input-field::placeholder, .dark input::placeholder, .dark textarea::placeholder { color: #7d93a9; }
 .dark select option { background: var(--dk-card); color: var(--color-ink); }
 
@@ -442,7 +445,6 @@ html.theme-anim, html.theme-anim * {
   :root.dark { color-scheme: light; --color-surface: #f4f7fa; --color-ink: #122337; --color-muted: #718196; }
 }
 .dark .text-slate-600 { color: var(--color-muted); }
-.dark .form-lines::before { opacity: .42; }
 /* Top couriers: en oscuro el número va en el color de texto (el color del
    courier ya lo llevan el punto y la barra; el navy no se leería). */
 .dark .courier-count { color: var(--color-ink) !important; }
@@ -530,3 +532,57 @@ html.theme-anim, html.theme-anim * {
 }
 /* Segmento elegido (Día/Semana/Mes…): en oscuro el navy se perdía sobre la tarjeta. */
 .dark .seg-on { background-color: var(--color-brand); color: var(--color-navy); }
+
+/* =====================================================================
+   LIQUID GLASS — barras, menú lateral y ventanas flotantes.
+   ===================================================================== */
+:root.dark body {
+  background:
+    radial-gradient(900px 620px at 6% -8%, rgba(255, 196, 0, 0.08), transparent 62%),
+    radial-gradient(820px 620px at 104% 6%, rgba(56, 148, 255, 0.12), transparent 60%),
+    radial-gradient(1000px 760px at 50% 112%, rgba(45, 120, 160, 0.14), transparent 62%),
+    var(--color-surface);
+  background-attachment: fixed;
+}
+.glass-bar {
+  background: rgba(255, 255, 255, 0.68) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  box-shadow: inset 0 -1px 0 rgba(7, 29, 45, 0.06);
+}
+.dark .glass-bar { background: rgba(10, 24, 38, 0.66) !important; border-color: rgb(255 255 255 / .08) !important; }
+.glass-nav {
+  background: rgba(7, 29, 45, 0.78) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+.glass-side {
+  background: linear-gradient(180deg, rgba(7, 29, 45, 0.9), rgba(12, 44, 65, 0.86)) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.07);
+}
+[role='dialog'].bg-white,
+[role='alertdialog'].bg-white,
+[role='menu'].bg-white {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.76)) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  backdrop-filter: blur(26px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 0 #fff, 0 30px 70px -18px rgba(7, 29, 45, 0.45);
+}
+.dark [role='dialog'].bg-white,
+.dark [role='alertdialog'].bg-white,
+.dark [role='menu'].bg-white {
+  background: linear-gradient(150deg, rgba(22, 48, 74, 0.9), rgba(16, 36, 54, 0.82)) !important;
+  border-color: rgb(255 255 255 / .1);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 30px 70px -18px rgb(0 0 0 / .7);
+}
+/* Sin soporte de desenfoque: paneles casi opacos para que el texto se lea. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .card::before { background: #fff; }
+  .dark .card::before { background: var(--dk-card); }
+  .glass-bar { background: #fff !important; }
+}

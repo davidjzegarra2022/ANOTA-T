@@ -67,19 +67,22 @@ function PublicShippingRoute({ slug }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col">
       <Header
         businessName={merchant.businessName}
         subtitle="Formulario de Envío"
         minimal={Boolean(submittedForm)}
         logoUrl={merchant.logoUrl}
       />
-      <main className="mx-auto w-full max-w-xl flex-1 px-5 py-6 sm:px-6">
-        {submittedForm ? (
-          <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} />
-        ) : (
-          <ShippingForm merchant={merchant} onSubmit={handleSubmit} suspended={suspended} />
-        )}
+      <main className="mx-auto w-full max-w-xl flex-1 px-3 py-5 sm:px-6 sm:py-7">
+        {/* Panel de vidrio (Liquid Glass) sobre la luz ambiental del fondo. */}
+        <div className="card px-4 py-5 sm:p-6">
+          {submittedForm ? (
+            <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} />
+          ) : (
+            <ShippingForm merchant={merchant} onSubmit={handleSubmit} suspended={suspended} />
+          )}
+        </div>
       </main>
       <Footer />
     </div>
@@ -128,7 +131,7 @@ function AdminRoute() {
   const wide = adminView === 'dashboard'
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col">
       <Header businessName="ANOTA-T" subtitle="Panel de administrador" />
       <main className={`mx-auto w-full flex-1 px-5 py-6 sm:px-6 ${wide ? 'max-w-5xl' : 'max-w-xl'}`}>
         {adminView === 'dashboard' ? (

@@ -191,6 +191,10 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
               />
             </label>
           </div>
+          <p className="mt-2 text-xs text-muted">
+            Antes de las <b className="text-ink">{String(form.cutoffHour).padStart(2, '0')}:00</b> tu cliente puede elegir despacho el mismo día; después, desde el
+            siguiente día de despacho (hora de Perú). La anticipación se suma a la hora del pedido.
+          </p>
         </div>
 
         <div className="card p-5">

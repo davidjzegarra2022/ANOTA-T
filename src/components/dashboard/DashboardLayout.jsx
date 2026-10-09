@@ -109,7 +109,7 @@ export default function DashboardLayout({ email, onLogout }) {
   const currentLabel = NAV_ITEMS.find((i) => i.id === tab)?.label || 'ANOTA-T'
 
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex min-h-screen">
       {/* Fondo oscuro del cajón (solo móvil) */}
       {drawerOpen && (
         <button
@@ -121,7 +121,7 @@ export default function DashboardLayout({ email, onLogout }) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-slate-200 bg-navy text-white transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 lg:transition-all ${
+        className={`glass-side fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-slate-200 bg-navy text-white transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 lg:transition-all ${
           drawerOpen ? 'translate-x-0' : '-translate-x-full'
         } ${collapsed ? 'lg:w-16' : 'lg:w-60'}`}
       >
@@ -192,7 +192,7 @@ export default function DashboardLayout({ email, onLogout }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Barra superior solo en móvil: abre el cajón y dice dónde estás */}
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
+        <header className="glass-bar sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
