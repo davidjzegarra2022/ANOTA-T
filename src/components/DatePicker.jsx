@@ -112,7 +112,7 @@ export default function DatePicker({ value, onChange, options, placeholder, erro
       <button
         type="button"
         onClick={handleToggle}
-        className={`flex w-full items-center gap-2.5 rounded-xl border bg-white px-3.5 py-3 text-left transition ${
+        className={`glass-field flex w-full items-center gap-2.5 rounded-xl border px-3.5 py-3 text-left transition ${
           error ? 'border-red-500' : 'border-slate-200 hover:border-slate-300'
         }`}
       >

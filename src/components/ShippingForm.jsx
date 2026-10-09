@@ -42,7 +42,7 @@ function TextField({ label, required, value, onChange, onBlur, error, placeholde
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
       <div
-        className={`flex items-center gap-2 rounded-xl border bg-white/75 px-3.5 py-3 backdrop-blur-md transition ${
+        className={`glass-field flex items-center gap-2 rounded-xl border px-3.5 py-3 transition ${
           error
             ? 'border-red-500'
             : 'border-slate-200 focus-within:border-brand-dark focus-within:ring-2 focus-within:ring-brand/25'
@@ -79,7 +79,7 @@ function SelectField({
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
       <div
-        className={`relative rounded-xl border bg-white/75 backdrop-blur-md transition ${
+        className={`glass-field relative rounded-xl border transition ${
           error
             ? 'border-red-500'
             : 'border-slate-200 focus-within:border-brand-dark focus-within:ring-2 focus-within:ring-brand/25'
