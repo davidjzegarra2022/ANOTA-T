@@ -125,7 +125,7 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
       </label>
 
       <div
-        className={`flex items-center gap-2 rounded-xl border bg-white px-3.5 py-3 transition ${
+        className={`glass-field flex items-center gap-2 rounded-xl border px-3.5 py-3 transition ${
           open ? 'border-brand-dark ring-2 ring-brand/25' : error ? 'border-red-500' : 'border-slate-200'
         }`}
       >

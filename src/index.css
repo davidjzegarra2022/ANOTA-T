@@ -586,3 +586,41 @@ html.theme-anim, html.theme-anim * {
   .dark .card::before { background: var(--dk-card); }
   .glass-bar { background: #fff !important; }
 }
+
+/* =====================================================================
+   CAMPOS DEL FORMULARIO PÚBLICO (glass-field)
+   El cliente llena estos campos. El vidrio es CLARO en los dos temas; en
+   modo oscuro el texto escrito va en oscuro para que SIEMPRE se lea bien
+   sobre el fondo claro del campo (antes el texto claro sobre campo claro
+   no se apreciaba).
+   ===================================================================== */
+.glass-field {
+  background: rgba(255, 255, 255, 0.75);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+}
+.dark .glass-field {
+  background: rgba(236, 242, 248, 0.94);
+}
+.dark .glass-field,
+.dark .glass-field input,
+.dark .glass-field select,
+.dark .glass-field textarea,
+.dark .glass-field .text-ink,
+.dark .glass-field .text-muted {
+  color: #0b1b2b;
+}
+.dark .glass-field input::placeholder,
+.dark .glass-field textarea::placeholder {
+  color: #566677;
+}
+/* El menú nativo del <select> en móvil se despliega aparte: que sus
+   opciones también se lean. */
+.dark .glass-field select option {
+  background: #ffffff;
+  color: #0b1b2b;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-field { background: #ffffff; }
+  .dark .glass-field { background: #eef3f8; }
+}
