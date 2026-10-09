@@ -66,6 +66,24 @@ export async function adminSetMerchantActive(id, active) {
   return { ok: true }
 }
 
+/**
+ * Elimina la cuenta de un negociante (usuario, tienda y todos sus pedidos).
+ * La base vuelve a exigir el nombre exacto de la tienda y no deja borrar
+ * cuentas de administradores ni la propia.
+ */
+export async function adminDeleteMerchant(id, confirmName) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { error } = await supabase.rpc('admin_delete_merchant', { p_id: id, p_confirm: String(confirmName || '') })
+  if (!error) return { ok: true }
+  const msg = String(error.message || '')
+  if (/confirm_mismatch/.test(msg)) return { ok: false, error: 'El nombre de la tienda no coincide.' }
+  if (/protected_account/.test(msg)) return { ok: false, error: 'No se puede eliminar una cuenta de administrador.' }
+  if (/not_found/.test(msg)) return { ok: false, error: 'La cuenta ya no existe.' }
+  if (/admin_delete_merchant|PGRST202|does not exist/i.test(msg)) return { ok: false, error: 'La función de borrado aún no está activada en la base de datos.' }
+  return { ok: false, error: adminError(error) }
+}
+
 export async function adminSetMerchantPlan(id, planId) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }

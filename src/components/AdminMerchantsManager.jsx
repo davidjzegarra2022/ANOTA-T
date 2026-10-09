@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { isSupabaseConfigured } from '../utils/supabaseClient'
 import {
   adminAddEmailDomain,
+  adminDeleteMerchant,
   adminDeleteEmailDomain,
   adminListEmailDomains,
   adminListMerchants,
@@ -10,7 +11,7 @@ import {
   adminSetMerchantPlan,
   planRemaining,
 } from '../utils/adminMerchants'
-import { IconCheck, IconKey, IconRefresh, IconStore, IconX } from './icons'
+import { IconCheck, IconKey, IconRefresh, IconSearch, IconStore, IconTrash, IconX } from './icons'
 import ClaudeCodeLoader from './ClaudeCodeLoader'
 import { notifyAdminActivity } from './AdminActivityLog'
 
@@ -20,6 +21,17 @@ function fmtDate(iso) {
   } catch {
     return iso
   }
+}
+
+const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+
+/** Busca por tienda, correo o WhatsApp (los dígitos se comparan sin espacios ni +51). */
+function merchantMatches(m, query) {
+  const q = norm(query)
+  if (!q) return true
+  const digits = q.replace(/\D/g, '')
+  if (digits.length >= 3 && String(m.whatsappNumber || '').replace(/\D/g, '').includes(digits)) return true
+  return norm(m.businessName).includes(q) || norm(m.email).includes(q)
 }
 
 export default function AdminMerchantsManager() {
@@ -33,6 +45,10 @@ export default function AdminMerchantsManager() {
   const [pending, setPending] = useState({})
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState(null)
+
+  const [query, setQuery] = useState('')
+  // Cuenta a eliminar (null = diálogo cerrado).
+  const [toDelete, setToDelete] = useState(null)
 
   const [domains, setDomains] = useState([])
   const [domainDraft, setDomainDraft] = useState('')
@@ -104,6 +120,20 @@ export default function AdminMerchantsManager() {
   }
 
   const pendingCount = Object.keys(pending).length
+  const visible = merchants.filter((m) => merchantMatches(m, query))
+
+  async function handleDeleted(name) {
+    setToDelete(null)
+    // Lo pendiente de esa cuenta ya no aplica.
+    setPending((prev) => {
+      const next = { ...prev }
+      delete next[toDelete?.id]
+      return next
+    })
+    await refresh()
+    notifyAdminActivity()
+    setSaveMsg({ ok: true, text: `✓ Cuenta «${name}» eliminada.` })
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -171,6 +201,29 @@ export default function AdminMerchantsManager() {
             </div>
           </div>
 
+          {merchants.length > 0 && (
+            <div className="input-field mt-3 flex items-center gap-2">
+              <IconSearch className="h-4 w-4 shrink-0 text-muted" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value.slice(0, 80))}
+                placeholder="Buscar por tienda, correo o número de WhatsApp…"
+                aria-label="Buscar cuentas"
+                className="min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+              />
+              {query && (
+                <>
+                  <span className="shrink-0 text-xs text-muted">
+                    {visible.length} de {merchants.length}
+                  </span>
+                  <button type="button" onClick={() => setQuery('')} aria-label="Limpiar búsqueda" className="shrink-0 rounded-md px-1 text-muted hover:text-navy">
+                    <IconX className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           {listError && (
             <p className="mt-2 text-xs font-semibold text-red-600">
               <IconKey className="mr-1 inline h-3.5 w-3.5" /> {listError}
@@ -185,7 +238,11 @@ export default function AdminMerchantsManager() {
             </div>
           )}
 
-          {merchants.length > 0 && (
+          {merchants.length > 0 && visible.length === 0 && (
+            <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-muted">Ninguna cuenta coincide con «{query}».</p>
+          )}
+
+          {visible.length > 0 && (
             <div className="mt-3 card overflow-x-auto">
               <table className="w-full min-w-[900px] text-left text-[13px]">
                 <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
@@ -197,10 +254,11 @@ export default function AdminMerchantsManager() {
                     <th className="px-3 py-2 font-semibold">Usuario conectado</th>
                     <th className="px-3 py-2 font-semibold">Estado</th>
                     <th className="px-3 py-2 font-semibold">Desde</th>
+                    <th className="px-3 py-2"><span className="sr-only">Eliminar</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {merchants.map((m) => {
+                  {visible.map((m) => {
                     const eff = effective(m)
                     const dirty = Boolean(pending[m.id])
                     return (
@@ -253,6 +311,18 @@ export default function AdminMerchantsManager() {
                         </button>
                       </td>
                       <td className="px-3 py-2 text-xs text-muted">{fmtDate(m.createdAt)}</td>
+                      <td className="px-2 py-2">
+                        <button
+                          type="button"
+                          onClick={() => setToDelete(m)}
+                          disabled={saving}
+                          title="Eliminar cuenta"
+                          aria-label={`Eliminar la cuenta de ${m.businessName}`}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                        >
+                          <IconTrash className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                     )
                   })}
@@ -284,6 +354,8 @@ export default function AdminMerchantsManager() {
               </div>
             </div>
           )}
+
+          {toDelete && <DeleteAccountDialog merchant={toDelete} onClose={() => setToDelete(null)} onDeleted={handleDeleted} />}
 
           {saving && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 backdrop-blur-sm">
@@ -371,6 +443,88 @@ function RemainingCell({ merchant }) {
       <p className="mt-0.5 text-[10px] text-muted">
         {merchant.lastSignInAt ? `Últ. conexión ${fmtDate(merchant.lastSignInAt)}` : 'Nunca ingresó'}
       </p>
+    </div>
+  )
+}
+
+/**
+ * Borrar una cuenta pide dos pasos: escribir el nombre exacto de la tienda y
+ * confirmar. Se borran el usuario, la tienda y todos sus pedidos.
+ */
+function DeleteAccountDialog({ merchant, onClose, onDeleted }) {
+  const [step, setStep] = useState('name')
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const nameOk = norm(typed) !== '' && norm(typed) === norm(merchant.businessName)
+
+  async function confirm() {
+    setBusy(true)
+    setError(null)
+    const res = await adminDeleteMerchant(merchant.id, typed)
+    setBusy(false)
+    if (!res.ok) return setError(res.error)
+    onDeleted(merchant.businessName)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-navy/60 backdrop-blur-sm sm:items-center sm:p-6">
+      <button type="button" aria-label="Cerrar" onClick={() => !busy && onClose()} className="absolute inset-0" />
+      <div role="alertdialog" aria-modal="true" aria-labelledby="del-acc-title" className="relative w-full max-w-md rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-6">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-100 text-red-700">
+          <IconTrash className="h-5 w-5" />
+        </span>
+        <h2 id="del-acc-title" className="mt-3 text-lg font-bold text-navy">Eliminar cuenta</h2>
+        <p className="mt-1 text-xs text-muted">
+          {merchant.email} · {merchant.whatsappNumber}
+        </p>
+        {step === 'name' ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (nameOk) setStep('confirm')
+            }}
+          >
+            <p className="mt-3 text-sm text-muted">
+              Escribe el nombre de la tienda <b className="text-ink">{merchant.businessName}</b> para continuar.
+            </p>
+            <input
+              autoFocus
+              value={typed}
+              onChange={(e) => setTyped(e.target.value.slice(0, 120))}
+              placeholder={merchant.businessName}
+              aria-label="Nombre de la tienda"
+              autoComplete="off"
+              className={`input-field mt-3 ${typed && !nameOk ? 'has-error' : ''}`}
+            />
+            {typed && !nameOk && <p className="mt-1 text-xs font-semibold text-red-600">El nombre no coincide.</p>}
+            <div className="mt-4 flex gap-2">
+              <button type="button" onClick={onClose} className="btn btn-outline flex-1">
+                Cancelar
+              </button>
+              <button type="submit" disabled={!nameOk} className="btn flex-1 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                Continuar
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <p className="mt-3 text-sm text-muted">
+              ¿Deseas eliminar la cuenta de <b className="text-ink">{merchant.businessName}</b>? Se borran su acceso, su tienda, su link y{' '}
+              <b className="text-red-700">todos sus pedidos</b>. No se puede deshacer.
+            </p>
+            {error && <p className="mt-2 text-xs font-semibold text-red-600">{error}</p>}
+            <div className="mt-4 flex gap-2">
+              <button type="button" onClick={onClose} disabled={busy} className="btn btn-outline flex-1">
+                No, conservar
+              </button>
+              <button type="button" onClick={confirm} disabled={busy} className="btn flex-1 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                <IconTrash className="h-4 w-4" /> {busy ? 'Eliminando…' : 'Sí, eliminar'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

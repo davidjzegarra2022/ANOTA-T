@@ -611,11 +611,45 @@ Detalles que conviene tener presentes:
 - **Estados de pedido**: solo `pending` (Pendiente), `packed` (Empacado),
   `shipped` (Enviado) y `cancelled` (Cancelado); la restricción
   `orders_status_check` rechaza cualquier otro.
-- **N° de pedido correlativo por tienda** (`orders.order_number`): lo fija el
-  trigger `prepare_new_order` (security definer, para ver todos los pedidos
-  de la tienda) con un candado por negociante contra duplicados, junto con
-  el código, el estado y la fecha. `protect_order_columns` impide que el
-  negociante reescriba número, código, tienda o fecha de un pedido.
+- **N° de pedido por mes y N° del día** (`orders.order_number`, que vuelve
+  a 1 cada inicio de mes, y `orders.daily_number`, que vuelve a 1 cada
+  medianoche; ambos en hora de Lima y con max+1 para no repetir tras
+  borrar): los fija el trigger `prepare_new_order` (security definer, para
+  ver todos los pedidos de la tienda) con un candado por negociante contra
+  duplicados, junto con el código, el estado y la fecha. Índice único
+  `orders_merchant_month_number_key` (tienda + mes + número).
+  `protect_order_columns` impide que el negociante reescriba números,
+  código, tienda o fecha de un pedido.
+- **Envíos filtra por fecha de registro**: el día (o rango) elegido muestra
+  los pedidos cuyo formulario se llenó ese día de 00:00 a 24:00 (Lima). La
+  fecha de envío es solo informativa.
+- **Borrar una cuenta (admin)**: `admin_delete_merchant(p_id, p_confirm)`
+  exige ser admin, el nombre exacto de la tienda y no deja borrar la propia
+  cuenta ni la de otro admin; borra el usuario y caen en cascada la tienda
+  y sus pedidos. Queda en el registro de actividad:
+
+  ```sql
+  create or replace function public.admin_delete_merchant(p_id uuid, p_confirm text)
+   returns void language plpgsql security definer set search_path to 'public'
+  as $$
+  declare r public.merchants;
+  begin
+    if not public.is_platform_admin() then raise exception 'forbidden'; end if;
+    select * into r from public.merchants where id = p_id;
+    if not found then raise exception 'not_found'; end if;
+    if p_id = auth.uid() or exists (select 1 from public.platform_admins where user_id = p_id) then
+      raise exception 'protected_account';
+    end if;
+    if lower(regexp_replace(trim(coalesce(p_confirm, '')), '\s+', ' ', 'g'))
+       <> lower(regexp_replace(trim(r.business_name), '\s+', ' ', 'g')) then
+      raise exception 'confirm_mismatch';
+    end if;
+    perform public.log_admin_activity('Eliminó cuenta', r.business_name);
+    delete from auth.users where id = p_id;
+  end; $$;
+  revoke all on function public.admin_delete_merchant(uuid, text) from public, anon;
+  grant execute on function public.admin_delete_merchant(uuid, text) to authenticated;
+  ```
 - **Cabeceras HTTP** (`vercel.json`): CSP estricta (solo scripts propios +
   el hash del script del tema de `index.html`; si lo cambias, actualiza el
   hash), `X-Frame-Options: DENY`, `nosniff`, HSTS, `Referrer-Policy` y
