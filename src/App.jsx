@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
-import AccessGate from './components/AccessGate'
-import AdminDashboard from './components/AdminDashboard'
-import AuthGate from './components/auth/AuthGate'
-import DashboardLayout from './components/dashboard/DashboardLayout'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import Footer from './components/Footer'
 import Header from './components/Header'
 import ClaudeCodeLoader from './components/ClaudeCodeLoader'
-import LandingPage from './components/LandingPage'
 import ShippingForm from './components/ShippingForm'
 import SuccessScreen from './components/SuccessScreen'
+
+// Carga diferida de las zonas pesadas: así el formulario público (/f/:slug),
+// que es lo que abren los clientes en el celular, NO descarga el panel, el
+// admin ni la landing. Cada uno baja solo cuando se entra a su ruta.
+const AccessGate = lazy(() => import('./components/AccessGate'))
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
+const AuthGate = lazy(() => import('./components/auth/AuthGate'))
+const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout'))
+const LandingPage = lazy(() => import('./components/LandingPage'))
 import { fetchMerchantBySlug } from './utils/merchantProfile'
 import { createOrder } from './utils/orders'
 import { getCurrentSession, isPlatformAdmin, onAuthStateChange, signOutMerchant } from './utils/supabaseAuth'
@@ -50,10 +54,15 @@ function PublicShippingRoute({ slug }) {
     const res = await createOrder(merchant.id, form)
     // Si la suscripción venció mientras el cliente llenaba el formulario,
     // el servidor rechaza el pedido: se muestra el aviso, no el éxito.
-    if (res.suspended) return setSuspended(true)
-    setSubmittedForm(
-      res.ok ? { ...form, trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status } : form,
-    )
+    if (res.suspended) {
+      setSuspended(true)
+      return res
+    }
+    if (res.ok) {
+      setSubmittedForm({ ...form, trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status })
+    }
+    // Si falló (p. ej. anti-spam), el formulario muestra el error y no avanza.
+    return res
   }
 
   if (merchant === undefined) return <LoadingScreen />
@@ -256,7 +265,10 @@ export default function App() {
     return match ? decodeURIComponent(match[1]) : null
   }, [path])
 
-  if (isAdminRoute) return <AdminRoute />
-  if (publicFormSlug) return <PublicShippingRoute slug={publicFormSlug} />
-  return <MerchantSaasRoute path={path} />
+  // Suspense cubre a los componentes cargados en diferido mientras bajan.
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      {isAdminRoute ? <AdminRoute /> : publicFormSlug ? <PublicShippingRoute slug={publicFormSlug} /> : <MerchantSaasRoute path={path} />}
+    </Suspense>
+  )
 }

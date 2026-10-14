@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { fetchMyOrders, limaTodayIso, ORDER_STATUS_LABELS, orderDayLabel, orderTimeLabel, updateOrderStatus } from '../../utils/orders'
 import { deliveryMethodLabel } from '../../utils/orderSummary'
+import { customerStatusWhatsAppUrl } from '../../utils/whatsapp'
 import { exportOrdersToPdf } from '../../utils/ordersExport'
-import { IconChevronLeft, IconChevronRight, IconEye, IconFile, IconSearch, IconTag, IconTrash } from '../icons'
+import { IconChevronLeft, IconChevronRight, IconEye, IconFile, IconSearch, IconTag, IconTrash, IconWhatsapp } from '../icons'
 import CourierTemplatesCard from './CourierTemplatesCard'
 import DeleteOrdersDialog from './DeleteOrdersDialog'
 import ExcelExportMenu from './ExcelExportMenu'
@@ -313,6 +314,11 @@ export default function EnviosPage({ merchant }) {
                 <button type="button" onClick={() => setPrintIds([o.id])} className="btn btn-outline flex-1 !py-2 text-xs">
                   <IconTag className="h-4 w-4" /> Imprimir etiqueta
                 </button>
+                {o.customerPhone && (
+                  <RowIcon label="Avisar al cliente por WhatsApp" ok href={customerStatusWhatsAppUrl(o, merchant)}>
+                    <IconWhatsapp className="h-4 w-4" />
+                  </RowIcon>
+                )}
                 <RowIcon label="Ver resumen" onClick={() => setSummaryOrder(o)}>
                   <IconEye className="h-4 w-4" />
                 </RowIcon>
@@ -375,6 +381,11 @@ export default function EnviosPage({ merchant }) {
                       <RowIcon label="Imprimir la etiqueta de envío" small onClick={() => setPrintIds([o.id])}>
                         <IconTag className="h-4 w-4" />
                       </RowIcon>
+                      {o.customerPhone && (
+                        <RowIcon label="Avisar al cliente por WhatsApp" small ok href={customerStatusWhatsAppUrl(o, merchant)}>
+                          <IconWhatsapp className="h-4 w-4" />
+                        </RowIcon>
+                      )}
                       <RowIcon label="Ver resumen" small onClick={() => setSummaryOrder(o)}>
                         <IconEye className="h-4 w-4" />
                       </RowIcon>
@@ -398,7 +409,13 @@ export default function EnviosPage({ merchant }) {
           ✓ {notice}
         </div>
       )}
-      {summaryOrder && <OrderSummaryModal order={summaryOrder} onClose={() => setSummaryOrder(null)} />}
+      {summaryOrder && (
+        <OrderSummaryModal
+          order={summaryOrder}
+          onClose={() => setSummaryOrder(null)}
+          onAmountSaved={(id, amount) => setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, amount } : o)))}
+        />
+      )}
       {toDelete && (
         <DeleteOrdersDialog orders={toDelete} businessName={merchant?.businessName} onClose={() => setToDelete(null)} onDeleted={handleDeleted} />
       )}
@@ -409,17 +426,19 @@ export default function EnviosPage({ merchant }) {
   )
 }
 
-function RowIcon({ label, onClick, danger, small, children }) {
+function RowIcon({ label, onClick, href, danger, ok, small, children }) {
+  const cls = `inline-flex shrink-0 items-center justify-center rounded-xl border transition ${small ? 'h-8 w-8' : 'h-9 w-10'} ${
+    danger ? 'border-red-200 text-red-600 hover:bg-red-50' : ok ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-slate-200 text-navy hover:bg-surface'
+  }`
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" title={label} aria-label={label} className={cls}>
+        {children}
+      </a>
+    )
+  }
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      className={`inline-flex shrink-0 items-center justify-center rounded-xl border transition ${small ? 'h-8 w-8' : 'h-9 w-10'} ${
-        danger ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-slate-200 text-navy hover:bg-surface'
-      }`}
-    >
+    <button type="button" onClick={onClick} title={label} aria-label={label} className={cls}>
       {children}
     </button>
   )

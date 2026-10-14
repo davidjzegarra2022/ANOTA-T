@@ -1,0 +1,11 @@
+# ANOTA-T
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /signup
+# Los formularios de cada tienda son privados por link, no para indexar.
+Disallow: /f/
+Disallow: /admin
+Disallow: /forgot-password
+
+Sitemap: https://anotat.vercel.app/sitemap.xml

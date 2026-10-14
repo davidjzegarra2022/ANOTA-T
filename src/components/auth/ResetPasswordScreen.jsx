@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import PasswordInput from '../PasswordInput'
-import logoIcon from '../../assets/logo-icon.png'
+import logoIcon from '../../assets/logo-icon.webp'
 import { checkNewPassword, MIN_PASSWORD_LENGTH } from '../../utils/passwordSecurity'
 import { updateMerchantPassword } from '../../utils/supabaseAuth'
 

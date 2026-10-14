@@ -10,6 +10,7 @@ function fromRow(row) {
     trackingCode: row.tracking_code,
     orderNumber: row.order_number,
     dailyNumber: row.daily_number,
+    amount: row.amount == null ? null : Number(row.amount),
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerDni: row.customer_dni,
@@ -75,6 +76,10 @@ export async function createOrder(merchantId, form) {
     return { ok: false, error: res.error.message }
   }
   console.warn('[supabase] No se pudo guardar el pedido:', error.message)
+  // Anti-spam del servidor: demasiados pedidos muy seguido.
+  if (/rate_limited/i.test(error.message || '')) {
+    return { ok: false, rateLimited: true, error: 'Enviaste varios pedidos muy seguido. Espera unos minutos e inténtalo de nuevo.' }
+  }
   // 42501 = la política RLS lo rechazó: la tienda está suspendida.
   return { ok: false, error: error.message, suspended: error.code === '42501' }
 }
@@ -188,6 +193,21 @@ export async function fetchMyOrders({ createdFrom, createdTo, status, search, da
   }
   const rows = (data || []).map(fromRow)
   return search?.trim() ? rows.filter((o) => orderMatchesSearch(o, search, { daily: dailySearch })) : rows
+}
+
+/**
+ * Fija/edita el monto (S/) de un pedido propio. `amount` null = sin monto.
+ * La política update_own exige auth.uid()=merchant_id, así que solo el
+ * dueño del pedido puede cambiarlo.
+ */
+export async function updateOrderAmount(id, amount) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const value = amount === '' || amount == null ? null : Number(amount)
+  if (value != null && (!Number.isFinite(value) || value < 0 || value > 99999999)) return { ok: false, error: 'Monto inválido.' }
+  const { error } = await supabase.from('orders').update({ amount: value }).eq('id', id)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, amount: value }
 }
 
 export async function updateOrderStatus(id, status) {

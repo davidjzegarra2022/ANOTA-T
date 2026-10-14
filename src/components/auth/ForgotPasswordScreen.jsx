@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import logoIcon from '../../assets/logo-icon.png'
+import logoIcon from '../../assets/logo-icon.webp'
 import { sendPasswordReset } from '../../utils/supabaseAuth'
 import { IconCheck } from '../icons'
 

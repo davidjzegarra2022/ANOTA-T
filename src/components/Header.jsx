@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import logoIcon from '../assets/logo-icon.png'
+import logoIcon from '../assets/logo-icon.webp'
 
 export default function Header({ businessName, subtitle, minimal = false, logoUrl }) {
   const [logoFailed, setLogoFailed] = useState(false)

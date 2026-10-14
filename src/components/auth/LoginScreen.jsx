@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import PasswordInput from '../PasswordInput'
-import logoIcon from '../../assets/logo-icon.png'
+import logoIcon from '../../assets/logo-icon.webp'
 import { signInMerchant } from '../../utils/supabaseAuth'
 import { logActivation } from '../../utils/telemetry'
 import { IconCheck } from '../icons'

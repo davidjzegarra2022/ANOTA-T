@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { copyText } from '../../utils/clipboard'
 import { orderSummarySections, orderSummaryText } from '../../utils/orderSummary'
+import { updateOrderAmount } from '../../utils/orders'
 import { IconCheck, IconCopy, IconX } from '../icons'
 import { pageRule, readPrintFormat, savePrintFormat } from './PrintLabelsModal'
 
@@ -25,8 +26,24 @@ function IconPrinter({ className }) {
  * CSS de `#order-summary-print` (en index.css) esconde el resto al
  * imprimir y muestra solo esa copia.
  */
-export default function OrderSummaryModal({ order, onClose }) {
+export default function OrderSummaryModal({ order, onClose, onAmountSaved }) {
   const [copied, setCopied] = useState(false)
+  const [amount, setAmount] = useState(order.amount == null ? '' : String(order.amount))
+  const [savingAmount, setSavingAmount] = useState(false)
+  const [amountMsg, setAmountMsg] = useState(null)
+  const amountDirty = (order.amount == null ? '' : String(order.amount)) !== amount.trim()
+
+  async function handleSaveAmount() {
+    setSavingAmount(true)
+    setAmountMsg(null)
+    const res = await updateOrderAmount(order.id, amount.trim())
+    setSavingAmount(false)
+    if (!res.ok) return setAmountMsg({ ok: false, text: res.error })
+    order.amount = res.amount // refleja en el objeto que comparte la lista
+    onAmountSaved?.(order.id, res.amount)
+    setAmountMsg({ ok: true, text: 'Monto guardado' })
+    setTimeout(() => setAmountMsg(null), 2000)
+  }
   // Papel: térmica 10×15 o A4 (comparte el predeterminado con las etiquetas).
   const [paper, setPaperState] = useState(() => (readPrintFormat() === 'thermal' ? 'thermal' : 'a4'))
 
@@ -73,6 +90,27 @@ export default function OrderSummaryModal({ order, onClose }) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+          {/* Monto del pedido (lo fija el negociante; alimenta los ingresos del Panel Pro). */}
+          <div className="mb-4 rounded-xl border border-slate-200 bg-surface p-3 print:hidden">
+            <label htmlFor="order-amount" className="text-[11px] font-bold tracking-wide text-muted uppercase">Monto del pedido (S/)</label>
+            <div className="mt-1.5 flex gap-2">
+              <div className="input-field flex items-center gap-1.5">
+                <span className="font-semibold text-muted">S/</span>
+                <input
+                  id="order-amount"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, '').slice(0, 11))}
+                  placeholder="0.00"
+                  className="min-w-0 flex-1 bg-transparent focus:outline-none"
+                />
+              </div>
+              <button type="button" onClick={handleSaveAmount} disabled={!amountDirty || savingAmount} className="btn btn-primary shrink-0">
+                {savingAmount ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
+            {amountMsg && <p className={`mt-1 text-xs font-semibold ${amountMsg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{amountMsg.text}</p>}
+          </div>
           <SummaryBody sections={sections} />
         </div>
 
