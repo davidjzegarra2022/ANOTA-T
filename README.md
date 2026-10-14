@@ -650,6 +650,36 @@ Detalles que conviene tener presentes:
   revoke all on function public.admin_delete_merchant(uuid, text) from public, anon;
   grant execute on function public.admin_delete_merchant(uuid, text) to authenticated;
   ```
+- **Borrado automático de pedidos** (`purge_old_orders()` + `pg_cron`):
+  cada día a las 03:10 (hora de Lima) elimina los pedidos **enviados** y
+  **cancelados** con más de **45 días** desde su registro; los pendientes y
+  empacados se conservan siempre. Queda constancia en el registro de
+  actividad como "Sistema". Para cambiar el plazo o los estados, se edita la
+  función; para apagarlo: `select cron.unschedule('purge-old-orders');`.
+
+  ```sql
+  create extension if not exists pg_cron;
+  create or replace function public.purge_old_orders()
+   returns integer language plpgsql security definer set search_path to 'public'
+  as $$
+  declare n integer;
+  begin
+    with gone as (
+      delete from public.orders
+      where status in ('shipped', 'cancelled')
+        and created_at < now() - interval '45 days'
+      returning 1
+    ) select count(*) into n from gone;
+    if n > 0 then
+      insert into public.admin_activity_log (admin_id, admin_name, action, details)
+      values (null, 'Sistema', 'Borrado automático de pedidos',
+              n || ' pedido(s) enviados/cancelados con más de 45 días');
+    end if;
+    return n;
+  end; $$;
+  revoke all on function public.purge_old_orders() from public, anon, authenticated;
+  select cron.schedule('purge-old-orders', '10 8 * * *', $$select public.purge_old_orders();$$);
+  ```
 - **Cabeceras HTTP** (`vercel.json`): CSP estricta (solo scripts propios +
   el hash del script del tema de `index.html`; si lo cambias, actualiza el
   hash), `X-Frame-Options: DENY`, `nosniff`, HSTS, `Referrer-Policy` y
