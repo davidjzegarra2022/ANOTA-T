@@ -264,7 +264,7 @@ where not exists (select 1 from public.plans where name = 'Prueba Free');
 
 -- Un solo plan pagado (antes Pro + Gold, unificados en «Emprendedor»).
 insert into public.plans (name, price_per_day, description, features)
-select 'Emprendedor', 1.50, 'Todo lo que necesitas para vender y despachar sin errores.',
+select 'Emprendedor', 1.00, 'Todo lo que necesitas para vender y despachar sin errores.',
   array['Link con tu marca y tu logo', 'Formulario de datos universal',
         'Panel de control de estados de envío',
         'Base de datos de las agencias a nivel nacional',
