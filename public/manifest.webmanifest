@@ -1,0 +1,16 @@
+{
+  "name": "ANOTA-T",
+  "short_name": "ANOTA-T",
+  "description": "Formularios de envío para tu negocio: anota, valida y conecta tus pedidos.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fa",
+  "theme_color": "#071d2d",
+  "lang": "es-PE",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

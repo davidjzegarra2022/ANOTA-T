@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import logoIcon from '../../assets/logo-icon.png'
+import logoIcon from '../../assets/logo-icon.webp'
 import { fetchAcceptingOrders, fetchMyMerchant } from '../../utils/merchantProfile'
 import { supportWhatsAppUrl } from '../../utils/support'
 import ClaudeCodeLoader from '../ClaudeCodeLoader'
