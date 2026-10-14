@@ -60,3 +60,42 @@ export function buildWhatsAppUrl(phoneWithCountryCode, message) {
   const digits = phoneWithCountryCode.replace(/\D/g, '')
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
 }
+
+// Aviso que el negociante le manda al cliente cuando cambia el estado de su
+// pedido. Es el reemplazo "a un toque" del mensaje que antes escribía a mano.
+const STATUS_NEWS = {
+  pending: 'Recibimos tu pedido y está *pendiente* de preparación. 📝',
+  packed: 'Tu pedido ya está *empacado* y listo para despacho. 📦',
+  shipped: 'Tu pedido ya fue *enviado*. 🚚',
+  cancelled: 'Tu pedido fue *cancelado*. Si crees que es un error, escríbenos. 🙏',
+}
+
+export function buildStatusMessage(order, merchant) {
+  const n = order.dailyNumber ?? order.orderNumber
+  const firstName = order.customerName ? ` ${String(order.customerName).trim().split(/\s+/)[0]}` : ''
+  const lines = [
+    `Hola${firstName} 👋`,
+    STATUS_NEWS[order.status] || 'Tu pedido fue actualizado.',
+    '',
+    line('🏪', 'Tienda', merchant?.businessName),
+    n != null ? line('#️⃣', 'N° de pedido', String(n)) : null,
+    line('🔖', 'Código', order.trackingCode),
+  ]
+  if (order.status === 'shipped' && order.deliveryMethod === 'agency') {
+    lines.push(line('🚚', 'Courier', COURIERS[order.courier]?.label ?? order.courier))
+    lines.push(line('🏬', 'Agencia', order.agencyLabel))
+  }
+  if (order.trackingCode) {
+    lines.push('')
+    lines.push(`🔎 Sigue tu pedido en ${TRACKING_URL} con tu código ${order.trackingCode}`)
+  }
+  return lines.filter((l) => l !== null).join('\n')
+}
+
+/** Link de WhatsApp al CLIENTE con el aviso de su estado (null si no hay teléfono). */
+export function customerStatusWhatsAppUrl(order, merchant) {
+  const digits = String(order.customerPhone || '').replace(/\D/g, '')
+  if (!digits) return null
+  const withCc = digits.length <= 9 ? `51${digits}` : digits
+  return buildWhatsAppUrl(withCc, buildStatusMessage(order, merchant))
+}

@@ -21,6 +21,7 @@ export async function exportOrdersToExcel(orders, filename = 'envios', { dated =
     Agencia: o.agencyLabel || '',
     Dirección: o.address || o.agencyAddress || '',
     'Fecha de envío': o.shippingDate || '',
+    'Monto (S/)': o.amount == null ? '' : Number(o.amount),
     Estado: ORDER_STATUS_LABELS[o.status] || o.status,
     'Creado': o.createdAt,
   }))
@@ -55,7 +56,7 @@ export async function exportOrdersToPdf(orders, { businessName, filename = 'envi
 
   autoTable(doc, {
     startY: 72,
-    head: [['N°', 'Hora', 'Código', 'Cliente', 'WhatsApp', 'DNI/CE', 'Método', 'Agencia / Dirección', 'Fecha envío', 'Estado']],
+    head: [['N°', 'Hora', 'Código', 'Cliente', 'WhatsApp', 'DNI/CE', 'Método', 'Agencia / Dirección', 'Fecha envío', 'Monto', 'Estado']],
     body: orders.map((o) => [
       o.orderNumber != null ? `#${o.orderNumber}` : '',
       o.createdAt ? `${orderDayLabel(o)} ${orderTimeLabel(o)}` : '',
@@ -66,6 +67,7 @@ export async function exportOrdersToPdf(orders, { businessName, filename = 'envi
       deliveryMethodLabel(o),
       [o.agencyLabel, o.address || o.agencyAddress].filter(Boolean).join(' — '),
       o.shippingDate || '',
+      o.amount == null ? '' : `S/ ${Number(o.amount).toFixed(2)}`,
       ORDER_STATUS_LABELS[o.status] || o.status || '',
     ]),
     styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 5, textColor: [30, 41, 59], overflow: 'linebreak' },

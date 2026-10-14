@@ -48,6 +48,13 @@ const MODES = [
 const PREV_LABEL = { day: 'ayer', week: 'la semana anterior', month: 'el mes anterior' }
 const TIMELINE_TITLE = { day: 'Pedidos por hora', week: 'Pedidos por día de la semana', month: 'Pedidos por día del mes' }
 
+// Montos en soles, compacto: S/ 1,234 o S/ 12.5k cuando es grande.
+function soles(n) {
+  const v = Number(n || 0)
+  if (v >= 100000) return `S/ ${(v / 1000).toFixed(1)}k`
+  return `S/ ${v.toLocaleString('es-PE', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 })}`
+}
+
 function Segmented({ value, onChange, options, label }) {
   return (
     <div role="group" aria-label={label} className="inline-flex rounded-xl border border-slate-200 bg-surface p-1">
@@ -107,6 +114,10 @@ export default function PanelProPage({ merchant }) {
       return key ? { key, label: String(o.customerName || 'Sin nombre').trim() } : null
     })
     const repeat = buyers.filter((b) => b.count > 1).length
+    // Ingresos: solo pedidos no cancelados con monto cargado.
+    const withAmount = valid.filter((o) => o.amount != null)
+    const revenue = withAmount.reduce((s, o) => s + Number(o.amount || 0), 0)
+    const prevRevenue = prevValid.reduce((s, o) => s + Number(o.amount || 0), 0)
 
     return {
       rows,
@@ -120,6 +131,10 @@ export default function PanelProPage({ merchant }) {
       topBuyers: buyers.slice(0, 5).map((b) => ({ ...b, color: 'var(--viz-bar)' })),
       repeat,
       cancelled: rows.length - valid.length,
+      revenue,
+      prevRevenue,
+      withAmountCount: withAmount.length,
+      avgTicket: withAmount.length ? revenue / withAmount.length : 0,
     }
   }, [orders, basis, range, mode])
 
@@ -135,6 +150,7 @@ export default function PanelProPage({ merchant }) {
   const trialEnd = plan ? trialEndsAt(merchant, plan) : null
   const trialDaysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd - Date.now()) / 86400000)) : null
   const delta = view.valid.length - view.prevCount
+  const revDelta = view.revenue - view.prevRevenue
   const topCity = view.cities.find((c) => c.key !== '__others')
 
   return (
@@ -191,13 +207,27 @@ export default function PanelProPage({ merchant }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard
           label="Pedidos"
           value={view.valid.length}
           note={delta === 0 ? `Igual que ${PREV_LABEL[mode]}` : `${delta > 0 ? '▲ +' : '▼ '}${delta} vs ${PREV_LABEL[mode]}`}
           tone={delta > 0 ? 'up' : delta < 0 ? 'down' : null}
         />
+        <StatCard
+          label="Ingresos"
+          value={view.withAmountCount ? soles(view.revenue) : '—'}
+          note={
+            view.withAmountCount
+              ? revDelta === 0
+                ? `Igual que ${PREV_LABEL[mode]}`
+                : `${revDelta > 0 ? '▲ +' : '▼ '}${soles(Math.abs(revDelta))} vs ${PREV_LABEL[mode]}`
+              : 'Agrega montos en el resumen'
+          }
+          tone={view.withAmountCount ? (revDelta > 0 ? 'up' : revDelta < 0 ? 'down' : null) : null}
+          small
+        />
+        <StatCard label="Ticket promedio" value={view.withAmountCount ? soles(view.avgTicket) : '—'} note={view.withAmountCount ? `${view.withAmountCount} con monto` : 'sin montos aún'} small />
         <StatCard label="Compradores" value={view.buyers.length} note={view.repeat ? `${view.repeat} compraron más de una vez` : 'distintos en el periodo'} />
         <StatCard label="Ciudad top" value={topCity ? topCity.label : '—'} note={topCity ? `${topCity.count} envío${topCity.count === 1 ? '' : 's'}` : 'sin envíos a ciudades'} small />
         <StatCard label="Cancelados" value={view.cancelled} note="no cuentan como venta" />
@@ -235,7 +265,13 @@ export default function PanelProPage({ merchant }) {
         onOpenSummary={setSummaryOrder}
       />
 
-      {summaryOrder && <OrderSummaryModal order={summaryOrder} onClose={() => setSummaryOrder(null)} />}
+      {summaryOrder && (
+        <OrderSummaryModal
+          order={summaryOrder}
+          onClose={() => setSummaryOrder(null)}
+          onAmountSaved={(id, amount) => setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, amount } : o)))}
+        />
+      )}
     </div>
   )
 }
