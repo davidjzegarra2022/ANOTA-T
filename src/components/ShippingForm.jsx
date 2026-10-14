@@ -171,6 +171,8 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
   // Arranca con lo que ya se sabe sin red (de fábrica + local) y, apenas
   // responde Supabase, se suman los couriers nuevos que solo viven ahí.
   const [couriers, setCouriers] = useState(() => getKnownCouriers())
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -279,10 +281,11 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
   const errors = getErrors()
   const showError = (field) => Boolean((touched[field] || attempted) && errors[field])
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    if (suspended) return
+    if (suspended || submitting) return
     setAttempted(true)
+    setSubmitError(null)
     if (Object.keys(getErrors()).length > 0) return
 
     const agency = isKnownCourier
@@ -292,7 +295,8 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
         : null
 
     // Todo texto libre sale limpio y con el mismo tope que exige la base.
-    onSubmit({
+    setSubmitting(true)
+    const res = await onSubmit({
       phone: cleanText(form.phone, 20),
       deliveryMethod: isAgencyFlow ? 'agency' : form.deliveryMethod,
       courier: isAgencyFlow ? courierId : null,
@@ -314,6 +318,12 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
       notes: cleanText(form.notes, 500),
       shippingDate: form.shippingDate,
     })
+    setSubmitting(false)
+    // En éxito, el componente padre cambia a la pantalla de resumen. Si algo
+    // falló (anti-spam, red, suspensión), se avisa aquí sin perder los datos.
+    if (res && !res.ok && !res.suspended) {
+      setSubmitError(res.error || 'No se pudo enviar tu pedido. Revisa tu conexión e inténtalo de nuevo.')
+    }
   }
 
   return (
@@ -515,12 +525,18 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
         </p>
       )}
 
+      {submitError && (
+        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] font-semibold text-red-700">
+          {submitError}
+        </p>
+      )}
+
       <button
         type="submit"
-        disabled={suspended}
+        disabled={suspended || submitting}
         className="btn btn-primary w-full py-3.5 text-[15px] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Agendar y ver resumen
+        {submitting ? 'Enviando…' : 'Agendar y ver resumen'}
         <IconCalendar className="h-5 w-5" />
       </button>
     </form>

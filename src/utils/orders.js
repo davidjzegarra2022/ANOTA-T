@@ -76,6 +76,10 @@ export async function createOrder(merchantId, form) {
     return { ok: false, error: res.error.message }
   }
   console.warn('[supabase] No se pudo guardar el pedido:', error.message)
+  // Anti-spam del servidor: demasiados pedidos muy seguido.
+  if (/rate_limited/i.test(error.message || '')) {
+    return { ok: false, rateLimited: true, error: 'Enviaste varios pedidos muy seguido. Espera unos minutos e inténtalo de nuevo.' }
+  }
   // 42501 = la política RLS lo rechazó: la tienda está suspendida.
   return { ok: false, error: error.message, suspended: error.code === '42501' }
 }

@@ -54,10 +54,15 @@ function PublicShippingRoute({ slug }) {
     const res = await createOrder(merchant.id, form)
     // Si la suscripción venció mientras el cliente llenaba el formulario,
     // el servidor rechaza el pedido: se muestra el aviso, no el éxito.
-    if (res.suspended) return setSuspended(true)
-    setSubmittedForm(
-      res.ok ? { ...form, trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status } : form,
-    )
+    if (res.suspended) {
+      setSuspended(true)
+      return res
+    }
+    if (res.ok) {
+      setSubmittedForm({ ...form, trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status })
+    }
+    // Si falló (p. ej. anti-spam), el formulario muestra el error y no avanza.
+    return res
   }
 
   if (merchant === undefined) return <LoadingScreen />
