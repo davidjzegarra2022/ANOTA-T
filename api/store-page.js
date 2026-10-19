@@ -71,6 +71,8 @@ export function injectStoreMeta(html, { store, pageUrl, origin }) {
     `<meta property="og:description" content="${escapeHtml(description)}" />`,
     `<meta property="og:url" content="${escapeHtml(pageUrl)}" />`,
     `<meta property="og:image" content="${escapeHtml(image)}" />`,
+    `<meta property="og:image:secure_url" content="${escapeHtml(image)}" />`,
+    `<meta property="og:image:type" content="${/\.png($|\?)/i.test(image) ? 'image/png' : 'image/jpeg'}" />`,
     `<meta property="og:image:alt" content="${escapeHtml(name ? `Logo de ${name}` : 'ANOTA-T')}" />`,
     `<meta name="twitter:card" content="summary" />`,
     `<meta name="twitter:title" content="${escapeHtml(title)}" />`,
@@ -118,6 +120,8 @@ export default async function handler(req, res, fetchImpl = fetch) {
   const out = injectStoreMeta(html, { store, pageUrl: `${origin}/f/${SLUG_RE.test(slug) ? slug : ''}`, origin })
   res.statusCode = 200
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400')
+  // Caché corta: si la tienda cambia su logo, la vista previa se actualiza en
+  // un par de minutos (antes podía quedar vieja hasta un día).
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=120')
   res.end(out)
 }

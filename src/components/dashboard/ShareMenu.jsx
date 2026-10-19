@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { copyText } from '../../utils/clipboard'
 import { buildWhatsAppUrl } from '../../utils/whatsapp'
+import { storeShareLink } from '../../utils/logoImage'
 import { IconCheck, IconChevronDown, IconCopy, IconShare, IconWhatsapp } from '../icons'
 
 /**
@@ -8,10 +9,10 @@ import { IconCheck, IconChevronDown, IconCopy, IconShare, IconWhatsapp } from '.
  * link público de la tienda — copiarlo al portapapeles o reenviarlo por
  * WhatsApp (sin número: WhatsApp deja elegir el chat o grupo).
  */
-export default function ShareMenu({ slug, businessName, collapsed, onExpand }) {
+export default function ShareMenu({ slug, businessName, logoUrl, collapsed, onExpand }) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
-  const link = `${window.location.origin}/f/${slug}`
+  const link = storeShareLink(slug, logoUrl)
   const message = `${businessName ? `${businessName} — ` : ''}Llena tus datos de envío aquí 👉 ${link}`
 
   function toggle() {

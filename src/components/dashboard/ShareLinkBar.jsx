@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { copyText } from '../../utils/clipboard'
 import { buildWhatsAppUrl } from '../../utils/whatsapp'
+import { storeShareLink } from '../../utils/logoImage'
 import { IconCheck, IconCopy, IconWhatsapp } from '../icons'
 
 /**
@@ -8,9 +9,9 @@ import { IconCheck, IconCopy, IconWhatsapp } from '../icons'
  * propios clientes), visible en cualquier pestaña del panel — copiar o
  * reenviar por WhatsApp sin tener que ir a Configuración a buscarlo.
  */
-export default function ShareLinkBar({ slug }) {
+export default function ShareLinkBar({ slug, logoUrl }) {
   const [copied, setCopied] = useState(false)
-  const link = `${window.location.origin}/f/${slug}`
+  const link = storeShareLink(slug, logoUrl)
 
   function handleCopy() {
     copyText(link).then(() => {
