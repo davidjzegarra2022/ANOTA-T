@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import logoIcon from '../../assets/logo-icon.webp'
-import { fetchAcceptingOrders, fetchMyMerchant } from '../../utils/merchantProfile'
+import { ensureLightLogo, fetchAcceptingOrders, fetchMyMerchant } from '../../utils/merchantProfile'
 import { supportWhatsAppUrl } from '../../utils/support'
 import ClaudeCodeLoader from '../ClaudeCodeLoader'
 import ShareMenu from './ShareMenu'
@@ -57,6 +57,13 @@ export default function DashboardLayout({ email, onLogout }) {
     setMerchant(m)
     if (m) setAcceptingOrders(await fetchAcceptingOrders(m.id))
     setLoading(false)
+    // Logos subidos antes de la compresión: se aligeran solos (en segundo
+    // plano) para que se vean en la vista previa de WhatsApp.
+    if (m?.logoUrl) {
+      ensureLightLogo(m).then((url) => {
+        if (url) setMerchant((cur) => (cur ? { ...cur, logoUrl: url } : cur))
+      })
+    }
   }
 
   useEffect(() => {
@@ -156,7 +163,7 @@ export default function DashboardLayout({ email, onLogout }) {
             </button>
           ))}
           {merchant?.slug && (
-            <ShareMenu slug={merchant.slug} businessName={merchant.businessName} collapsed={collapsed} onExpand={() => setCollapsed(false)} />
+            <ShareMenu slug={merchant.slug} businessName={merchant.businessName} logoUrl={merchant.logoUrl} collapsed={collapsed} onExpand={() => setCollapsed(false)} />
           )}
         </nav>
 
@@ -240,7 +247,7 @@ export default function DashboardLayout({ email, onLogout }) {
           )}
         </main>
 
-        {merchant && <ShareLinkBar slug={merchant.slug} />}
+        {merchant && <ShareLinkBar slug={merchant.slug} logoUrl={merchant.logoUrl} />}
       </div>
     </div>
   )

@@ -3,6 +3,7 @@
 // vivía en src/data/merchants.js — ahora cada negociante edita su propia
 // marca y logística desde "Configuración".
 import { getSupabaseClient } from './supabaseClient'
+import { compressLogo, HEAVY_LOGO_BYTES } from './logoImage'
 
 function fromRow(row) {
   if (!row) return null
@@ -91,7 +92,11 @@ export async function updateMyMerchant(patch) {
   return { ok: true, merchant: fromRow(data) }
 }
 
-/** Sube el logo al bucket `logos/<uid>/...` y devuelve su URL pública. */
+/**
+ * Sube el logo al bucket `logos/<uid>/...` y devuelve su URL pública.
+ * Siempre se guarda comprimido (JPG ≤ 600 px, liviano) para que WhatsApp y
+ * las redes lo muestren en la vista previa del link.
+ */
 export async function uploadMerchantLogo(file) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
@@ -99,15 +104,51 @@ export async function uploadMerchantLogo(file) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'Sesión expirada, vuelve a ingresar.' }
-  if (file.size > 2 * 1024 * 1024) return { ok: false, error: 'El logo no debe superar 2 MB.' }
+  if (file.size > 10 * 1024 * 1024) return { ok: false, error: 'El logo no debe superar 10 MB.' }
 
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
-  const path = `${user.id}/logo-${Date.now()}.${ext}`
-  const { error: uploadError } = await supabase.storage.from('logos').upload(path, file, { upsert: true })
+  let blob
+  try {
+    blob = await compressLogo(file)
+  } catch {
+    return { ok: false, error: 'No se pudo leer la imagen. Prueba con un JPG o PNG.' }
+  }
+  const path = `${user.id}/logo-${Date.now()}.jpg`
+  const { error: uploadError } = await supabase.storage
+    .from('logos')
+    .upload(path, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '31536000' })
   if (uploadError) return { ok: false, error: uploadError.message }
 
   const { data } = supabase.storage.from('logos').getPublicUrl(path)
   return { ok: true, url: data.publicUrl }
+}
+
+/**
+ * Arreglo automático para logos subidos antes de la compresión: si el logo
+ * actual pesa demasiado para la vista previa de WhatsApp, se recomprime y se
+ * reemplaza (una sola vez por sesión). Devuelve la URL nueva o null.
+ */
+export async function ensureLightLogo(merchant) {
+  if (!merchant?.logoUrl) return null
+  const flag = `anotat-logo-checked-${merchant.logoUrl}`
+  try {
+    if (sessionStorage.getItem(flag)) return null
+    sessionStorage.setItem(flag, '1')
+  } catch {
+    // sin sessionStorage: igual se intenta
+  }
+  try {
+    const res = await fetch(merchant.logoUrl, { cache: 'no-store' })
+    if (!res.ok) return null
+    const blob = await res.blob()
+    const isJpeg = /jpe?g/i.test(blob.type)
+    if (blob.size <= HEAVY_LOGO_BYTES && isJpeg) return null
+    const up = await uploadMerchantLogo(new File([blob], 'logo', { type: blob.type || 'image/png' }))
+    if (!up.ok) return null
+    const saved = await updateMyMerchant({ logoUrl: up.url })
+    return saved.ok ? up.url : null
+  } catch {
+    return null
+  }
 }
 
 /** ¿El formulario público de este negociante está recibiendo pedidos? (false = suscripción vencida o cuenta desactivada) */
