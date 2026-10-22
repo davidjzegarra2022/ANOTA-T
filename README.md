@@ -853,8 +853,12 @@ navegador sin backend propio).
 
 **Solución implementada:** un directorio propio en
 `src/data/agenciesData.js` (archivo **generado**, no editar a mano) con
-**más de 1200 agencias reales** de las 5 empresas (directorios oficiales
-completos), expuesto vía `src/data/agencies.js`. Las coordenadas son
+**más de 700 agencias reales** de Shalom, Emtrafesa, Marvisur y Flores
+(directorios oficiales completos), expuesto vía `src/data/agencies.js`.
+Las agencias de **Olva Courier** ya no vienen en este archivo (el listado
+tenía departamentos asignados por el nombre de la calle, provincias y
+coordenadas incorrectas y duplicados): el administrador las carga a mano
+desde la sección "Base de datos" del panel y se guardan en Supabase. Las coordenadas son
 aproximadas a nivel de distrito/ciudad (`src/data/peruGeo.js`); el
 formulario pide geolocalización y ordena por distancia real (Haversine,
 `src/utils/geo.js`).
