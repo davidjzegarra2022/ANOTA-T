@@ -1,10 +1,11 @@
 // Directorio de agencias de los couriers soportados.
 //
-// El dataset oficial (Shalom, Emtrafesa, Marvisur, Olva, Flores) vive en
+// El dataset oficial (Shalom, Emtrafesa, Marvisur, Flores) vive en
 // ./agenciesData.js — se genera desde los directorios oficiales y NO se
 // edita a mano. Aquí solo se le añade `id` + `label` y se combina con las
 // agencias que el administrador cargue desde la sección "Base de datos"
-// del panel (ver ../utils/customAgencies.js).
+// del panel (ver ../utils/customAgencies.js). Olva Courier no trae
+// agencias de fábrica: todas las carga el administrador.
 //
 // Todos los consumidores (búsqueda, orden por distancia, resumen de
 // WhatsApp) solo esperan objetos con la forma
