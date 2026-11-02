@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchMyOrders } from '../../utils/orders'
-import { fetchActivePlans, trialEndsAt } from '../../utils/plans'
+import { fetchActivePlans, trialEndsAt, TRIAL_DAYS } from '../../utils/plans'
 import { supportWhatsAppUrl } from '../../utils/support'
 import { IconRefresh, IconWhatsapp } from '../icons'
 
@@ -56,7 +56,7 @@ export default function SuscripcionPage({ merchant }) {
           <p className="text-xs font-semibold tracking-wide text-muted uppercase">Plan actual</p>
           <p className="mt-1 text-xl font-bold text-navy">{plan.name}</p>
           <p className="mt-1 text-2xl font-bold text-navy">
-            {plan.trialDays ? `${plan.trialDays} días` : `S/ ${plan.pricePerDay.toFixed(2)}`}{' '}
+            {plan.trialDays ? `${Math.max(plan.trialDays, TRIAL_DAYS)} días` : `S/ ${plan.pricePerDay.toFixed(2)}`}{' '}
             <span className="text-xs font-normal text-muted">{plan.trialDays ? 'gratis' : '/ día'}</span>
           </p>
 

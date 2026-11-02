@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import logoFull from '../assets/logo-full.webp'
 import registroExitoso from '../assets/registro-exitoso.webp'
 import logoIcon from '../assets/logo-icon.webp'
-import { fetchActivePlans } from '../utils/plans'
+import { fetchActivePlans, TRIAL_DAYS } from '../utils/plans'
 import { trackOrderByCode, ORDER_STATUS_LABELS } from '../utils/orders'
 import { supportWhatsAppUrl } from '../utils/support'
 import { IconCheck, IconWhatsapp } from './icons'
@@ -22,8 +22,11 @@ const STEPS = [
 ]
 
 function PlanCard({ plan, featured }) {
-  const priceLabel = plan.trialDays ? `${plan.trialDays} días` : `S/ ${plan.pricePerDay.toFixed(2)}`
-  const priceSuffix = plan.trialDays ? 'gratis' : 'x día'
+  // Los días de prueba son 15 (antes eran 7): si la base todavía no se
+  // actualizó, se muestra igual el mínimo de TRIAL_DAYS.
+  const trialDays = plan.trialDays ? Math.max(plan.trialDays, TRIAL_DAYS) : null
+  const priceLabel = trialDays ? `${trialDays} días` : `S/ ${plan.pricePerDay.toFixed(2)}`
+  const priceSuffix = trialDays ? 'gratis' : 'x día'
   return (
     <article className={`relative flex flex-col rounded-[18px] border p-8 ${featured ? 'scale-[1.02] border-navy bg-navy text-white shadow-xl' : 'border-slate-200 bg-surface'}`}>
       {featured && (

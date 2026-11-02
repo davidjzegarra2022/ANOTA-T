@@ -2,11 +2,16 @@
 // lectura — los crea y edita el administrador, ver utils/adminMerchants.js).
 import { getSupabaseClient } from './supabaseClient'
 
+// Días de prueba gratis de la plataforma (antes eran 7). Es el mínimo que se
+// usa siempre: si la fila del plan en la base trae un trial_days mayor, se
+// respeta ese número, pero nunca se muestran menos de 15 días.
+export const TRIAL_DAYS = 15
+
 function fromRow(row) {
   return {
     id: row.id,
     name: row.name,
-    trialDays: row.trial_days,
+    trialDays: row.trial_days ? Math.max(row.trial_days, TRIAL_DAYS) : row.trial_days,
     pricePerDay: Number(row.price_per_day),
     monthlyOrderLimit: row.monthly_order_limit,
     description: row.description,
