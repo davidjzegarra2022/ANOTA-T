@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchActivePlans, trialEndsAt } from '../../utils/plans'
+import { fetchActivePlans, trialEndsAt, TRIAL_DAYS } from '../../utils/plans'
 import { supportWhatsAppUrl } from '../../utils/support'
 import { IconCheck, IconRefresh, IconWhatsapp } from '../icons'
 
@@ -33,7 +33,8 @@ export default function PlanesPage({ merchant }) {
       <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${plans.length > 2 ? 'lg:grid-cols-3' : 'max-w-3xl'}`}>
         {plans.map((p) => {
           const isCurrent = p.id === merchant.planId
-          const priceLabel = p.trialDays ? `${p.trialDays} días` : `S/ ${p.pricePerDay.toFixed(2)}`
+          const trialDays = p.trialDays ? Math.max(p.trialDays, TRIAL_DAYS) : null
+          const priceLabel = trialDays ? `${trialDays} días` : `S/ ${p.pricePerDay.toFixed(2)}`
           const priceSuffix = p.trialDays ? 'gratis' : 'x día'
           const trialEnd = isCurrent ? trialEndsAt(merchant, p) : null
           const expired = trialEnd ? trialEnd <= new Date() : false

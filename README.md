@@ -129,7 +129,7 @@ dominios en caliente, sin redeploy.
   WhatsApp/N° de pedido y exportación a Excel.
 - **Clientes** (`ClientesPage.jsx`) — agrupa los pedidos por WhatsApp del
   cliente final: recurrentes (2+ pedidos), nuevos este mes, dormidos (sin
-  comprar +30 días), en riesgo (15-30 días sin comprar).
+  comprar +15 días), en riesgo (7-15 días sin comprar).
 - **Panel Pro** (`PanelProPage.jsx`) — pedidos de hoy/7/30 días, días
   restantes de prueba gratuita (si el plan es de prueba) o uso del límite
   de pedidos del mes (si el plan lo tiene), pedidos por estado y top
@@ -258,7 +258,7 @@ create policy "plans_authenticated_select" on public.plans
   for select using (auth.role() = 'authenticated' and active = true);
 
 insert into public.plans (name, trial_days, price_per_day, description, features)
-select 'Prueba Free', 7, 0, 'Prueba gratis por 7 días.',
+select 'Prueba Free', 15, 0, 'Prueba gratis por 15 días.',
   array['Todo el plan Emprendedor', 'Sin contratos ni tarjeta de crédito', 'Con tu correo y número de WhatsApp']
 where not exists (select 1 from public.plans where name = 'Prueba Free');
 
@@ -652,7 +652,7 @@ Detalles que conviene tener presentes:
   ```
 - **Borrado automático de pedidos** (`purge_old_orders()` + `pg_cron`):
   cada día a las 03:10 (hora de Lima) elimina los pedidos **enviados** y
-  **cancelados** con más de **45 días** desde su registro; los pendientes y
+  **cancelados** con más de **15 días** desde su registro; los pendientes y
   empacados se conservan siempre. Queda constancia en el registro de
   actividad como "Sistema". Para cambiar el plazo o los estados, se edita la
   función; para apagarlo: `select cron.unschedule('purge-old-orders');`.
@@ -667,13 +667,13 @@ Detalles que conviene tener presentes:
     with gone as (
       delete from public.orders
       where status in ('shipped', 'cancelled')
-        and created_at < now() - interval '45 days'
+        and created_at < now() - interval '15 days'
       returning 1
     ) select count(*) into n from gone;
     if n > 0 then
       insert into public.admin_activity_log (admin_id, admin_name, action, details)
       values (null, 'Sistema', 'Borrado automático de pedidos',
-              n || ' pedido(s) enviados/cancelados con más de 45 días');
+              n || ' pedido(s) enviados/cancelados con más de 15 días');
     end if;
     return n;
   end; $$;

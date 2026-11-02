@@ -32,8 +32,8 @@ function buildCustomers(orders) {
       lastAt: last,
       isRecurring: c.orders.length >= 2,
       isNewThisMonth: first >= startOfMonth.getTime(),
-      isDormant: daysSinceLast > 30,
-      isAtRisk: daysSinceLast > 15 && daysSinceLast <= 30,
+      isDormant: daysSinceLast > 15,
+      isAtRisk: daysSinceLast > 7 && daysSinceLast <= 15,
     }
   })
 }
@@ -90,7 +90,7 @@ export default function ClientesPage() {
         <StatTile label="Clientes" value={counts.todos} />
         <StatTile label="Recurrentes" value={counts.recurrentes} />
         <StatTile label="Nuevos este mes" value={counts.nuevos} />
-        <StatTile label="Para reactivar" value={counts.dormidos} hint="Sin comprar +30 días" />
+        <StatTile label="Para reactivar" value={counts.dormidos} hint="Sin comprar +15 días" />
       </div>
 
       <div className="card p-4">
