@@ -3,12 +3,24 @@
 // usuario logueado esté en `platform_admins` (ver utils/supabaseAuth.js →
 // isPlatformAdmin). Sin sesión de admin, la base responde `forbidden`.
 import { getSupabaseClient } from './supabaseClient'
+import { TRIAL_DAYS } from './plans'
 
 function adminError(err) {
   const msg = String(err?.message || err || '')
   if (/forbidden/i.test(msg)) return 'Tu cuenta no tiene permisos de administrador.'
   if (/jwt|session|401/i.test(msg)) return 'Sesión expirada, vuelve a ingresar.'
   return msg || 'Error desconocido.'
+}
+
+/**
+ * Días de prueba con los que trabaja la app: nunca menos de TRIAL_DAYS (15).
+ * Si la fila del plan en la base todavía dice 7 (planes viejos), se muestra
+ * igual 15 — la prueba gratuita es de 15 días en todo el sistema.
+ */
+function effectiveTrialDays(value) {
+  const days = Number(value)
+  if (!days) return null
+  return Math.max(days, TRIAL_DAYS)
 }
 
 function fromRow(row) {
@@ -23,7 +35,7 @@ function fromRow(row) {
     createdAt: row.created_at,
     email: row.email,
     planStartedAt: row.plan_started_at,
-    planTrialDays: row.plan_trial_days,
+    planTrialDays: effectiveTrialDays(row.plan_trial_days),
     planPricePerDay: row.plan_price_per_day == null ? null : Number(row.plan_price_per_day),
     lastSignInAt: row.last_sign_in_at,
   }
@@ -40,11 +52,12 @@ const DAY_MS = 24 * 60 * 60 * 1000
  */
 export function planRemaining(merchant) {
   if (!merchant.planId) return { kind: 'none', days: null }
-  if (!merchant.planTrialDays) return { kind: 'forever', days: null }
+  const trialDays = effectiveTrialDays(merchant.planTrialDays)
+  if (!trialDays) return { kind: 'forever', days: null }
   const start = merchant.planStartedAt ? new Date(merchant.planStartedAt).getTime() : null
   if (!start || Number.isNaN(start)) return { kind: 'forever', days: null }
   const elapsed = Math.floor((Date.now() - start) / DAY_MS)
-  return { kind: 'trial', days: Math.max(0, merchant.planTrialDays - elapsed) }
+  return { kind: 'trial', days: Math.max(0, trialDays - elapsed) }
 }
 
 export async function adminListMerchants() {

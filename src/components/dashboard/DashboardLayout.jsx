@@ -5,6 +5,7 @@ import { supportWhatsAppUrl } from '../../utils/support'
 import ClaudeCodeLoader from '../ClaudeCodeLoader'
 import ShareMenu from './ShareMenu'
 import {
+  IconBell,
   IconBox,
   IconCard,
   IconGrid,
@@ -20,12 +21,14 @@ import ConfiguracionPage from './ConfiguracionPage'
 import EnviosPage from './EnviosPage'
 import PanelProPage from './PanelProPage'
 import PlanesPage from './PlanesPage'
+import RecordatoriosPage from './RecordatoriosPage'
 import ShareLinkBar from './ShareLinkBar'
 import SuscripcionPage from './SuscripcionPage'
 
 const NAV_ITEMS = [
   { id: 'envios', label: 'Envíos', icon: IconBox },
   { id: 'clientes', label: 'Clientes', icon: IconUsers },
+  { id: 'recordatorios', label: 'Recordatorios', icon: IconBell },
   { id: 'panel', label: 'Panel Pro', icon: IconGrid },
   { id: 'configuracion', label: 'Configuración', icon: IconSettings },
   { id: 'planes', label: 'Planes', icon: IconSparkles },
@@ -239,6 +242,7 @@ export default function DashboardLayout({ email, onLogout }) {
               )}
               {tab === 'envios' && <EnviosPage merchant={merchant} />}
               {tab === 'clientes' && <ClientesPage merchant={merchant} />}
+              {tab === 'recordatorios' && <RecordatoriosPage merchant={merchant} />}
               {tab === 'panel' && <PanelProPage merchant={merchant} />}
               {tab === 'configuracion' && <ConfiguracionPage merchant={merchant} onSaved={refreshMerchant} />}
               {tab === 'planes' && <PlanesPage merchant={merchant} />}

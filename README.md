@@ -130,6 +130,16 @@ dominios en caliente, sin redeploy.
 - **Clientes** (`ClientesPage.jsx`) — agrupa los pedidos por WhatsApp del
   cliente final: recurrentes (2+ pedidos), nuevos este mes, dormidos (sin
   comprar +15 días), en riesgo (7-15 días sin comprar).
+- **Recordatorios** (`RecordatoriosPage.jsx` + `utils/reminders.js`) — agenda
+  del día a día: "enviar 15 paquetes a Juan Ponce", "pagar el plan de
+  noviembre", "confirmar stock en la agencia de Cusco". Se agregan con texto,
+  fecha, hora, categoría (Envíos, Clientes, Pagos, Agencias, General) y
+  estrella de importante; se agrupan en Vencidos / Hoy / Mañana / Esta semana
+  / Más adelante / Sin fecha / Listos, con filtros por día y un calendario que
+  marca los días con pendientes. Se guardan en `localStorage` ligados a la
+  cuenta de la tienda (cada dispositivo ve los suyos): para sincronizarlos
+  entre dispositivos hay que mover `utils/reminders.js` a una tabla de
+  Supabase con RLS por `merchant_id` — pedirlo cuando haga falta.
 - **Panel Pro** (`PanelProPage.jsx`) — pedidos de hoy/7/30 días, días
   restantes de prueba gratuita (si el plan es de prueba) o uso del límite
   de pedidos del mes (si el plan lo tiene), pedidos por estado y top
@@ -169,6 +179,16 @@ dominios en caliente, sin redeploy.
   no está hecha; pídela aparte cuando quieras activarla.
 - **Suscripción** (`SuscripcionPage.jsx`) — plan actual, días de prueba
   restantes o uso del mes según corresponda.
+
+> **Prueba gratuita: 15 días en todo el sistema.** El mínimo vive en
+> `TRIAL_DAYS` (`utils/plans.js`) y lo respetan la landing, Planes,
+> Suscripción, el panel del admin y el cálculo de días restantes — aunque la
+> fila del plan en la base todavía diga 7. Pero la suspensión real de la
+> tienda la decide `merchant_accepts_orders()` con `plans.trial_days`, así
+> que la base tiene que decir lo mismo: correr una vez
+> `sql/2026-11-02-prueba-15-dias.sql` (o editar el plan en /admin → Planes
+> poniendo "Días de prueba gratis" = 15). Los días restantes se recalculan
+> solos desde `plan_started_at`, sin tocar a cada negociante.
 
 ## El panel de administrador
 

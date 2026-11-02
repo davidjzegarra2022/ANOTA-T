@@ -294,3 +294,21 @@ export function IconShare({ className }) {
     </svg>
   )
 }
+
+export function IconBell({ className }) {
+  return (
+    <svg className={className} {...base()}>
+      <path d="M18 8.5a6 6 0 1 0-12 0c0 4.2-1.5 5.5-1.5 5.5h15S18 12.7 18 8.5Z" />
+      <path d="M10.2 18.5a2 2 0 0 0 3.6 0" />
+    </svg>
+  )
+}
+
+/** Estrella de "importante": rellena cuando está activa. */
+export function IconStar({ className, filled = false }) {
+  return (
+    <svg className={className} {...base()} fill={filled ? 'currentColor' : 'none'}>
+      <path d="m12 3.5 2.6 5.3 5.9.85-4.25 4.14 1 5.86L12 16.9l-5.25 2.75 1-5.86L3.5 9.65l5.9-.85L12 3.5Z" />
+    </svg>
+  )
+}
