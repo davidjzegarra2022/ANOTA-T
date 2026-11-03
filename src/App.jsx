@@ -15,6 +15,7 @@ const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayou
 const LandingPage = lazy(() => import('./components/LandingPage'))
 import { fetchMerchantBySlug } from './utils/merchantProfile'
 import { createOrder } from './utils/orders'
+import { readSellerFromSearch } from './utils/sellers'
 import { getCurrentSession, isPlatformAdmin, onAuthStateChange, signOutMerchant } from './utils/supabaseAuth'
 
 // Merchant de muestra SOLO para que el administrador pueda previsualizar el
@@ -42,6 +43,9 @@ function PublicShippingRoute({ slug }) {
   const [merchant, setMerchant] = useState(undefined)
   const [submittedForm, setSubmittedForm] = useState(null)
   const [suspended, setSuspended] = useState(false)
+  // Vendedor que viene en el link (?v=Juan). Es invisible para el cliente
+  // final: solo sirve para saber de quién es la venta en el panel.
+  const [sellerName] = useState(() => readSellerFromSearch(window.location.search))
 
   useEffect(() => {
     fetchMerchantBySlug(slug).then((m) => {
@@ -51,7 +55,7 @@ function PublicShippingRoute({ slug }) {
   }, [slug])
 
   async function handleSubmit(form) {
-    const res = await createOrder(merchant.id, form)
+    const res = await createOrder(merchant.id, { ...form, sellerName })
     // Si la suscripción venció mientras el cliente llenaba el formulario,
     // el servidor rechaza el pedido: se muestra el aviso, no el éxito.
     if (res.suspended) {

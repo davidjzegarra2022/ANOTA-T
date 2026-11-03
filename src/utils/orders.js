@@ -25,6 +25,7 @@ function fromRow(row) {
     reference: row.reference,
     paymentMethod: row.payment_method,
     notes: row.notes,
+    sellerName: row.seller_name || '',
     shippingDate: row.shipping_date,
     status: row.status,
     createdAt: row.created_at,
@@ -61,6 +62,16 @@ export async function createOrder(merchantId, form) {
   const { data, error } = await supabase.rpc('submit_order', { p: row })
   if (!error) {
     const created = data?.[0]
+    // El vendedor viaja en el link (?v=…). Se guarda con una RPC aparte para
+    // no tocar `submit_order`: si la función todavía no existe en la base, el
+    // pedido se guarda igual y solo queda sin vendedor.
+    if (form.sellerName && created?.tracking_code) {
+      try {
+        await supabase.rpc('set_order_seller', { p_code: created.tracking_code, p_seller: form.sellerName })
+      } catch {
+        // sin vendedor asignado
+      }
+    }
     return {
       ok: true,
       trackingCode: created?.tracking_code || null,
@@ -149,6 +160,7 @@ export function orderMatchesSearch(order, rawQuery, { daily = false } = {}) {
       order.customerName,
       order.customerPhone,
       order.customerDni,
+      order.sellerName,
       order.courier,
       order.agencyLabel,
       order.address,

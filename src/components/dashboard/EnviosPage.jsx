@@ -3,6 +3,7 @@ import { fetchMyOrders, limaTodayIso, ORDER_STATUS_LABELS, orderDayLabel, orderT
 import { deliveryMethodLabel } from '../../utils/orderSummary'
 import { customerStatusWhatsAppUrl } from '../../utils/whatsapp'
 import { exportOrdersToPdf } from '../../utils/ordersExport'
+import { collectSellerNames } from '../../utils/sellers'
 import { IconChevronLeft, IconChevronRight, IconEye, IconFile, IconSearch, IconTag, IconTrash, IconWhatsapp } from '../icons'
 import CourierTemplatesCard from './CourierTemplatesCard'
 import DeleteOrdersDialog from './DeleteOrdersDialog'
@@ -66,6 +67,8 @@ export default function EnviosPage({ merchant }) {
   const [rangeFrom, setRangeFrom] = useState('')
   const [rangeTo, setRangeTo] = useState('')
   const [status, setStatus] = useState('')
+  const [seller, setSeller] = useState('')
+  const [sellerNames, setSellerNames] = useState(() => collectSellerNames(merchant?.sellers, []))
   const [search, setSearch] = useState('')
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -94,16 +97,22 @@ export default function EnviosPage({ merchant }) {
       search,
       dailySearch: true,
     })
-    setOrders(rows)
+    setSellerNames(collectSellerNames(merchant?.sellers, rows))
+    // El filtro por vendedor se aplica en memoria: la consulta ya trae el día
+    // o el rango, y así el selector no dispara otra llamada a la base.
+    const visible = seller
+      ? rows.filter((o) => (seller === '__none' ? !o.sellerName : o.sellerName === seller))
+      : rows
+    setOrders(visible)
     // Conserva solo la selección de pedidos que siguen en la lista.
-    setSelected((prev) => new Set(rows.filter((o) => prev.has(o.id)).map((o) => o.id)))
+    setSelected((prev) => new Set(visible.filter((o) => prev.has(o.id)).map((o) => o.id)))
     setLoading(false)
   }
 
   useEffect(() => {
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh usa el estado más reciente por closure
-  }, [day, rangeFrom, rangeTo, status, search])
+  }, [day, rangeFrom, rangeTo, status, seller, search])
 
   const selectedOrders = orders.filter((o) => selected.has(o.id))
   const allSelected = orders.length > 0 && selectedOrders.length === orders.length
@@ -186,6 +195,21 @@ export default function EnviosPage({ merchant }) {
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
+
+          {sellerNames.length > 0 && (
+            <select
+              value={seller}
+              onChange={(e) => setSeller(e.target.value)}
+              aria-label="Filtrar por vendedor"
+              className="input-field w-full sm:w-auto"
+            >
+              <option value="">Todos los vendedores</option>
+              {sellerNames.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+              <option value="__none">Sin vendedor</option>
+            </select>
+          )}
 
           <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-1.5 py-1.5">
             <button type="button" onClick={() => setDay((d) => addDays(d, -1))} className="rounded-md p-1.5 text-muted hover:bg-surface">
@@ -302,6 +326,10 @@ export default function EnviosPage({ merchant }) {
                   <dd className="min-w-0 font-mono break-all text-ink">{o.customerPhone || '—'}</dd>
                 </div>
                 <div className="flex gap-2">
+                  <dt className="w-24 shrink-0 text-muted">Vendedor</dt>
+                  <dd className="min-w-0 break-words text-ink">{o.sellerName || '—'}</dd>
+                </div>
+                <div className="flex gap-2">
                   <dt className="w-24 shrink-0 text-muted">Método</dt>
                   <dd className="min-w-0 break-words text-ink">{deliveryMethodLabel(o)}</dd>
                 </div>
@@ -331,7 +359,7 @@ export default function EnviosPage({ merchant }) {
         </ul>
 
         <div className="card hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[1000px] text-left text-[13px]">
+          <table className="w-full min-w-[1100px] text-left text-[13px]">
             <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
               <tr>
                 <th className="w-10 py-2 pr-1 pl-3">
@@ -342,6 +370,7 @@ export default function EnviosPage({ merchant }) {
                 <th className="px-3 py-2 font-semibold">Código</th>
                 <th className="px-3 py-2 font-semibold">Cliente</th>
                 <th className="px-3 py-2 font-semibold">WhatsApp</th>
+                <th className="px-3 py-2 font-semibold">Vendedor</th>
                 <th className="px-3 py-2 font-semibold">Método</th>
                 <th className="px-3 py-2 font-semibold">Fecha envío</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
@@ -362,6 +391,13 @@ export default function EnviosPage({ merchant }) {
                   <td className="px-3 py-2 font-mono text-xs whitespace-nowrap text-brand-dark">{o.trackingCode}</td>
                   <td className="px-3 py-2">{o.customerName}</td>
                   <td className="px-3 py-2 font-mono text-xs">{o.customerPhone}</td>
+                  <td className="px-3 py-2 text-xs whitespace-nowrap">
+                    {o.sellerName ? (
+                      <span className="rounded-full bg-brand/15 px-2 py-0.5 font-semibold text-brand-dark">{o.sellerName}</span>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-xs">{deliveryMethodLabel(o)}</td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap">{o.shippingDate}</td>
                   <td className="px-3 py-2">

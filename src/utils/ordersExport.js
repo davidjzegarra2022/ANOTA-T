@@ -15,6 +15,7 @@ export async function exportOrdersToExcel(orders, filename = 'envios', { dated =
     'Código': o.trackingCode || '',
     Cliente: o.customerName,
     WhatsApp: o.customerPhone,
+    Vendedor: o.sellerName || '',
     'DNI/CE': o.customerDni || '',
     'Método': deliveryMethodLabel(o),
     Courier: o.courier || '',
@@ -56,13 +57,14 @@ export async function exportOrdersToPdf(orders, { businessName, filename = 'envi
 
   autoTable(doc, {
     startY: 72,
-    head: [['N°', 'Hora', 'Código', 'Cliente', 'WhatsApp', 'DNI/CE', 'Método', 'Agencia / Dirección', 'Fecha envío', 'Monto', 'Estado']],
+    head: [['N°', 'Hora', 'Código', 'Cliente', 'WhatsApp', 'Vendedor', 'DNI/CE', 'Método', 'Agencia / Dirección', 'Fecha envío', 'Monto', 'Estado']],
     body: orders.map((o) => [
       o.orderNumber != null ? `#${o.orderNumber}` : '',
       o.createdAt ? `${orderDayLabel(o)} ${orderTimeLabel(o)}` : '',
       o.trackingCode || '',
       o.customerName || '',
       o.customerPhone || '',
+      o.sellerName || '',
       o.customerDni || '',
       deliveryMethodLabel(o),
       [o.agencyLabel, o.address || o.agencyAddress].filter(Boolean).join(' — '),
@@ -73,7 +75,7 @@ export async function exportOrdersToPdf(orders, { businessName, filename = 'envi
     styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 5, textColor: [30, 41, 59], overflow: 'linebreak' },
     headStyles: { fillColor: [11, 31, 58], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245, 247, 250] },
-    columnStyles: { 0: { fontStyle: 'bold' }, 2: { font: 'courier', fontStyle: 'bold', textColor: [161, 98, 7] }, 7: { cellWidth: 160 } },
+    columnStyles: { 0: { fontStyle: 'bold' }, 2: { font: 'courier', fontStyle: 'bold', textColor: [161, 98, 7] }, 8: { cellWidth: 160 } },
     margin: { left: 40, right: 40 },
     didDrawPage: () => {
       const { width, height } = doc.internal.pageSize

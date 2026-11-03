@@ -231,7 +231,17 @@ export default function LandingPage() {
               </h2>
               <p className="mt-2 text-muted">Empieza gratis y crece con nosotros a tu ritmo.</p>
             </div>
-            <div className={`mx-auto grid grid-cols-1 gap-6 ${plans.length === 2 ? 'max-w-[820px] md:grid-cols-2' : 'md:grid-cols-3'}`}>
+            <div
+              className={`mx-auto grid grid-cols-1 gap-6 ${
+                plans.length <= 1
+                  ? 'max-w-[420px]'
+                  : plans.length === 2
+                    ? 'max-w-[820px] md:grid-cols-2'
+                    : plans.length === 3
+                      ? 'md:grid-cols-3'
+                      : 'md:grid-cols-2 lg:grid-cols-4'
+              }`}
+            >
               {plans.map((p, i) => (
                 <PlanCard key={p.id} plan={p} featured={i === plans.length - 1 && plans.length > 1} />
               ))}

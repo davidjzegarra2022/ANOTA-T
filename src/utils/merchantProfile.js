@@ -4,6 +4,7 @@
 // marca y logística desde "Configuración".
 import { getSupabaseClient } from './supabaseClient'
 import { compressLogo, HEAVY_LOGO_BYTES } from './logoImage'
+import { normalizeSellers } from './sellers'
 
 function fromRow(row) {
   if (!row) return null
@@ -19,6 +20,7 @@ function fromRow(row) {
     dispatchDays: row.dispatch_days || [1, 2, 3, 4, 5, 6],
     cutoffHour: row.cutoff_hour,
     leadTimeHours: row.lead_time_hours,
+    sellers: Array.isArray(row.sellers) ? row.sellers : [],
     planId: row.plan_id,
     planStartedAt: row.plan_started_at,
     active: row.active,
@@ -86,9 +88,22 @@ export async function updateMyMerchant(patch) {
   if ('dispatchDays' in patch) row.dispatch_days = patch.dispatchDays
   if ('cutoffHour' in patch) row.cutoff_hour = patch.cutoffHour
   if ('leadTimeHours' in patch) row.lead_time_hours = patch.leadTimeHours
+  if ('sellers' in patch) row.sellers = normalizeSellers(patch.sellers)
 
   const { data, error } = await supabase.from('merchants').update(row).eq('id', user.id).select().maybeSingle()
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    // La columna `sellers` la crea sql/2026-11-03-vendedores.sql. Si todavía
+    // no está, se guarda todo lo demás y se avisa que los vendedores no se
+    // pudieron guardar — así la pantalla de Configuración nunca queda
+    // bloqueada por una migración pendiente.
+    if ('sellers' in row && /sellers/i.test(error.message || '')) {
+      const withoutSellers = { ...row }
+      delete withoutSellers.sellers
+      const retry = await supabase.from('merchants').update(withoutSellers).eq('id', user.id).select().maybeSingle()
+      if (!retry.error) return { ok: true, merchant: fromRow(retry.data), sellersIgnored: true }
+    }
+    return { ok: false, error: error.message }
+  }
   return { ok: true, merchant: fromRow(data) }
 }
 

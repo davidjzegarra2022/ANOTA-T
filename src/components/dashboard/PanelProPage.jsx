@@ -114,6 +114,11 @@ export default function PanelProPage({ merchant }) {
       return key ? { key, label: String(o.customerName || 'Sin nombre').trim() } : null
     })
     const repeat = buyers.filter((b) => b.count > 1).length
+    // Ventas por vendedor: cada pedido trae el nombre de quien compartió el
+    // link; los pedidos sin link de vendedor se agrupan aparte.
+    const sellers = countBy(valid, (o) => ({ key: o.sellerName || '__none', label: o.sellerName || 'Sin vendedor' }))
+      .slice(0, 8)
+      .map((s, i) => ({ ...s, color: s.key === '__none' ? 'var(--viz-neutral)' : CITY_COLORS[i % CITY_COLORS.length] }))
     // Ingresos: solo pedidos no cancelados con monto cargado.
     const withAmount = valid.filter((o) => o.amount != null)
     const revenue = withAmount.reduce((s, o) => s + Number(o.amount || 0), 0)
@@ -128,6 +133,7 @@ export default function PanelProPage({ merchant }) {
       channels,
       statuses,
       buyers,
+      sellers,
       topBuyers: buyers.slice(0, 5).map((b) => ({ ...b, color: 'var(--viz-bar)' })),
       repeat,
       cancelled: rows.length - valid.length,
@@ -254,6 +260,10 @@ export default function PanelProPage({ merchant }) {
           <HorizontalBars items={view.topBuyers} />
         </ChartCard>
       </div>
+
+      <ChartCard title="Ventas por vendedor" subtitle="Cada pedido queda marcado con el vendedor del link que usó el cliente.">
+        <HorizontalBars items={view.sellers} />
+      </ChartCard>
 
       <OrdersReportCard
         orders={orders}

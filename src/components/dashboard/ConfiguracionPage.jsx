@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getKnownCouriers } from '../../data/agencies'
+import { copyText } from '../../utils/clipboard'
 import { updateMyMerchant, uploadMerchantLogo } from '../../utils/merchantProfile'
+import { MAX_SELLERS, normalizeSellers, sellerLink, sellerShareText } from '../../utils/sellers'
 import { IconCheck } from '../icons'
 
 const WEEKDAYS = [
@@ -51,11 +53,13 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
     dispatchDays: merchant.dispatchDays,
     cutoffHour: merchant.cutoffHour,
     leadTimeHours: merchant.leadTimeHours,
+    sellers: normalizeSellers(merchant.sellers),
   })
   const [logoFile, setLogoFile] = useState(null)
   const [logoRemoved, setLogoRemoved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
+  const [copiedSeller, setCopiedSeller] = useState(null)
 
   // Vista previa: el archivo recién elegido (si hay uno), si no el logo ya
   // guardado, a menos que el usuario lo haya quitado manualmente.
@@ -86,6 +90,25 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
       ...f,
       dispatchDays: f.dispatchDays.includes(value) ? f.dispatchDays.filter((d) => d !== value) : [...f.dispatchDays, value],
     }))
+  }
+
+  function addSeller() {
+    setForm((f) => (f.sellers.length >= MAX_SELLERS ? f : { ...f, sellers: [...f.sellers, { name: '', whatsapp: '' }] }))
+  }
+
+  function updateSeller(index, patch) {
+    setForm((f) => ({ ...f, sellers: f.sellers.map((s, i) => (i === index ? { ...s, ...patch } : s)) }))
+  }
+
+  function removeSeller(index) {
+    setForm((f) => ({ ...f, sellers: f.sellers.filter((_, i) => i !== index) }))
+  }
+
+  async function copySeller(index) {
+    const seller = form.sellers[index]
+    await copyText(sellerLink(window.location.origin, form.slug, seller.name))
+    setCopiedSeller(index)
+    setTimeout(() => setCopiedSeller(null), 2000)
   }
 
   async function handleSubmit(e) {
@@ -121,6 +144,7 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
       dispatchDays: form.dispatchDays,
       cutoffHour: form.cutoffHour,
       leadTimeHours: form.leadTimeHours,
+      sellers: normalizeSellers(form.sellers),
     })
     setSaving(false)
     if (!res.ok) {
@@ -128,7 +152,12 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
       setMsg({ ok: false, text: friendly })
       return
     }
-    setMsg({ ok: true, text: 'Cambios guardados.' })
+    setMsg({
+      ok: true,
+      text: res.sellersIgnored
+        ? 'Cambios guardados. Los vendedores se activarán cuando apliques el SQL de vendedores en Supabase.'
+        : 'Cambios guardados.',
+    })
     setForm((f) => ({ ...f, logoUrl }))
     setLogoFile(null)
     setLogoRemoved(false)
@@ -221,6 +250,89 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
               />
             </div>
           </label>
+
+          <div className="mt-4 rounded-xl border border-slate-200 bg-surface/60 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-muted uppercase">Vendedores (hasta {MAX_SELLERS})</span>
+              <button
+                type="button"
+                onClick={addSeller}
+                disabled={form.sellers.length >= MAX_SELLERS}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-navy transition hover:bg-surface disabled:opacity-40"
+              >
+                + Añadir vendedor
+              </button>
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted">
+              Cada vendedor comparte <b>su propio link</b>. Todos los pedidos caen en este mismo panel, marcados con el nombre de quien los trajo.
+            </p>
+
+            {form.sellers.length === 0 ? (
+              <p className="mt-2 text-[11px] text-muted">Todavía no agregaste vendedores.</p>
+            ) : (
+              <ul className="mt-2 space-y-2">
+                {form.sellers.map((seller, i) => {
+                  const link = sellerLink(window.location.origin, form.slug, seller.name)
+                  return (
+                    <li key={i} className="rounded-lg border border-slate-200 bg-white p-2.5">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <input
+                          value={seller.name}
+                          onChange={(e) => updateSeller(i, { name: e.target.value })}
+                          placeholder={`Vendedor ${i + 1} (ej. Juan Pérez)`}
+                          aria-label={`Nombre del vendedor ${i + 1}`}
+                          maxLength={60}
+                          className="input-field min-w-0 flex-1 py-2 text-[13px]"
+                        />
+                        <div className="input-field flex min-w-0 items-center gap-1.5 py-2 sm:w-44">
+                          <span className="shrink-0 text-xs font-semibold text-muted">+51</span>
+                          <input
+                            value={seller.whatsapp}
+                            onChange={(e) => updateSeller(i, { whatsapp: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                            inputMode="numeric"
+                            placeholder="WhatsApp"
+                            aria-label={`WhatsApp del vendedor ${i + 1}`}
+                            className="min-w-0 flex-1 bg-transparent text-[13px] focus:outline-none"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeSeller(i)}
+                          aria-label={`Quitar vendedor ${i + 1}`}
+                          className="shrink-0 self-start rounded-lg px-2 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 sm:self-auto"
+                        >
+                          Quitar
+                        </button>
+                      </div>
+
+                      {seller.name.trim() && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <code className="min-w-0 flex-1 truncate rounded-md bg-surface px-2 py-1 font-mono text-[11px] text-muted">{link}</code>
+                          <button
+                            type="button"
+                            onClick={() => copySeller(i)}
+                            className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-bold text-navy transition hover:bg-surface"
+                          >
+                            {copiedSeller === i ? '✓ Copiado' : 'Copiar link'}
+                          </button>
+                          {seller.whatsapp && (
+                            <a
+                              href={`https://wa.me/51${seller.whatsapp}?text=${encodeURIComponent(sellerShareText({ businessName: form.businessName, link }))}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-lg border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50"
+                            >
+                              Enviar por WhatsApp
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
 
           <label className="mt-3 block">
             <span className="mb-1 block text-xs font-semibold text-muted uppercase">Moneda en la que ves tus precios</span>

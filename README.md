@@ -125,8 +125,9 @@ dominios en caliente, sin redeploy.
 ## El panel del negociante (`src/components/dashboard/`)
 
 - **Envíos** (`EnviosPage.jsx`) — todos los pedidos, filtrables por estado,
-  por rango de fechas o navegando día por día, con búsqueda por cliente/
-  WhatsApp/N° de pedido y exportación a Excel.
+  por **vendedor**, por rango de fechas o navegando día por día, con búsqueda
+  por cliente/WhatsApp/vendedor/N° de pedido y exportación a Excel o PDF (las
+  dos incluyen la columna "Vendedor").
 - **Clientes** (`ClientesPage.jsx`) — agrupa los pedidos por WhatsApp del
   cliente final: recurrentes (2+ pedidos), nuevos este mes, dormidos (sin
   comprar +15 días), en riesgo (7-15 días sin comprar).
@@ -142,16 +143,37 @@ dominios en caliente, sin redeploy.
   Supabase con RLS por `merchant_id` — pedirlo cuando haga falta.
 - **Panel Pro** (`PanelProPage.jsx`) — pedidos de hoy/7/30 días, días
   restantes de prueba gratuita (si el plan es de prueba) o uso del límite
-  de pedidos del mes (si el plan lo tiene), pedidos por estado y top
-  couriers.
+  de pedidos del mes (si el plan lo tiene), pedidos por estado, top couriers
+  y **ventas por vendedor**.
   > **Limitación honesta:** el formulario no pide un monto por pedido (es
   > un formulario de logística, no de facturación), así que este panel
   > mide **pedidos**, no ventas en soles. Si quieres un campo de monto
   > para ver ingresos reales, es un cambio aparte — pídelo.
 - **Configuración** (`ConfiguracionPage.jsx`) — couriers activos, días de
   despacho, hora de corte, anticipación en horas, nombre de tienda,
-  WhatsApp, moneda de visualización, zona horaria, logo (sube a Supabase
-  Storage, bucket `logos`) y el slug de su link público.
+  WhatsApp, **vendedores (hasta 4, cada uno con su WhatsApp y su link)**,
+  moneda de visualización, zona horaria, logo (sube a Supabase Storage,
+  bucket `logos`) y el slug de su link público.
+
+### Vendedores: un panel, hasta 4 links (ver `utils/sellers.js`)
+
+Cada vendedor comparte `/f/<slug>?v=<su%20nombre>`; el formulario público
+lee ese parámetro y lo guarda en el pedido (`orders.seller_name`) sin que el
+cliente final vea nada distinto. Desde ese momento, Envíos tiene la columna
+y el filtro "Vendedor", Panel Pro muestra el gráfico de ventas por vendedor
+y las exportaciones (Excel/PDF) llevan la columna. Los links se generan y
+copian solos en Configuración → Vendedores, con un botón para mandarlos por
+WhatsApp al vendedor.
+
+- Se aceptan `?v=`, `?vendedor=` y `?ref=` (todos hacen lo mismo).
+- La lista se guarda en `merchants.sellers` (jsonb) y el nombre del pedido en
+  `orders.seller_name`; las dos columnas las crea
+  `sql/2026-11-03-vendedores.sql`.
+- El vendedor se escribe con la función `set_order_seller` **después** de
+  crear el pedido: si esa función no está en la base, el pedido se guarda
+  igual y solo queda sin vendedor — no se rompe nada.
+- Un pedido sin link de vendedor aparece como "Sin vendedor" en el panel.
+
 
 > **Cómo se decide qué fechas puede elegir el cliente** (`utils/dates.js`):
 > la "hora de corte" es el límite para que el pedido salga **al día
@@ -171,12 +193,16 @@ dominios en caliente, sin redeploy.
 
 - **Planes** (`PlanesPage.jsx`) — planes disponibles (los define el admin):
   días de prueba gratis y/o precio por día, con su lista de
-  características. Sin pasarela de pago todavía — el cambio se pide por
-  WhatsApp a un número tuyo que configuras en el propio archivo
-  (`ADMIN_WHATSAPP` en `PlanesPage.jsx`, vacío por defecto). La landing
-  menciona Culqi como método de pago del plan Emprendedor — el terreno está
-  preparado en el esquema de planes, pero la integración de cobro en sí
-  no está hecha; pídela aparte cuando quieras activarla.
+  características. Catálogo actual: **Prueba Free** (15 días gratis),
+  **Emprendedor** (S/ 1.00/día), **Emprendedor Pro** (S/ 1.50/día, con
+  equipo de hasta 4 vendedores, alertas inteligentes y soporte 24/7) y
+  **EMPRENDEDOR GOLD** (S/ 1.50/día). Los precios viven en la tabla
+  `plans`, no en el código: se cambian en /admin → Planes o corriendo
+  `sql/2026-11-03-planes-pro-gold.sql`. Sin pasarela de pago todavía — el
+  cambio se pide por WhatsApp a un número tuyo que configuras en el propio
+  archivo (`ADMIN_WHATSAPP` en `PlanesPage.jsx`, vacío por defecto). La
+  integración de cobro (Culqi) no está hecha; pídela aparte cuando quieras
+  activarla.
 - **Suscripción** (`SuscripcionPage.jsx`) — plan actual, días de prueba
   restantes o uso del mes según corresponda.
 
@@ -296,6 +322,23 @@ select 'Emprendedor', 1.00, 'Todo lo que necesitas para vender y despachar sin e
         'Pasarela de pagos (Yape, Plin, BCP, etc.) próximamente']
 where not exists (select 1 from public.plans where name = 'Emprendedor');
 
+-- Emprendedor Pro (S/ 1.50) y EMPRENDEDOR GOLD (S/ 1.50) -------------------
+insert into public.plans (name, price_per_day, description, features)
+select 'Emprendedor Pro', 1.50, 'Para tiendas que venden en equipo.',
+  array['Todo lo incluido en el Plan Emprendedor.',
+        'Gestión en equipo: añade hasta 4 vendedores y separa las ventas de cada uno.',
+        'Alertas inteligentes: avisos automáticos al acumular un número determinado de pedidos.',
+        'Soporte prioritario 24/7 y acceso anticipado a todas las actualizaciones del sistema.']
+where not exists (select 1 from public.plans where name = 'Emprendedor Pro');
+
+insert into public.plans (name, price_per_day, description, features)
+select 'EMPRENDEDOR GOLD', 1.50, 'El nivel más alto de ANOTA-T, al mismo precio que Pro.',
+  array['Todo lo incluido en el Plan Emprendedor Pro.',
+        'Ventas separadas por vendedor en el panel, los reportes y las etiquetas.',
+        'Soporte prioritario 24/7 por WhatsApp.',
+        'Acceso anticipado a todas las actualizaciones del sistema.']
+where not exists (select 1 from public.plans where name = 'EMPRENDEDOR GOLD');
+
 -- Negociantes (1 fila por cuenta de Supabase Auth) ----------------------
 create table if not exists public.merchants (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -309,6 +352,8 @@ create table if not exists public.merchants (
   dispatch_days integer[] not null default '{1,2,3,4,5,6}'::integer[], -- 0=domingo … 6=sábado
   cutoff_hour integer not null default 16,
   lead_time_hours integer not null default 0,
+  -- Vendedores de la tienda (hasta 4): [{ "name": "Juan", "whatsapp": "987654321" }]
+  sellers jsonb not null default '[]'::jsonb,
   plan_id bigint references public.plans(id),
   -- Desde cuándo corre el plan actual — con esto se calcula el vencimiento
   -- de la prueba gratuita (plan_started_at + plan.trial_days).
@@ -372,6 +417,8 @@ create table if not exists public.orders (
   reference text,
   payment_method text,
   notes text,
+  -- Vendedor que trajo el pedido (llega por el link: /f/slug?v=Juan)
+  seller_name text,
   shipping_date date,
   status text not null default 'pending',
   created_at timestamptz not null default now(),
@@ -450,6 +497,23 @@ begin
 end; $$;
 revoke all on function public.submit_order(jsonb) from public;
 grant execute on function public.submit_order(jsonb) to anon, authenticated;
+
+-- Vendedor del pedido: el formulario lo llama justo después de crear la
+-- orden (el nombre viaja en el link: /f/slug?v=Juan). Solo toca pedidos de
+-- los últimos 10 minutos y no reescribe uno ya asignado, así que nadie
+-- puede cambiar el vendedor de un pedido viejo por su código.
+create or replace function public.set_order_seller(p_code text, p_seller text)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  update public.orders
+     set seller_name = left(regexp_replace(coalesce(p_seller, ''), '[[:cntrl:]]', '', 'g'), 60)
+   where tracking_code = upper(trim(p_code))
+     and seller_name is null
+     and created_at > now() - interval '10 minutes';
+end; $$;
+revoke all on function public.set_order_seller(text, text) from public;
+grant execute on function public.set_order_seller(text, text) to anon, authenticated;
 
 -- Administradores de plataforma --------------------------------------------
 -- El rol de admin NO vive en el navegador: vive en esta tabla, que nadie

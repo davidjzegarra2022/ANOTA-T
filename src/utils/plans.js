@@ -22,7 +22,13 @@ function fromRow(row) {
 export async function fetchActivePlans() {
   const supabase = await getSupabaseClient()
   if (!supabase) return []
-  const { data, error } = await supabase.from('plans').select('*').order('price_per_day', { ascending: true })
+  // Orden estable: primero por precio y, si dos planes cuestan lo mismo, el
+  // más antiguo primero (así el nivel nuevo queda al final de la lista).
+  const { data, error } = await supabase
+    .from('plans')
+    .select('*')
+    .order('price_per_day', { ascending: true })
+    .order('created_at', { ascending: true })
   if (error) {
     console.warn('[supabase] No se pudo leer los planes:', error.message)
     return []
