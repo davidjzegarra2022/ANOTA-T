@@ -21,6 +21,10 @@ function fromRow(row) {
     cutoffHour: row.cutoff_hour,
     leadTimeHours: row.lead_time_hours,
     sellers: Array.isArray(row.sellers) ? row.sellers : [],
+    // false = la columna `sellers` todavía no existe en la base (falta
+    // correr sql/2026-11-03-vendedores.sql). La pantalla lo usa para avisar
+    // y para no intentar guardar una columna que no está.
+    sellersSupported: Object.prototype.hasOwnProperty.call(row, 'sellers'),
     planId: row.plan_id,
     planStartedAt: row.plan_started_at,
     active: row.active,

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getKnownCouriers } from '../../data/agencies'
 import { copyText } from '../../utils/clipboard'
 import { updateMyMerchant, uploadMerchantLogo } from '../../utils/merchantProfile'
-import { MAX_SELLERS, normalizeSellers, sellerLink, sellerShareText } from '../../utils/sellers'
+import { MAX_SELLERS, SELLERS_SQL, loadSellerDraft, normalizeSellers, saveSellerDraft, sellerLink, sellerShareText } from '../../utils/sellers'
 import { IconCheck } from '../icons'
 
 const WEEKDAYS = [
@@ -53,13 +53,18 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
     dispatchDays: merchant.dispatchDays,
     cutoffHour: merchant.cutoffHour,
     leadTimeHours: merchant.leadTimeHours,
-    sellers: normalizeSellers(merchant.sellers),
+    // Si la base todavía no tiene la columna `sellers`, se arranca con el
+    // borrador guardado en este dispositivo: lo escrito nunca se pierde.
+    sellers: normalizeSellers(merchant.sellers).length
+      ? normalizeSellers(merchant.sellers)
+      : loadSellerDraft(merchant.id),
   })
   const [logoFile, setLogoFile] = useState(null)
   const [logoRemoved, setLogoRemoved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
   const [copiedSeller, setCopiedSeller] = useState(null)
+  const [copiedSql, setCopiedSql] = useState(false)
 
   // Vista previa: el archivo recién elegido (si hay uno), si no el logo ya
   // guardado, a menos que el usuario lo haya quitado manualmente.
@@ -133,6 +138,11 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
       logoUrl = null
     }
 
+    const sellers = normalizeSellers(form.sellers)
+    // La columna `merchants.sellers` llega con sql/2026-11-03-vendedores.sql.
+    // Mientras no exista, la lista se guarda como borrador en este
+    // dispositivo: "Guardar cambios" nunca la borra ni falla por su culpa.
+    const sellersSupported = merchant.sellersSupported !== false
     const res = await updateMyMerchant({
       businessName: form.businessName,
       whatsappNumber: '51' + form.whatsapp.replace(/\D/g, ''),
@@ -144,21 +154,25 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
       dispatchDays: form.dispatchDays,
       cutoffHour: form.cutoffHour,
       leadTimeHours: form.leadTimeHours,
-      sellers: normalizeSellers(form.sellers),
+      ...(sellersSupported ? { sellers } : {}),
     })
     setSaving(false)
     if (!res.ok) {
+      // Aun si la base falla, el borrador local conserva los vendedores.
+      saveSellerDraft(merchant.id, sellers)
       const friendly = /duplicate key/i.test(res.error) ? 'Ese link ya lo usa otra tienda, elige otro.' : res.error
       setMsg({ ok: false, text: friendly })
       return
     }
+    saveSellerDraft(merchant.id, sellers)
     setMsg({
       ok: true,
-      text: res.sellersIgnored
-        ? 'Cambios guardados. Los vendedores se activarán cuando apliques el SQL de vendedores en Supabase.'
-        : 'Cambios guardados.',
+      text:
+        res.sellersIgnored || !sellersSupported
+          ? 'Cambios guardados. Los vendedores quedan guardados en este dispositivo; se sincronizarán cuando apliques el SQL de vendedores en Supabase.'
+          : 'Cambios guardados.',
     })
-    setForm((f) => ({ ...f, logoUrl }))
+    setForm((f) => ({ ...f, logoUrl, sellers }))
     setLogoFile(null)
     setLogoRemoved(false)
     onSaved?.()
@@ -266,6 +280,29 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
             <p className="mt-1 text-[11px] leading-relaxed text-muted">
               Cada vendedor comparte <b>su propio link</b>. Todos los pedidos caen en este mismo panel, marcados con el nombre de quien los trajo.
             </p>
+
+            {merchant.sellersSupported === false && (
+              <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5">
+                <p className="text-[11px] font-bold text-amber-900">
+                  Los vendedores se están guardando en este dispositivo.
+                </p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/85">
+                  Los links ya funcionan, pero para que queden en tu cuenta y cada pedido salga marcado con su vendedor falta activarlos en Supabase
+                  (SQL Editor → pegar y ejecutar). Es una sola vez:
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await copyText(SELLERS_SQL)
+                    setCopiedSql(true)
+                    setTimeout(() => setCopiedSql(false), 2000)
+                  }}
+                  className="mt-1.5 rounded-lg border border-amber-400 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-900 transition hover:bg-amber-100"
+                >
+                  {copiedSql ? '✓ SQL copiado' : 'Copiar SQL'}
+                </button>
+              </div>
+            )}
 
             {form.sellers.length === 0 ? (
               <p className="mt-2 text-[11px] text-muted">Todavía no agregaste vendedores.</p>

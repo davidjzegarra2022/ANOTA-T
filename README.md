@@ -169,6 +169,15 @@ WhatsApp al vendedor.
 - La lista se guarda en `merchants.sellers` (jsonb) y el nombre del pedido en
   `orders.seller_name`; las dos columnas las crea
   `sql/2026-11-03-vendedores.sql`.
+- **Mientras esa migración no esté aplicada, "Guardar cambios" no pierde
+  nada:** la pantalla detecta que la columna falta (`merchant.sellersSupported`
+  es `false`), guarda el resto de la configuración normalmente y deja la lista
+  de vendedores en un borrador `localStorage` por tienda
+  (`loadSellerDraft`/`saveSellerDraft` en `utils/sellers.js`), con un aviso
+  ámbar y un botón "Copiar SQL". Cuando la columna exista, el borrador se
+  sube solo en el siguiente guardado. El panel tampoco se desmonta al
+  refrescar el perfil (DashboardLayout), así que lo escrito en el formulario
+  no desaparece.
 - El vendedor se escribe con la función `set_order_seller` **después** de
   crear el pedido: si esa función no está en la base, el pedido se guarda
   igual y solo queda sin vendedor — no se rompe nada.
@@ -194,15 +203,20 @@ WhatsApp al vendedor.
 - **Planes** (`PlanesPage.jsx`) — planes disponibles (los define el admin):
   días de prueba gratis y/o precio por día, con su lista de
   características. Catálogo actual: **Prueba Free** (15 días gratis),
-  **Emprendedor** (S/ 1.00/día), **Emprendedor Pro** (S/ 1.50/día, con
-  equipo de hasta 4 vendedores, alertas inteligentes y soporte 24/7) y
-  **EMPRENDEDOR GOLD** (S/ 1.50/día). Los precios viven en la tabla
-  `plans`, no en el código: se cambian en /admin → Planes o corriendo
-  `sql/2026-11-03-planes-pro-gold.sql`. Sin pasarela de pago todavía — el
-  cambio se pide por WhatsApp a un número tuyo que configuras en el propio
-  archivo (`ADMIN_WHATSAPP` en `PlanesPage.jsx`, vacío por defecto). La
-  integración de cobro (Culqi) no está hecha; pídela aparte cuando quieras
-  activarla.
+  **Emprendedor** (S/ 1.00/día) y **Emprendedor Pro** (S/ 1.50/día, con
+  equipo de hasta 4 vendedores, alertas inteligentes y soporte 24/7). Los
+  precios viven en la tabla `plans`, no en el código: se cambian en
+  /admin → Planes o corriendo `sql/2026-11-03-plan-emprendedor-pro.sql`.
+  > **Emprendedor Pro está también como respaldo en el código**
+  > (`PLAN_FALLBACKS` en `utils/plans.js`): mientras la fila no exista en la
+  > base, la landing y Planes igual lo muestran (marcado `localOnly`), y en
+  > cuanto se cree el plan en `plans` con ese nombre el respaldo desaparece
+  > solo, sin tocar código. El botón pide el plan por WhatsApp igual que los
+  > demás, porque es soporte quien lo activa.
+  Sin pasarela de pago todavía — el cambio se pide por WhatsApp a un número
+  tuyo que configuras en el propio archivo (`ADMIN_WHATSAPP` en
+  `PlanesPage.jsx`, vacío por defecto). La integración de cobro (Culqi) no
+  está hecha; pídela aparte cuando quieras activarla.
 - **Suscripción** (`SuscripcionPage.jsx`) — plan actual, días de prueba
   restantes o uso del mes según corresponda.
 
@@ -330,14 +344,6 @@ select 'Emprendedor Pro', 1.50, 'Para tiendas que venden en equipo.',
         'Alertas inteligentes: avisos automáticos al acumular un número determinado de pedidos.',
         'Soporte prioritario 24/7 y acceso anticipado a todas las actualizaciones del sistema.']
 where not exists (select 1 from public.plans where name = 'Emprendedor Pro');
-
-insert into public.plans (name, price_per_day, description, features)
-select 'EMPRENDEDOR GOLD', 1.50, 'El nivel más alto de ANOTA-T, al mismo precio que Pro.',
-  array['Todo lo incluido en el Plan Emprendedor Pro.',
-        'Ventas separadas por vendedor en el panel, los reportes y las etiquetas.',
-        'Soporte prioritario 24/7 por WhatsApp.',
-        'Acceso anticipado a todas las actualizaciones del sistema.']
-where not exists (select 1 from public.plans where name = 'EMPRENDEDOR GOLD');
 
 -- Negociantes (1 fila por cuenta de Supabase Auth) ----------------------
 create table if not exists public.merchants (

@@ -88,7 +88,10 @@ export default function DashboardLayout({ email, onLogout }) {
     setDrawerOpen(false)
   }
 
-  if (loading) {
+  // El cargador solo ocupa la pantalla la primera vez: al refrescar el perfil
+  // (por ejemplo después de "Guardar cambios") el panel NO se desmonta, así
+  // no se pierde lo que el usuario tenía escrito en el formulario.
+  if (loading && !merchant) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface px-6">
         <ClaudeCodeLoader />

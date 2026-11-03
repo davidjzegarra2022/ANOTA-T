@@ -70,3 +70,54 @@ export function collectSellerNames(sellers, orders) {
   for (const o of orders || []) if (o?.sellerName) names.add(o.sellerName)
   return [...names].sort((a, b) => a.localeCompare(b, 'es'))
 }
+
+// --- Borrador local -------------------------------------------------------// Mientras la columna `merchants.sellers` no exista en la base (falta correr
+// sql/2026-11-03-vendedores.sql), la lista se guarda en este dispositivo para
+// que "Guardar cambios" nunca borre lo que el usuario escribió. En cuanto la
+// columna exista, el borrador se sube solo en el siguiente guardado.
+
+function draftKey(merchantId) {
+  return `anotate-sellers-draft:${merchantId || 'anon'}`
+}
+
+export function loadSellerDraft(merchantId) {
+  try {
+    const raw = localStorage.getItem(draftKey(merchantId))
+    if (!raw) return []
+    return normalizeSellers(JSON.parse(raw))
+  } catch {
+    return []
+  }
+}
+
+export function saveSellerDraft(merchantId, list) {
+  try {
+    localStorage.setItem(draftKey(merchantId), JSON.stringify(normalizeSellers(list)))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * SQL para activar los vendedores en Supabase (el mismo de
+ * sql/2026-11-03-vendedores.sql). Se muestra con botón "copiar" en
+ * Configuración cuando la base todavía no tiene las columnas.
+ */
+export const SELLERS_SQL = `alter table public.merchants
+  add column if not exists sellers jsonb not null default '[]'::jsonb;
+
+alter table public.orders
+  add column if not exists seller_name text;
+
+create or replace function public.set_order_seller(p_code text, p_seller text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.orders
+     set seller_name = left(regexp_replace(coalesce(p_seller, ''), '[[:cntrl:]]', '', 'g'), 60)
+   where tracking_code = upper(trim(p_code))
+     and seller_name is null
+     and created_at > now() - interval '10 minutes';
+end; $$;
+grant execute on function public.set_order_seller(text, text) to anon, authenticated;`
+
