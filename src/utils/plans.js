@@ -29,6 +29,17 @@ export const PLAN_FALLBACKS = [
   },
 ]
 
+/**
+ * Las funciones se escriben a mano en /admin → Planes y muchas veces salen
+ * con un guion o viñeta delante ("- Gestión en equipo…"). Se limpia al leer
+ * para que la tarjeta no muestre "- -Gestión…".
+ */
+export function cleanFeature(text) {
+  return String(text ?? '')
+    .replace(/^\s*[-–—•*·]\s*/, '')
+    .trim()
+}
+
 function fromRow(row) {
   return {
     id: row.id,
@@ -37,7 +48,7 @@ function fromRow(row) {
     pricePerDay: Number(row.price_per_day),
     monthlyOrderLimit: row.monthly_order_limit,
     description: row.description,
-    features: row.features || [],
+    features: (row.features || []).map(cleanFeature).filter(Boolean),
   }
 }
 
@@ -62,7 +73,7 @@ export function mergePlanFallbacks(plans) {
     pricePerDay: f.pricePerDay,
     monthlyOrderLimit: null,
     description: f.description,
-    features: f.features,
+    features: f.features.map(cleanFeature),
     // Marca para la UI: este plan todavía no vive en la base.
     localOnly: true,
   }))

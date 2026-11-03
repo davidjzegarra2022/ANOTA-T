@@ -1,9 +1,17 @@
 import { test, expect } from 'vitest'
-import { mergePlanFallbacks, PLAN_FALLBACKS } from '../src/utils/plans.js'
+import { cleanFeature, mergePlanFallbacks, PLAN_FALLBACKS } from '../src/utils/plans.js'
 const base = [
   { id: 1, name: 'Prueba Free', trialDays: 15, pricePerDay: 0, features: [] },
   { id: 3, name: 'Emprendedor', trialDays: null, pricePerDay: 1, features: [] },
 ]
+
+test('limpia el guion o la viñeta que se escribe delante de una función', () => {
+  expect(cleanFeature('- Gestión en equipo')).toBe('Gestión en equipo')
+  expect(cleanFeature('  -Todas las funciones del plan Emprendedor.')).toBe('Todas las funciones del plan Emprendedor.')
+  expect(cleanFeature('• Alertas inteligentes')).toBe('Alertas inteligentes')
+  expect(cleanFeature('Soporte 24/7')).toBe('Soporte 24/7')
+  expect(cleanFeature(null)).toBe('')
+})
 
 test('agrega Emprendedor Pro cuando la base todavía no lo tiene', () => {
   const merged = mergePlanFallbacks(base)
