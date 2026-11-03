@@ -43,6 +43,15 @@ function fromRow(row) {
 
 const normName = (name) => String(name || '').trim().toLowerCase()
 
+/**
+ * ¿El plan es el nivel Pro (el único que habilita Recordatorios y Vendedores)?
+ * El plan lo asigna SOLO la administración desde /admin → Negociantes; esto
+ * únicamente decide qué se ve habilitado en el panel, no cambia el plan.
+ */
+export function isProPlan(plan) {
+  return /\bpro\b/i.test(String(plan?.name || ''))
+}
+
 /** Agrega los planes de respaldo que falten (por nombre) y ordena por precio. */
 export function mergePlanFallbacks(plans) {
   const names = new Set(plans.map((p) => normName(p.name)))

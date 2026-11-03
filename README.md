@@ -141,6 +141,9 @@ dominios en caliente, sin redeploy.
   cuenta de la tienda (cada dispositivo ve los suyos): para sincronizarlos
   entre dispositivos hay que mover `utils/reminders.js` a una tabla de
   Supabase con RLS por `merchant_id` — pedirlo cuando haga falta.
+  **Es exclusivo del plan Emprendedor Pro**: con un plan inferior (o sin
+  plan) el módulo se ve en gris, con aviso y sin poder escribir
+  (`fieldset disabled`), y el ítem del menú lleva la etiqueta "PRO".
 - **Panel Pro** (`PanelProPage.jsx`) — pedidos de hoy/7/30 días, días
   restantes de prueba gratuita (si el plan es de prueba) o uso del límite
   de pedidos del mes (si el plan lo tiene), pedidos por estado, top couriers
@@ -166,6 +169,13 @@ copian solos en Configuración → Vendedores, con un botón para mandarlos por
 WhatsApp al vendedor.
 
 - Se aceptan `?v=`, `?vendedor=` y `?ref=` (todos hacen lo mismo).
+- **Solo el plan Emprendedor Pro habilita Vendedores.** El plan lo asigna
+  únicamente la administración (/admin → Negociantes), nunca el propio
+  negociante: `isProPlan()` (`utils/plans.js`) mira el nombre del plan
+  asignado (`merchant.plan_id`) y, si no es Pro, el bloque de Vendedores
+  sale en gris, con aviso y sin poder editar (campos `disabled` + wrapper
+  `pointer-events-none grayscale`), y el ítem "Recordatorios" del menú
+  aparece con la etiqueta PRO.
 - La lista se guarda en `merchants.sellers` (jsonb) y el nombre del pedido en
   `orders.seller_name`; las dos columnas las crea
   `sql/2026-11-03-vendedores.sql`.

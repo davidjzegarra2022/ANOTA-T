@@ -13,7 +13,7 @@ import {
   saveReminders,
   timeLabel,
 } from '../../utils/reminders'
-import { IconBell, IconCheck, IconChevronLeft, IconChevronRight, IconStar, IconTrash } from '../icons'
+import { IconBell, IconCheck, IconChevronLeft, IconChevronRight, IconLock, IconStar, IconTrash } from '../icons'
 
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre']
@@ -43,7 +43,7 @@ function monthCells(base) {
   })
 }
 
-export default function RecordatoriosPage({ merchant }) {
+export default function RecordatoriosPage({ merchant, locked = false, onUpgrade }) {
   const merchantId = merchant?.id
   const today = dayKey()
   const [items, setItems] = useState(() => loadReminders(merchantId))
@@ -125,8 +125,30 @@ export default function RecordatoriosPage({ merchant }) {
         </p>
       </div>
 
-      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-4">
+      {locked && (
+        <div role="status" className="card flex flex-wrap items-center gap-3 border-amber-300 bg-amber-50 p-4">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+            <IconLock className="h-4.5 w-4.5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-navy">Recordatorios es parte del plan Emprendedor Pro</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted">
+              Este módulo lo habilita la administración de ANOTA-T al asignarte el plan Pro. Pídelo y se activa en tu cuenta.
+            </p>
+          </div>
+          <button type="button" onClick={onUpgrade} className="btn btn-primary shrink-0 !py-2 text-xs">
+            Ver planes
+          </button>
+        </div>
+      )}
+
+      <fieldset
+        disabled={locked}
+        aria-disabled={locked}
+        aria-label="Recordatorios"
+        className={`m-0 min-w-0 border-0 p-0 ${locked ? 'pointer-events-none opacity-45 select-none grayscale' : ''}`}
+      >
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">        <div className="min-w-0 space-y-4">
           {/* Alta rápida: texto + cuándo + de qué es. */}
           <form onSubmit={addReminder} className="card p-4">
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -196,7 +218,7 @@ export default function RecordatoriosPage({ merchant }) {
                   setDayFilter(null)
                 }}
                 className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                  filter === f.id ? 'bg-brand text-navy' : 'bg-white/70 text-muted hover:bg-slate-200'
+                  filter === f.id ? 'bg-brand text-navy' : 'bg-surface text-muted hover:bg-slate-200'
                 }`}
               >
                 {f.label} {counts[f.id] ?? 0}
@@ -322,6 +344,7 @@ export default function RecordatoriosPage({ merchant }) {
           </p>
         </aside>
       </div>
+      </fieldset>
     </div>
   )
 }

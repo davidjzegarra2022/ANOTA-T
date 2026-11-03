@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import logoIcon from '../../assets/logo-icon.webp'
 import { ensureLightLogo, fetchAcceptingOrders, fetchMyMerchant } from '../../utils/merchantProfile'
+import { fetchActivePlans, isProPlan } from '../../utils/plans'
 import { supportWhatsAppUrl } from '../../utils/support'
 import ClaudeCodeLoader from '../ClaudeCodeLoader'
 import ShareMenu from './ShareMenu'
@@ -28,7 +29,9 @@ import SuscripcionPage from './SuscripcionPage'
 const NAV_ITEMS = [
   { id: 'envios', label: 'Envíos', icon: IconBox },
   { id: 'clientes', label: 'Clientes', icon: IconUsers },
-  { id: 'recordatorios', label: 'Recordatorios', icon: IconBell },
+  // Recordatorios y Vendedores son del plan Emprendedor Pro: el plan lo
+  // asigna solo la administración desde /admin → Negociantes.
+  { id: 'recordatorios', label: 'Recordatorios', icon: IconBell, proOnly: true },
   { id: 'panel', label: 'Panel Pro', icon: IconGrid },
   { id: 'configuracion', label: 'Configuración', icon: IconSettings },
   { id: 'planes', label: 'Planes', icon: IconSparkles },
@@ -53,6 +56,12 @@ export default function DashboardLayout({ email, onLogout }) {
   // la pantalla del teléfono).
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // Plan actual del negociante: solo "Emprendedor Pro" habilita Recordatorios
+  // y Vendedores. `proEnabled` es solo de lectura — el plan se asigna desde
+  // el panel de administración.
+  const [plan, setPlan] = useState(null)
+
+  const proEnabled = isProPlan(plan)
 
   async function refreshMerchant() {
     setLoading(true)
@@ -72,6 +81,20 @@ export default function DashboardLayout({ email, onLogout }) {
   useEffect(() => {
     refreshMerchant()
   }, [])
+
+  useEffect(() => {
+    if (!merchant?.planId) {
+      setPlan(null)
+      return
+    }
+    let alive = true
+    fetchActivePlans().then((plans) => {
+      if (alive) setPlan(plans.find((p) => p.id === merchant.planId) || null)
+    })
+    return () => {
+      alive = false
+    }
+  }, [merchant?.planId])
 
   // Cerrar el cajón con Escape.
   useEffect(() => {
@@ -166,6 +189,15 @@ export default function DashboardLayout({ email, onLogout }) {
             >
               <item.icon className="h-4.5 w-4.5 shrink-0" />
               <span className={`truncate ${collapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
+              {item.proOnly && !proEnabled && (
+                <span
+                  className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide ${
+                    tab === item.id ? 'bg-navy/15 text-navy' : 'bg-white/10 text-slate-400'
+                  } ${collapsed ? 'lg:hidden' : ''}`}
+                >
+                  PRO
+                </span>
+              )}
             </button>
           ))}
           {merchant?.slug && (
@@ -245,9 +277,13 @@ export default function DashboardLayout({ email, onLogout }) {
               )}
               {tab === 'envios' && <EnviosPage merchant={merchant} />}
               {tab === 'clientes' && <ClientesPage merchant={merchant} />}
-              {tab === 'recordatorios' && <RecordatoriosPage merchant={merchant} />}
+              {tab === 'recordatorios' && (
+                <RecordatoriosPage merchant={merchant} locked={!proEnabled} onUpgrade={() => setTab('planes')} />
+              )}
               {tab === 'panel' && <PanelProPage merchant={merchant} />}
-              {tab === 'configuracion' && <ConfiguracionPage merchant={merchant} onSaved={refreshMerchant} />}
+              {tab === 'configuracion' && (
+                <ConfiguracionPage merchant={merchant} onSaved={refreshMerchant} locked={!proEnabled} onUpgrade={() => setTab('planes')} />
+              )}
               {tab === 'planes' && <PlanesPage merchant={merchant} />}
               {tab === 'suscripcion' && <SuscripcionPage merchant={merchant} />}
             </>

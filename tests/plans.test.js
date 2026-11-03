@@ -1,6 +1,5 @@
 import { test, expect } from 'vitest'
 import { mergePlanFallbacks, PLAN_FALLBACKS } from '../src/utils/plans.js'
-
 const base = [
   { id: 1, name: 'Prueba Free', trialDays: 15, pricePerDay: 0, features: [] },
   { id: 3, name: 'Emprendedor', trialDays: null, pricePerDay: 1, features: [] },

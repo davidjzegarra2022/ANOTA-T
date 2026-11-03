@@ -3,7 +3,7 @@ import { getKnownCouriers } from '../../data/agencies'
 import { copyText } from '../../utils/clipboard'
 import { updateMyMerchant, uploadMerchantLogo } from '../../utils/merchantProfile'
 import { MAX_SELLERS, SELLERS_SQL, loadSellerDraft, normalizeSellers, saveSellerDraft, sellerLink, sellerShareText } from '../../utils/sellers'
-import { IconCheck } from '../icons'
+import { IconCheck, IconLock } from '../icons'
 
 const WEEKDAYS = [
   { value: 1, label: 'Lunes' },
@@ -40,7 +40,7 @@ function Checkbox({ checked, onChange, label }) {
   )
 }
 
-export default function ConfiguracionPage({ merchant, onSaved }) {
+export default function ConfiguracionPage({ merchant, onSaved, locked = false, onUpgrade }) {
   const couriers = getKnownCouriers()
   const [form, setForm] = useState({
     businessName: merchant.businessName,
@@ -140,9 +140,10 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
 
     const sellers = normalizeSellers(form.sellers)
     // La columna `merchants.sellers` llega con sql/2026-11-03-vendedores.sql.
-    // Mientras no exista, la lista se guarda como borrador en este
-    // dispositivo: "Guardar cambios" nunca la borra ni falla por su culpa.
-    const sellersSupported = merchant.sellersSupported !== false
+    // Mientras no exista (o el plan no sea Pro), la lista no se manda: se
+    // guarda como borrador en este dispositivo y "Guardar cambios" nunca
+    // falla ni borra lo escrito.
+    const sellersSupported = merchant.sellersSupported !== false && !locked
     const res = await updateMyMerchant({
       businessName: form.businessName,
       whatsappNumber: '51' + form.whatsapp.replace(/\D/g, ''),
@@ -167,8 +168,9 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
     saveSellerDraft(merchant.id, sellers)
     setMsg({
       ok: true,
-      text:
-        res.sellersIgnored || !sellersSupported
+      text: locked
+        ? 'Cambios guardados. Vendedores se habilita con el plan Emprendedor Pro.'
+        : res.sellersIgnored || !sellersSupported
           ? 'Cambios guardados. Los vendedores quedan guardados en este dispositivo; se sincronizarán cuando apliques el SQL de vendedores en Supabase.'
           : 'Cambios guardados.',
     })
@@ -271,7 +273,7 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
               <button
                 type="button"
                 onClick={addSeller}
-                disabled={form.sellers.length >= MAX_SELLERS}
+                disabled={locked || form.sellers.length >= MAX_SELLERS}
                 className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-navy transition hover:bg-surface disabled:opacity-40"
               >
                 + Añadir vendedor
@@ -281,12 +283,26 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
               Cada vendedor comparte <b>su propio link</b>. Todos los pedidos caen en este mismo panel, marcados con el nombre de quien los trajo.
             </p>
 
-            {merchant.sellersSupported === false && (
+            {locked && (
+              <div role="status" className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5">
+                <IconLock className="h-4 w-4 shrink-0 text-amber-700" />
+                <p className="min-w-0 flex-1 text-[11px] leading-relaxed text-amber-800">
+                  <b>Vendedores es parte del plan Emprendedor Pro.</b> Lo activa la administración de ANOTA-T; mientras no esté activo, este bloque queda
+                  bloqueado y no se puede editar.
+                </p>
+                <button type="button" onClick={onUpgrade} className="rounded-lg bg-navy px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-navy-2">
+                  Ver planes
+                </button>
+              </div>
+            )}
+
+            <div className={locked ? 'pointer-events-none opacity-45 select-none grayscale' : ''}>
+            {merchant.sellersSupported === false && !locked && (
               <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5">
-                <p className="text-[11px] font-bold text-amber-900">
+                <p className="text-[11px] font-bold text-amber-800">
                   Los vendedores se están guardando en este dispositivo.
                 </p>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/85">
+                <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">
                   Los links ya funcionan, pero para que queden en tu cuenta y cada pedido salga marcado con su vendedor falta activarlos en Supabase
                   (SQL Editor → pegar y ejecutar). Es una sola vez:
                 </p>
@@ -297,7 +313,7 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
                     setCopiedSql(true)
                     setTimeout(() => setCopiedSql(false), 2000)
                   }}
-                  className="mt-1.5 rounded-lg border border-amber-400 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-900 transition hover:bg-amber-100"
+                  className="mt-1.5 rounded-lg border border-amber-400 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-800 transition hover:bg-amber-100"
                 >
                   {copiedSql ? '✓ SQL copiado' : 'Copiar SQL'}
                 </button>
@@ -319,6 +335,7 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
                           placeholder={`Vendedor ${i + 1} (ej. Juan Pérez)`}
                           aria-label={`Nombre del vendedor ${i + 1}`}
                           maxLength={60}
+                          disabled={locked}
                           className="input-field min-w-0 flex-1 py-2 text-[13px]"
                         />
                         <div className="input-field flex min-w-0 items-center gap-1.5 py-2 sm:w-44">
@@ -329,6 +346,7 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
                             inputMode="numeric"
                             placeholder="WhatsApp"
                             aria-label={`WhatsApp del vendedor ${i + 1}`}
+                            disabled={locked}
                             className="min-w-0 flex-1 bg-transparent text-[13px] focus:outline-none"
                           />
                         </div>
@@ -369,6 +387,7 @@ export default function ConfiguracionPage({ merchant, onSaved }) {
                 })}
               </ul>
             )}
+            </div>
           </div>
 
           <label className="mt-3 block">
