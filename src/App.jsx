@@ -13,7 +13,7 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const AuthGate = lazy(() => import('./components/auth/AuthGate'))
 const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout'))
 const LandingPage = lazy(() => import('./components/LandingPage'))
-import { fetchMerchantBySlug } from './utils/merchantProfile'
+import { fetchMerchantBySlug, fetchSellerWhatsApp } from './utils/merchantProfile'
 import { createOrder } from './utils/orders'
 import { readSellerFromSearch } from './utils/sellers'
 import { getCurrentSession, isPlatformAdmin, onAuthStateChange, signOutMerchant } from './utils/supabaseAuth'
@@ -63,7 +63,10 @@ function PublicShippingRoute({ slug }) {
       return res
     }
     if (res.ok) {
-      setSubmittedForm({ ...form, trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status })
+      // El resumen vuelve al WhatsApp del vendedor que compartió el link (si
+      // tiene número); sin vendedor, o sin número, va al de la tienda.
+      const sellerWhatsapp = await fetchSellerWhatsApp(merchant, sellerName)
+      setSubmittedForm({ ...form, sellerName, sellerWhatsapp, trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status })
     }
     // Si falló (p. ej. anti-spam), el formulario muestra el error y no avanza.
     return res

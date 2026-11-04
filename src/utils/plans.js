@@ -40,6 +40,17 @@ export function cleanFeature(text) {
     .trim()
 }
 
+/**
+ * Texto descriptivo que se muestra en la tarjeta del plan. En la prueba gratis
+ * se oculta: la tarjeta ya dice "15 días gratis" y la descripción guardada en
+ * la base ("Prueba gratis por 7 días.") quedaba desactualizada y contradecía
+ * el precio.
+ */
+export function planDescription(plan) {
+  if (plan?.trialDays) return ''
+  return String(plan?.description ?? '').trim()
+}
+
 function fromRow(row) {
   return {
     id: row.id,

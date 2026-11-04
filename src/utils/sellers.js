@@ -63,6 +63,21 @@ export function normalizeSellers(list) {
     .slice(0, MAX_SELLERS)
 }
 
+/** WhatsApp (9 dígitos) del vendedor con ese nombre dentro de la lista, o '' si no hay. */
+export function findSellerWhatsApp(sellers, name) {
+  const wanted = cleanSellerName(name).toLowerCase()
+  if (!wanted) return ''
+  const found = (sellers || []).find((s) => cleanSellerName(s?.name).toLowerCase() === wanted)
+  return String(found?.whatsapp ?? '').replace(/\D/g, '')
+}
+
+/** Número con código de país (51) para wa.me; '' si el vendedor no tiene número. */
+export function sellerWhatsAppWithCountry(digits) {
+  const d = String(digits ?? '').replace(/\D/g, '')
+  if (!d) return ''
+  return d.length <= 9 ? `51${d}` : d
+}
+
 /** Todos los vendedores que aparecen en un pedido o en la configuración, sin repetir. */
 export function collectSellerNames(sellers, orders) {
   const names = new Set()
@@ -119,5 +134,20 @@ begin
      and seller_name is null
      and created_at > now() - interval '10 minutes';
 end; $$;
-grant execute on function public.set_order_seller(text, text) to anon, authenticated;`
+grant execute on function public.set_order_seller(text, text) to anon, authenticated;
+
+-- El formulario público necesita el WhatsApp del vendedor para devolverle el
+-- resumen del pedido. Solo devuelve el número del vendedor cuyo nombre llega
+-- en el link (?v=...), nunca la lista completa.
+create or replace function public.get_seller_contact(p_slug text, p_name text)
+returns text language sql stable security definer set search_path = public as $$
+  select s->>'whatsapp'
+    from public.merchants m, jsonb_array_elements(m.sellers) s
+   where m.slug = lower(trim(p_slug))
+     and lower(trim(s->>'name')) = lower(trim(p_name))
+   limit 1;
+$$;
+revoke all on function public.get_seller_contact(text, text) from public;
+grant execute on function public.get_seller_contact(text, text) to anon, authenticated;
+`
 
