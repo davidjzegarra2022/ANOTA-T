@@ -5,11 +5,34 @@
 import { getSupabaseClient } from './supabaseClient'
 import { TRIAL_DAYS } from './plans'
 
+const NETWORK_RE = /failed to fetch|load failed|networkerror|network request failed|fetch failed/i
+
 function adminError(err) {
   const msg = String(err?.message || err || '')
+  if (NETWORK_RE.test(msg)) return 'No hay conexión con el servidor en este momento. Revisa tu internet y pulsa «Actualizar».'
   if (/forbidden/i.test(msg)) return 'Tu cuenta no tiene permisos de administrador.'
   if (/jwt|session|401/i.test(msg)) return 'Sesión expirada, vuelve a ingresar.'
   return msg || 'Error desconocido.'
+}
+
+/**
+ * Consultas de SOLO LECTURA con reintento: un «Failed to fetch» suele ser un
+ * corte de red de un segundo (señal del celular, cambio de wifi). Se reintenta
+ * hasta 3 veces antes de mostrar el error. Las escrituras (registrar un pago,
+ * cambiar un plan) NO se reintentan solas, para no duplicar nada.
+ */
+async function readRpc(supabase, name, args) {
+  let res
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 600 * attempt))
+    try {
+      res = await supabase.rpc(name, args)
+    } catch (e) {
+      res = { data: null, error: { message: String(e?.message || e) } }
+    }
+    if (!res.error || !NETWORK_RE.test(String(res.error.message || ''))) return res
+  }
+  return res
 }
 
 /**
@@ -76,7 +99,7 @@ function isMissingFn(error) {
 export async function adminListSubscriptions() {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.', byId: {} }
-  const { data, error } = await supabase.rpc('admin_list_subscriptions')
+  const { data, error } = await readRpc(supabase, 'admin_list_subscriptions')
   if (error) return { ok: false, missing: isMissingFn(error), error: adminError(error), byId: {} }
   const byId = {}
   for (const r of data || []) {
@@ -114,7 +137,7 @@ export async function adminRegisterPayment({ merchantId, planId, days, amount, m
 export async function adminListPayments(merchantId = null) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.', payments: [] }
-  const { data, error } = await supabase.rpc('admin_list_payments', { p_merchant: merchantId })
+  const { data, error } = await readRpc(supabase, 'admin_list_payments', { p_merchant: merchantId })
   if (error) return { ok: false, missing: isMissingFn(error), error: adminError(error), payments: [] }
   return {
     ok: true,
@@ -137,7 +160,7 @@ export async function adminListPayments(merchantId = null) {
 export async function adminListMerchants() {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.', merchants: [] }
-  const { data, error } = await supabase.rpc('admin_list_merchants')
+  const { data, error } = await readRpc(supabase, 'admin_list_merchants')
   if (error) return { ok: false, error: adminError(error), merchants: [] }
   return { ok: true, merchants: (data || []).map(fromRow) }
 }
@@ -198,7 +221,7 @@ function planFromRow(row) {
 export async function adminListPlans() {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.', plans: [] }
-  const { data, error } = await supabase.rpc('admin_list_plans')
+  const { data, error } = await readRpc(supabase, 'admin_list_plans')
   if (error) return { ok: false, error: adminError(error), plans: [] }
   return { ok: true, plans: (data || []).map(planFromRow) }
 }
@@ -225,7 +248,7 @@ export async function adminUpsertPlan({ id, name, trialDays, pricePerDay, monthl
 export async function adminListEmailDomains() {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.', domains: [] }
-  const { data, error } = await supabase.rpc('admin_list_email_domains')
+  const { data, error } = await readRpc(supabase, 'admin_list_email_domains')
   if (error) return { ok: false, error: adminError(error), domains: [] }
   return { ok: true, domains: (data || []).map((r) => r.domain) }
 }
@@ -276,7 +299,7 @@ export async function adminLogLogin() {
 export async function adminListActivity(limit = 100) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.', events: [] }
-  const { data, error } = await supabase.rpc('admin_list_activity', { p_limit: limit })
+  const { data, error } = await readRpc(supabase, 'admin_list_activity', { p_limit: limit })
   if (error) return { ok: false, error: adminError(error), events: [] }
   return {
     ok: true,

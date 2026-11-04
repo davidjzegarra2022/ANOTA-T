@@ -60,6 +60,7 @@ export default function AdminMerchantsManager() {
   const [subsMissing, setSubsMissing] = useState(false)
   const [monthTotal, setMonthTotal] = useState(null)
   const [sqlCopied, setSqlCopied] = useState(false)
+  const [subsError, setSubsError] = useState(null)
 
   const [domains, setDomains] = useState([])
   const [domainDraft, setDomainDraft] = useState('')
@@ -78,6 +79,7 @@ export default function AdminMerchantsManager() {
     ])
     setLoading(false)
     setSubsMissing(Boolean(subsRes.missing))
+    setSubsError(!subsRes.ok && !subsRes.missing ? subsRes.error : null)
     // Vencimiento y pagos se suman a cada negociante (vienen de otra función).
     if (merchantsRes.ok) setMerchants(merchantsRes.merchants.map((m) => ({ ...m, ...(subsRes.byId?.[m.id]) })))
     else setListError(merchantsRes.error)
@@ -248,6 +250,9 @@ export default function AdminMerchantsManager() {
           {listError && (
             <p className="mt-2 text-xs font-semibold text-red-600">
               <IconKey className="mr-1 inline h-3.5 w-3.5" /> {listError}
+              <button type="button" onClick={refresh} className="ml-2 rounded-lg bg-navy px-2.5 py-1 text-[11px] font-bold text-white">
+                Reintentar
+              </button>
             </p>
           )}
 
@@ -280,7 +285,16 @@ export default function AdminMerchantsManager() {
             </div>
           )}
 
-          {merchants.length > 0 && !subsMissing && <SubscriptionSummary merchants={merchants} monthTotal={monthTotal} />}
+          {subsError && (
+            <p role="status" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+              No se pudieron cargar los vencimientos y pagos ({subsError}). Los datos de abajo pueden estar incompletos.
+              <button type="button" onClick={refresh} className="ml-2 rounded-lg bg-navy px-2.5 py-1 font-bold text-white">
+                Reintentar
+              </button>
+            </p>
+          )}
+
+          {merchants.length > 0 && !subsMissing && !subsError && <SubscriptionSummary merchants={merchants} monthTotal={monthTotal} />}
 
           {visible.length > 0 && (
             <div className="mt-3 card overflow-x-auto">
