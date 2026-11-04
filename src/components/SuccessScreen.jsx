@@ -4,6 +4,7 @@ import { PAYMENT_LABELS } from '../data/paymentMethods'
 import { copyText } from '../utils/clipboard'
 import { ORDER_STATUS_LABELS } from '../utils/orders'
 import { sellerWhatsAppWithCountry } from '../utils/sellers'
+import { trackingLink } from '../utils/tracking'
 import { buildWhatsAppSummary, buildWhatsAppUrl } from '../utils/whatsapp'
 import { IconArrowLeft, IconCheck, IconCopy, IconWhatsapp } from './icons'
 
@@ -156,7 +157,7 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
       {form.trackingCode && (
         <p className="mt-3 text-xs leading-relaxed text-muted">
           Guarda tu código <span className="font-mono font-semibold text-ink">{form.trackingCode}</span> para consultar el estado de tu pedido en{' '}
-          <a href="/#rastreo" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-dark hover:underline">Rastrear pedido</a>.
+          <a href={trackingLink(form.trackingCode)} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-dark hover:underline">Rastrear pedido</a>.
         </p>
       )}
 

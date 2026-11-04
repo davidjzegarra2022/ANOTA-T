@@ -2,6 +2,7 @@ import { COURIERS } from '../data/agencies'
 import { PAYMENT_LABELS } from '../data/paymentMethods'
 import { dateFieldLabel } from './dates'
 import { ORDER_STATUS_LABELS } from './orders'
+import { trackingLink } from './tracking'
 
 const DELIVERY_TITLES = {
   store: 'NUEVO PEDIDO (RECOJO EN TIENDA)',
@@ -9,7 +10,6 @@ const DELIVERY_TITLES = {
   home: 'NUEVO PEDIDO (ENVÍO A DOMICILIO)',
 }
 
-const TRACKING_URL = `${typeof window !== 'undefined' ? window.location.host : 'anotat.vercel.app'}/#rastreo`
 
 function line(emoji, label, value) {
   if (!value) return null
@@ -51,7 +51,8 @@ export function buildWhatsAppSummary(form, merchant) {
 
   if (form.trackingCode) {
     lines.push('')
-    lines.push(`🔎 Consulta el estado de tu pedido en ${TRACKING_URL} con tu código ${form.trackingCode}`)
+    // Link directo: abre el rastreo con el pedido ya consultado.
+    lines.push(`🔎 Sigue tu pedido aquí: ${trackingLink(form.trackingCode)}`)
   }
 
   return lines.filter((l) => l !== null).join('\n')
@@ -99,7 +100,7 @@ export function buildStatusMessage(order, merchant) {
   }
   if (order.trackingCode) {
     lines.push('')
-    lines.push(`🔎 Sigue tu pedido en ${TRACKING_URL} con tu código ${order.trackingCode}`)
+    lines.push(`🔎 Sigue tu pedido aquí: ${trackingLink(order.trackingCode)}`)
   }
   return lines.filter((l) => l !== null).join('\n')
 }

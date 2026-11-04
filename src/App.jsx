@@ -13,9 +13,11 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const AuthGate = lazy(() => import('./components/auth/AuthGate'))
 const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout'))
 const LandingPage = lazy(() => import('./components/LandingPage'))
+const TrackingPage = lazy(() => import('./components/TrackingPage'))
 import { fetchMerchantBySlug, fetchSellerPublic } from './utils/merchantProfile'
 import { createOrder } from './utils/orders'
 import { readSellerFromSearch } from './utils/sellers'
+import { codeFromLocation } from './utils/tracking'
 import { getCurrentSession, isPlatformAdmin, onAuthStateChange, signOutMerchant } from './utils/supabaseAuth'
 
 // Merchant de muestra SOLO para que el administrador pueda previsualizar el
@@ -304,10 +306,27 @@ export default function App() {
     return match ? decodeURIComponent(match[1]) : null
   }, [path])
 
+  // Rastreo público: /rastreo/<CÓDIGO> (el link del WhatsApp) y también los
+  // links antiguos /#rastreo, que antes caían en la página de inicio — o en
+  // el panel, si quien lo abría tenía sesión de negociante.
+  const isTrackingRoute = useMemo(() => /^\/rastreo(\/|$)/.test(path) || window.location.hash.startsWith('#rastreo'), [path])
+  const trackingCode = useMemo(
+    () => (isTrackingRoute ? codeFromLocation(path, window.location.search, window.location.hash) : ''),
+    [isTrackingRoute, path],
+  )
+
   // Suspense cubre a los componentes cargados en diferido mientras bajan.
   return (
     <Suspense fallback={<LoadingScreen />}>
-      {isAdminRoute ? <AdminRoute /> : publicFormSlug ? <PublicShippingRoute slug={publicFormSlug} /> : <MerchantSaasRoute path={path} />}
+      {isTrackingRoute ? (
+        <TrackingPage initialCode={trackingCode} />
+      ) : isAdminRoute ? (
+        <AdminRoute />
+      ) : publicFormSlug ? (
+        <PublicShippingRoute slug={publicFormSlug} />
+      ) : (
+        <MerchantSaasRoute path={path} />
+      )}
     </Suspense>
   )
 }
