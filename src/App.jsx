@@ -104,8 +104,23 @@ function PublicShippingRoute({ slug }) {
             <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} />
           ) : (
             <>
+              {/* Guía corta para el cliente final: qué tiene que hacer y que el
+                  último paso (WhatsApp) es el que confirma su pedido. */}
+              {!suspended && (
+                <ol className="mb-5 grid grid-cols-3 gap-1.5 text-center text-[11px] leading-tight font-semibold text-muted" aria-label="Cómo hacer tu pedido">
+                  <li className="rounded-xl bg-brand/15 px-1.5 py-2 text-navy">
+                    <span className="mb-0.5 block text-sm font-extrabold">1</span>Llena tus datos
+                  </li>
+                  <li className="rounded-xl bg-surface px-1.5 py-2">
+                    <span className="mb-0.5 block text-sm font-extrabold">2</span>Revisa tu resumen
+                  </li>
+                  <li className="rounded-xl bg-surface px-1.5 py-2">
+                    <span className="mb-0.5 block text-sm font-extrabold">3</span>Envíalo por WhatsApp
+                  </li>
+                </ol>
+              )}
               {seller?.name && (
-                <p className="mb-4 flex items-center gap-2 rounded-xl bg-brand/10 px-3 py-2 text-[13px] text-ink">
+                <p className="mb-4 flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 px-3 py-2 text-[13px] text-ink">
                   <span aria-hidden="true">🧑‍💼</span>
                   <span className="min-w-0">
                     Te atiende <b className="font-semibold">{seller.name}</b>

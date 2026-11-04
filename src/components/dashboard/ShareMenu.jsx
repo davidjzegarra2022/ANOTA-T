@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { copyText } from '../../utils/clipboard'
+import { markOnboarding } from '../../utils/onboarding'
 import { buildWhatsAppUrl } from '../../utils/whatsapp'
 import { storeShareLink } from '../../utils/logoImage'
 import { IconCheck, IconChevronDown, IconCopy, IconShare, IconWhatsapp } from '../icons'
@@ -9,7 +10,7 @@ import { IconCheck, IconChevronDown, IconCopy, IconShare, IconWhatsapp } from '.
  * link público de la tienda — copiarlo al portapapeles o reenviarlo por
  * WhatsApp (sin número: WhatsApp deja elegir el chat o grupo).
  */
-export default function ShareMenu({ slug, businessName, logoUrl, collapsed, onExpand }) {
+export default function ShareMenu({ slug, businessName, logoUrl, collapsed, onExpand, merchantId }) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const link = storeShareLink(slug, logoUrl)
@@ -22,6 +23,7 @@ export default function ShareMenu({ slug, businessName, logoUrl, collapsed, onEx
 
   function handleCopy() {
     copyText(link).then(() => {
+      markOnboarding(merchantId, 'linkShared')
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -58,6 +60,7 @@ export default function ShareMenu({ slug, businessName, logoUrl, collapsed, onEx
           </button>
           <a
             href={buildWhatsAppUrl('', message)}
+            onClick={() => markOnboarding(merchantId, 'linkShared')}
             target="_blank"
             rel="noopener noreferrer"
             className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-semibold text-emerald-300 transition hover:bg-white/10 hover:text-emerald-200"

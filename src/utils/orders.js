@@ -209,6 +209,15 @@ export async function fetchMyOrders({ createdFrom, createdTo, status, search, da
   return search?.trim() ? rows.filter((o) => orderMatchesSearch(o, search, { daily: dailySearch })) : rows
 }
 
+/** ¿La tienda ya recibió al menos un pedido? (solo cuenta, no trae datos) */
+export async function hasAnyOrder() {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return false
+  const { count, error } = await supabase.from('orders').select('id', { count: 'exact', head: true })
+  if (error) return false
+  return (count || 0) > 0
+}
+
 /**
  * Fija/edita el monto (S/) de un pedido propio. `amount` null = sin monto.
  * La política update_own exige auth.uid()=merchant_id, así que solo el

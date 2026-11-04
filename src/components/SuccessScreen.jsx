@@ -27,7 +27,8 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
   // El resumen va al vendedor que compartió el link; sin vendedor, a la tienda.
   const sellerTarget = sellerWhatsAppWithCountry(form.sellerWhatsapp)
   const whatsappUrl = buildWhatsAppUrl(sellerTarget || merchant.whatsappNumber, message)
-  const sellerFirstName = sellerTarget ? String(form.sellerName || '').trim().split(/\s+/)[0] : ''
+  const rawFirst = sellerTarget ? String(form.sellerName || '').trim().split(/\s+/)[0] : ''
+  const sellerFirstName = rawFirst ? rawFirst.charAt(0).toLocaleUpperCase('es') + rawFirst.slice(1).toLocaleLowerCase('es') : ''
   const [copied, setCopied] = useState(false)
 
   function handleCopy() {
@@ -43,10 +44,46 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
         <IconCheck className="h-8 w-8" />
       </div>
 
-      <h1 className="mt-4 text-xl font-bold text-navy">¡Registro Exitoso!</h1>
+      <h1 className="mt-4 text-xl font-bold text-navy">¡Pedido registrado!</h1>
       <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-muted">
-        Tu envío ha sido programado correctamente. Verifica los datos y envíalos por chat con el botón verde.
+        Falta <b className="text-ink">un último paso</b>: envía el resumen por WhatsApp{sellerFirstName ? ` a ${sellerFirstName}` : ''} para confirmar tu pedido.
       </p>
+
+      {/* Dónde está el cliente: los dos primeros pasos ya están hechos. */}
+      <ol className="mt-4 flex w-full items-center justify-center gap-1.5 text-[11px] font-semibold" aria-label="Pasos del pedido">
+        <li className="flex items-center gap-1 text-emerald-700"><IconCheck className="h-3.5 w-3.5" /> Datos</li>
+        <li aria-hidden="true" className="h-px w-4 bg-slate-300" />
+        <li className="flex items-center gap-1 text-emerald-700"><IconCheck className="h-3.5 w-3.5" /> Registrado</li>
+        <li aria-hidden="true" className="h-px w-4 bg-slate-300" />
+        <li className="flex items-center gap-1 rounded-full bg-emerald-700 px-2 py-0.5 text-white">3 · Enviar por WhatsApp</li>
+      </ol>
+
+      <div className="mt-5 flex w-full items-stretch gap-2.5">
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 py-4 text-[15px] font-bold text-white shadow-[0_8px_30px_-8px_rgba(16,185,129,0.55)] ring-4 ring-emerald-500/25 transition hover:bg-emerald-600 active:scale-[0.99]"
+        >
+          {sellerFirstName ? `Enviar a ${sellerFirstName} por WhatsApp` : 'Enviar por WhatsApp'}
+          <IconWhatsapp className="h-5 w-5" />
+        </a>
+
+        <button
+          type="button"
+          onClick={handleCopy}
+          aria-label="Copiar resumen al portapapeles"
+          title="Copiar resumen"
+          className={`flex w-14 shrink-0 items-center justify-center rounded-xl border transition active:scale-[0.97] ${
+            copied
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
+              : 'border-slate-200 bg-white text-ink hover:bg-surface hover:text-navy'
+          }`}
+        >
+          {copied ? <IconCheck className="h-5 w-5" /> : <IconCopy className="h-5 w-5" />}
+        </button>
+      </div>
+      {copied && <p className="mt-2 text-xs font-medium text-emerald-600">Resumen copiado</p>}
 
       <div className="animate-fade-in-up mt-6 w-full space-y-2.5 card p-5 text-left shadow-xl">
         <p className="text-[11px] font-bold tracking-wide text-muted uppercase">Resumen</p>
@@ -116,32 +153,6 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
         )}
       </div>
 
-      <div className="mt-6 flex w-full items-stretch gap-2.5">
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 py-3.5 text-[15px] font-bold text-white shadow-[0_8px_30px_-8px_rgba(16,185,129,0.55)] transition hover:bg-emerald-600 active:scale-[0.99]"
-        >
-          {sellerFirstName ? `Enviar a ${sellerFirstName} por WhatsApp` : 'Enviar por WhatsApp'}
-          <IconWhatsapp className="h-5 w-5" />
-        </a>
-
-        <button
-          type="button"
-          onClick={handleCopy}
-          aria-label="Copiar resumen al portapapeles"
-          title="Copiar resumen"
-          className={`flex w-14 shrink-0 items-center justify-center rounded-xl border transition active:scale-[0.97] ${
-            copied
-              ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
-              : 'border-slate-200 bg-white text-ink hover:bg-surface hover:text-navy'
-          }`}
-        >
-          {copied ? <IconCheck className="h-5 w-5" /> : <IconCopy className="h-5 w-5" />}
-        </button>
-      </div>
-      {copied && <p className="mt-2 text-xs font-medium text-emerald-600">Resumen copiado</p>}
       {form.trackingCode && (
         <p className="mt-3 text-xs leading-relaxed text-muted">
           Guarda tu código <span className="font-mono font-semibold text-ink">{form.trackingCode}</span> para consultar el estado de tu pedido en{' '}
