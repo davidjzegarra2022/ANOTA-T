@@ -4,7 +4,7 @@
 // marca y logística desde "Configuración".
 import { getSupabaseClient } from './supabaseClient'
 import { compressLogo, HEAVY_LOGO_BYTES } from './logoImage'
-import { findSellerWhatsApp, normalizeSellers } from './sellers'
+import { findSellerWhatsApp, loadSellerDraft, normalizeSellers } from './sellers'
 
 function fromRow(row) {
   if (!row) return null
@@ -209,4 +209,18 @@ export async function checkSellersSql() {
   if (!error) return 'ok'
   if (error.code === 'PGRST202' || error.code === '42883' || /could not find the function|does not exist/i.test(error.message || '')) return 'missing'
   return 'unknown'
+}
+
+/**
+ * Vendedores que se escribieron antes de correr el SQL quedaron solo en este
+ * navegador. En cuanto la base ya tiene la columna `sellers` (y está vacía),
+ * se suben solos al entrar al panel, sin tener que volver a "Guardar cambios".
+ * Devuelve el negociante actualizado, o el mismo si no había nada que subir.
+ */
+export async function syncSellerDraft(merchant) {
+  if (!merchant?.sellersSupported || normalizeSellers(merchant.sellers).length) return merchant
+  const draft = loadSellerDraft(merchant.id)
+  if (!draft.length) return merchant
+  const res = await updateMyMerchant({ sellers: draft })
+  return res.ok && !res.sellersIgnored ? res.merchant : merchant
 }

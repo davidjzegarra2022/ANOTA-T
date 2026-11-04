@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import logoIcon from '../../assets/logo-icon.webp'
-import { ensureLightLogo, fetchAcceptingOrders, fetchMyMerchant } from '../../utils/merchantProfile'
+import { ensureLightLogo, fetchAcceptingOrders, fetchMyMerchant, syncSellerDraft } from '../../utils/merchantProfile'
 import { fetchActivePlans, isProPlan } from '../../utils/plans'
 import { supportWhatsAppUrl } from '../../utils/support'
 import ClaudeCodeLoader from '../ClaudeCodeLoader'
@@ -65,7 +65,7 @@ export default function DashboardLayout({ email, onLogout }) {
 
   async function refreshMerchant() {
     setLoading(true)
-    const m = await fetchMyMerchant()
+    const m = await syncSellerDraft(await fetchMyMerchant())
     setMerchant(m)
     if (m) setAcceptingOrders(await fetchAcceptingOrders(m.id))
     setLoading(false)
