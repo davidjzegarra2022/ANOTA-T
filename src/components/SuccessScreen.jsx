@@ -23,7 +23,7 @@ function Row({ icon, children }) {
   )
 }
 
-export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPanel }) {
+export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPanel, onRetrySeller }) {
   const message = buildWhatsAppSummary(form, merchant)
   // El resumen va al vendedor que compartió el link; sin vendedor, a la tienda.
   const sellerTarget = sellerWhatsAppWithCountry(form.sellerWhatsapp)
@@ -31,6 +31,7 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
   const rawFirst = sellerTarget ? String(form.sellerName || '').trim().split(/\s+/)[0] : ''
   const sellerFirstName = rawFirst ? rawFirst.charAt(0).toLocaleUpperCase('es') + rawFirst.slice(1).toLocaleLowerCase('es') : ''
   const [copied, setCopied] = useState(false)
+  const [retrying, setRetrying] = useState(false)
 
   function handleCopy() {
     copyText(message).then(() => {
@@ -46,6 +47,26 @@ export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPane
       </div>
 
       <h1 className="mt-4 text-xl font-bold text-navy">¡Pedido registrado!</h1>
+      {form.sellerUnresolved && (
+        <div role="alert" className="mt-3 w-full rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-3 text-left text-[13px] text-amber-900">
+          <p className="font-bold">No pudimos confirmar a tu vendedor.</p>
+          <p className="mt-0.5">
+            Puede ser la señal. Toca «Reintentar» para que el resumen le llegue a quien te pasó el link; si no, se enviará al WhatsApp de la tienda.
+          </p>
+          <button
+            type="button"
+            disabled={retrying}
+            onClick={async () => {
+              setRetrying(true)
+              await onRetrySeller?.()
+              setRetrying(false)
+            }}
+            className="mt-2 rounded-lg bg-navy px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+          >
+            {retrying ? 'Buscando…' : 'Reintentar'}
+          </button>
+        </div>
+      )}
       <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-muted">
         Falta <b className="text-ink">un último paso</b>: envía el resumen por WhatsApp{sellerFirstName ? ` a ${sellerFirstName}` : ''} para confirmar tu pedido.
       </p>

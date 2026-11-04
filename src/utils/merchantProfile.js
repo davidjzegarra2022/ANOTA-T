@@ -80,15 +80,49 @@ export async function fetchSellerPublic(slug, ref) {
   if (!ref) return null
   const supabase = await getSupabaseClient()
   if (!supabase || !slug) return null
-  const { data, error } = await supabase.rpc('get_seller_public', { p_slug: slug, p_ref: ref })
-  if (error) {
-    if (isMissingFunction(error) && !SELLER_ID_RE.test(ref)) return { id: '', name: ref, whatsapp: '', pending: true }
-    console.warn('[supabase] No se pudo leer el vendedor del link:', error.message)
+  // Una falla momentánea (señal débil del cliente, corte breve de la base)
+  // NO debe mandar el pedido del vendedor a la tienda: se reintenta.
+  let lastError = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 700 * attempt))
+    const { data, error } = await supabase.rpc('get_seller_public', { p_slug: slug, p_ref: ref })
+    if (!error) {
+      const row = Array.isArray(data) ? data[0] : data
+      // Vendedor que la tienda no tiene (o ya quitó): el link vale como el de la tienda.
+      if (!row?.name) return null
+      const seller = { id: row.id || '', name: row.name, whatsapp: String(row.whatsapp || '').replace(/\D/g, '') }
+      rememberSeller(slug, ref, seller)
+      return seller
+    }
+    if (isMissingFunction(error)) {
+      return SELLER_ID_RE.test(ref) ? null : { id: '', name: ref, whatsapp: '', pending: true }
+    }
+    lastError = error
+  }
+  console.warn('[supabase] No se pudo leer el vendedor del link:', lastError?.message)
+  // Si en esta visita ya se había identificado, se usa lo recordado.
+  return recalledSeller(slug, ref) || { id: '', name: '', whatsapp: '', unresolved: true }
+}
+
+function sellerMemoryKey(slug, ref) {
+  return `anotat-seller:${String(slug).toLowerCase()}:${String(ref).toLowerCase()}`
+}
+
+function rememberSeller(slug, ref, seller) {
+  try {
+    sessionStorage.setItem(sellerMemoryKey(slug, ref), JSON.stringify(seller))
+  } catch {
+    // sin sessionStorage
+  }
+}
+
+function recalledSeller(slug, ref) {
+  try {
+    const s = JSON.parse(sessionStorage.getItem(sellerMemoryKey(slug, ref)) || 'null')
+    return s?.name ? s : null
+  } catch {
     return null
   }
-  const row = Array.isArray(data) ? data[0] : data
-  if (!row?.name) return null
-  return { id: row.id || '', name: row.name, whatsapp: String(row.whatsapp || '').replace(/\D/g, '') }
 }
 
 function isMissingFunction(error) {
