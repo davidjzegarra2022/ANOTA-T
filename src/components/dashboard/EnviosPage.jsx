@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { fetchMyOrders, limaTodayIso, ORDER_STATUS_LABELS, orderDayLabel, orderTimeLabel, updateOrderStatus } from '../../utils/orders'
-import { deliveryMethodLabel } from '../../utils/orderSummary'
+import { deliveryMethodLabel, orderDestination } from '../../utils/orderSummary'
 import { customerStatusWhatsAppUrl } from '../../utils/whatsapp'
 import { exportOrdersToPdf } from '../../utils/ordersExport'
 import { collectSellerNames } from '../../utils/sellers'
-import { IconChevronLeft, IconChevronRight, IconEye, IconFile, IconSearch, IconTag, IconTrash, IconWhatsapp } from '../icons'
+import { IconChevronLeft, IconChevronRight, IconEye, IconFile, IconPrinter, IconSearch, IconTrash, IconWhatsapp } from '../icons'
 import CourierTemplatesCard from './CourierTemplatesCard'
 import DeleteOrdersDialog from './DeleteOrdersDialog'
 import ExcelExportMenu from './ExcelExportMenu'
@@ -330,7 +330,7 @@ export default function EnviosPage({ merchant }) {
             className="btn btn-outline flex-1 sm:flex-none"
             title="Imprimir etiquetas de envío"
           >
-            <IconTag className="h-4 w-4" />
+            <IconPrinter className="h-4 w-4" />
             Etiquetas{selectedOrders.length ? ` (${selectedOrders.length})` : ''}
           </button>
           <ExcelExportMenu
@@ -416,8 +416,10 @@ export default function EnviosPage({ merchant }) {
                   <dd className="min-w-0 break-words text-ink">{o.sellerName || 'Dueño (tu link)'}</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="w-24 shrink-0 text-muted">Método</dt>
-                  <dd className="min-w-0 break-words text-ink">{deliveryMethodLabel(o)}</dd>
+                  <dt className="w-24 shrink-0 text-muted">Entrega</dt>
+                  <dd className="min-w-0 break-words text-ink">
+                    <Destination order={o} />
+                  </dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="w-24 shrink-0 text-muted">Fecha envío</dt>
@@ -426,7 +428,7 @@ export default function EnviosPage({ merchant }) {
               </dl>
               <div className="mt-3 flex gap-2">
                 <button type="button" onClick={() => setPrintIds([o.id])} className="btn btn-outline flex-1 !py-2 text-xs">
-                  <IconTag className="h-4 w-4" /> Imprimir etiqueta
+                  <IconPrinter className="h-4 w-4" /> Imprimir etiqueta
                 </button>
                 {o.customerPhone && (
                   <RowIcon label="Avisar al cliente por WhatsApp" ok href={customerStatusWhatsAppUrl(o, merchant)}>
@@ -445,19 +447,17 @@ export default function EnviosPage({ merchant }) {
         </ul>
 
         <div className="card hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[980px] text-left text-[13px]">
+          <table className="w-full min-w-[900px] text-left text-[13px]">
             <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
               <tr>
                 <th className="w-10 py-2 pr-1 pl-3">
                   <SelectBox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} disabled={!orders.length} label="Seleccionar todos los pedidos" />
                 </th>
                 <th className="px-3 py-2 font-semibold" title="Número del pedido en el día">N° día</th>
-                <th className="px-3 py-2 font-semibold">Registrado</th>
-                <th className="px-3 py-2 font-semibold">Código</th>
+                <th className="px-3 py-2 font-semibold" title="Código de rastreo y hora en que el cliente llenó el formulario">Código y hora</th>
                 <th className="px-3 py-2 font-semibold">Cliente</th>
-                <th className="px-3 py-2 font-semibold">WhatsApp</th>
                 <th className="px-3 py-2 font-semibold" title="Quién compartió el link: el dueño o un vendedor">Vendido por</th>
-                <th className="px-3 py-2 font-semibold">Método</th>
+                <th className="px-3 py-2 font-semibold" title="Cómo recibe el pedido y a dónde va">Entrega y destino</th>
                 <th className="px-3 py-2 font-semibold">Fecha envío</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
                 <th className="sticky right-0 bg-surface px-3 py-2 font-semibold shadow-[-8px_0_12px_-10px_rgba(7,29,45,.35)]">Acciones</th>
@@ -471,12 +471,15 @@ export default function EnviosPage({ merchant }) {
                   </td>
                   <td className="px-3 py-2"><OrderNumber order={o} /></td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap">
-                    <span className="font-semibold">{orderTimeLabel(o)}</span>
-                    <span className="block text-[11px] text-muted">{orderDayLabel(o)}</span>
+                    <span className="block font-mono text-brand-dark">{o.trackingCode}</span>
+                    <span className="block text-[11px] text-muted">
+                      <b className="font-semibold text-ink">{orderTimeLabel(o)}</b> · {orderDayLabel(o)}
+                    </span>
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs whitespace-nowrap text-brand-dark">{o.trackingCode}</td>
-                  <td className="px-3 py-2">{o.customerName}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{o.customerPhone}</td>
+                  <td className="min-w-[140px] px-3 py-2">
+                    {o.customerName}
+                    {o.customerPhone && <span className="block font-mono text-[11px] text-muted">{o.customerPhone}</span>}
+                  </td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap">
                     {o.sellerName ? (
                       <span className="rounded-full bg-brand/15 px-2 py-0.5 font-semibold text-brand-dark">{o.sellerName}</span>
@@ -486,7 +489,9 @@ export default function EnviosPage({ merchant }) {
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-xs">{deliveryMethodLabel(o)}</td>
+                  <td className="max-w-[240px] min-w-[180px] px-3 py-2 text-xs">
+                    <Destination order={o} />
+                  </td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtShipDate(o.shippingDate)}</td>
                   <td className="px-3 py-2">
                     <select
@@ -503,7 +508,7 @@ export default function EnviosPage({ merchant }) {
                   <td className={`sticky right-0 px-3 py-2 shadow-[-8px_0_12px_-10px_rgba(7,29,45,.35)] ${selected.has(o.id) ? 'bg-amber-50' : 'bg-white'}`}>
                     <div className="flex items-center gap-1.5">
                       <RowIcon label="Imprimir la etiqueta de envío" small onClick={() => setPrintIds([o.id])}>
-                        <IconTag className="h-4 w-4" />
+                        <IconPrinter className="h-4 w-4" />
                       </RowIcon>
                       {o.customerPhone && (
                         <RowIcon label="Avisar al cliente por WhatsApp" small ok href={customerStatusWhatsAppUrl(o, merchant)}>
@@ -550,6 +555,18 @@ export default function EnviosPage({ merchant }) {
         <PrintLabelsModal orders={orders} initialSelected={printIds} merchant={merchant} onClose={() => setPrintIds(null)} />
       )}
     </div>
+  )
+}
+
+/** Tipo de entrega + a dónde va (agencia o dirección), para ubicar el pedido de un vistazo. */
+function Destination({ order }) {
+  const dest = orderDestination(order)
+  return (
+    <>
+      <span className="block font-semibold text-ink">{deliveryMethodLabel(order)}</span>
+      {order.deliveryMethod !== 'store' && <span className="block leading-snug break-words text-ink">{dest.main}</span>}
+      {dest.detail && <span className="block leading-snug break-words text-muted">{dest.detail}</span>}
+    </>
   )
 }
 

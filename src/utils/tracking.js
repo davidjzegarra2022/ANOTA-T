@@ -76,9 +76,12 @@ export function trackingSteps(order) {
   const done = STEP_INDEX[order?.status] ?? 1
   return steps.map((s, i) => {
     const state = i < done ? 'done' : i === done ? 'current' : 'todo'
+    // Hora real en que pasó cada paso (solo si la base la guarda).
+    const at = state !== 'done' ? null : s.id === 'registered' ? order?.createdAt : s.id === 'packing' ? order?.packedAt : s.id === 'shipped' ? order?.shippedAt : null
     return {
       id: s.id,
       state,
+      at: at || null,
       badge: state === 'current' ? (s.id === 'packing' ? 'Ahora' : 'Siguiente') : '',
       title: state === 'done' && s.doneTitle ? s.doneTitle : s.title,
       text: state === 'done' && s.doneText ? s.doneText : s.text,

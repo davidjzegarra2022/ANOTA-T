@@ -20,6 +20,31 @@ export function deliveryMethodLabel(order) {
   return base
 }
 
+/**
+ * A dónde va el pedido, en dos líneas cortas para la lista de Envíos:
+ *  - agencia: nombre de la agencia + "Distrito, Provincia (Departamento)" y dirección;
+ *  - domicilio: dirección + distrito/provincia/departamento;
+ *  - tienda: recojo en la tienda.
+ */
+export function orderDestination(order) {
+  if (order.deliveryMethod === 'agency') {
+    const parts = String(order.agencyLabel || '').split('/').map((p) => p.trim()).filter(Boolean)
+    const agency = parts.length >= 4 ? parts[parts.length - 1] : parts.join(' / ')
+    const place = parts.length >= 4 ? `${parts[2]}, ${parts[1]} (${parts[0]})` : ''
+    return {
+      main: agency || 'Agencia sin indicar',
+      detail: [place, order.agencyAddress].filter(Boolean).join(' · '),
+    }
+  }
+  if (order.deliveryMethod === 'home') {
+    return {
+      main: order.address || 'Dirección sin indicar',
+      detail: [order.provinceDistrict, order.department].filter(Boolean).join(' · '),
+    }
+  }
+  return { main: 'Recojo en tienda', detail: '' }
+}
+
 function fmtDate(iso) {
   if (!iso) return null
   try {

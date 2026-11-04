@@ -34,3 +34,25 @@ test('los mensajes de WhatsApp llevan el link directo al rastreo', () => {
   expect(summary).not.toContain('#rastreo')
   expect(buildStatusMessage({ status: 'shipped', trackingCode: 'ANOTA-W8ME3M', customerName: 'Carlos' }, { businessName: 'NEXUS' })).toContain('/rastreo/ANOTA-W8ME3M')
 })
+
+test('trackingSteps muestra la hora real de cada paso cuando la base la tiene', () => {
+  const steps = trackingSteps({ status: 'shipped', deliveryMethod: 'agency', createdAt: 'c', packedAt: 'p', shippedAt: 's' })
+  expect(steps.map((x) => x.at)).toEqual(['c', 'p', 's', null])
+  // Sin SQL de horas (o pedido antiguo): sin hora, no se inventa.
+  expect(trackingSteps({ status: 'shipped', deliveryMethod: 'agency', createdAt: 'c' }).map((x) => x.at)).toEqual(['c', null, null, null])
+  // Un paso que aún no pasó nunca muestra hora.
+  expect(trackingSteps({ status: 'pending', deliveryMethod: 'agency', createdAt: 'c', packedAt: 'p' })[1].at).toBe(null)
+})
+
+test('orderDestination: agencia, domicilio y tienda', async () => {
+  const { orderDestination } = await import('../src/utils/orderSummary.js')
+  expect(orderDestination({ deliveryMethod: 'agency', agencyLabel: 'Amazonas / Bongara / Jazan / Pedro Ruiz', agencyAddress: 'Av. Sacsahuaman 513' })).toEqual({
+    main: 'Pedro Ruiz',
+    detail: 'Jazan, Bongara (Amazonas) · Av. Sacsahuaman 513',
+  })
+  expect(orderDestination({ deliveryMethod: 'home', address: 'Jr. Las Flores 123', provinceDistrict: 'Lima / Surco', department: 'Lima' })).toEqual({
+    main: 'Jr. Las Flores 123',
+    detail: 'Lima / Surco · Lima',
+  })
+  expect(orderDestination({ deliveryMethod: 'store' }).main).toBe('Recojo en tienda')
+})
