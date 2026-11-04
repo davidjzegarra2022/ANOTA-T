@@ -3,7 +3,8 @@ import logoFull from '../assets/logo-full.webp'
 import registroExitoso from '../assets/registro-exitoso.webp'
 import logoIcon from '../assets/logo-icon.webp'
 import { fetchActivePlans, TRIAL_DAYS } from '../utils/plans'
-import { trackOrderByCode, ORDER_STATUS_LABELS } from '../utils/orders'
+import { codeFromLocation } from '../utils/tracking'
+import { TrackingSearch } from './TrackingPage'
 import { supportWhatsAppUrl } from '../utils/support'
 import { IconCheck, IconWhatsapp } from './icons'
 
@@ -60,45 +61,12 @@ function PlanCard({ plan, featured }) {
 }
 
 function TrackingBox() {
-  const [code, setCode] = useState('')
-  const [result, setResult] = useState(null)
-  const [checking, setChecking] = useState(false)
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (!code.trim()) return
-    setChecking(true)
-    const res = await trackOrderByCode(code)
-    setChecking(false)
-    setResult(res)
-  }
-
+  // Links antiguos (#rastreo?c=ANOTA-…) también llegan con el pedido consultado.
+  const [initialCode] = useState(() => codeFromLocation(window.location.pathname, window.location.search, window.location.hash))
   return (
-    <form onSubmit={handleSubmit} className="reveal">
-      <label htmlFor="trackingCode" className="mb-2 block text-sm text-slate-300">
-        Código de formulario
-      </label>
-      <div className="flex gap-2.5">
-        <input
-          id="trackingCode"
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 14))}
-          maxLength={14}
-          placeholder="Ej. ANOTA-4F8K2"
-          className="input-field min-w-0 flex-1"
-        />
-        <button type="submit" disabled={checking} className="btn btn-primary shrink-0">
-          {checking ? 'Buscando…' : 'Consultar'}
-        </button>
-      </div>
-      {result && (
-        <p className={`mt-3 text-[13px] font-semibold ${result.ok ? 'text-brand' : 'text-red-300'}`}>
-          {result.ok
-            ? `${result.order.trackingCode} — ${ORDER_STATUS_LABELS[result.order.status] ?? result.order.status} · ${result.order.businessName}`
-            : result.error}
-        </p>
-      )}
-    </form>
+    <div className="reveal">
+      <TrackingSearch initialCode={initialCode} onDark />
+    </div>
   )
 }
 

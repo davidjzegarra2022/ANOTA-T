@@ -119,8 +119,8 @@ export default function DashboardLayout({ email, onLogout }) {
 
   // Dentro del panel el botón de tema va en el encabezado (ver index.css).
   useEffect(() => {
-    document.documentElement.classList.add('in-panel')
-    return () => document.documentElement.classList.remove('in-panel')
+    document.documentElement.classList.add('inline-theme')
+    return () => document.documentElement.classList.remove('inline-theme')
   }, [])
 
   // Cerrar el cajón con Escape.

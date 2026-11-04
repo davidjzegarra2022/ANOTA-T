@@ -653,8 +653,13 @@ html:not(.dark) svg.text-muted[stroke='currentColor'] { color: #3f5069; }
 .dark .ring-white { --tw-ring-color: var(--dk-card); }
 /* En el panel el botón de tema vive en el encabezado: el flotante tapaba
    los pedidos en el celular. */
-.in-panel .theme-fab { display: none; }
+.inline-theme .theme-fab { display: none; }
 .dark .bg-white\/70 { background-color: rgb(255 255 255 / .14); }
 .dark .ring-navy\/60 { --tw-ring-color: rgb(255 255 255 / .6); }
 .dark .border-red-300 { border-color: rgb(248 113 113 / .45); }
 .dark .hover\:bg-emerald-100:hover { background-color: rgb(16 185 129 / .25); }
+
+/* Código del pedido en el rastreo: ámbar oscuro sobre la tarjeta clara
+   (también dentro de la sección navy de la portada) y amarillo de noche. */
+.tracking-code { color: #a16207; }
+.dark .tracking-code { color: #ffc400; }
