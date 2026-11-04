@@ -6,14 +6,20 @@ import {
   adminDeleteEmailDomain,
   adminListEmailDomains,
   adminListMerchants,
+  adminListPayments,
   adminListPlans,
+  adminListSubscriptions,
   adminSetMerchantActive,
   adminSetMerchantPlan,
   planRemaining,
 } from '../utils/adminMerchants'
 import { IconCheck, IconKey, IconRefresh, IconSearch, IconStore, IconTrash, IconX } from './icons'
 import ClaudeCodeLoader from './ClaudeCodeLoader'
+import AdminPaymentsDialog from './AdminPaymentsDialog'
+import { copyText } from '../utils/clipboard'
+import PAYMENTS_SQL from '../../sql/2026-11-05-pagos-y-vencimiento.sql?raw'
 import { notifyAdminActivity } from './AdminActivityLog'
+import { formatCountdown } from '../utils/subscription'
 
 function fmtDate(iso) {
   try {
@@ -49,6 +55,11 @@ export default function AdminMerchantsManager() {
   const [query, setQuery] = useState('')
   // Cuenta a eliminar (null = diálogo cerrado).
   const [toDelete, setToDelete] = useState(null)
+  // Pagos: diálogo abierto, si falta el SQL y lo cobrado este mes.
+  const [payingFor, setPayingFor] = useState(null)
+  const [subsMissing, setSubsMissing] = useState(false)
+  const [monthTotal, setMonthTotal] = useState(null)
+  const [sqlCopied, setSqlCopied] = useState(false)
 
   const [domains, setDomains] = useState([])
   const [domainDraft, setDomainDraft] = useState('')
@@ -58,14 +69,24 @@ export default function AdminMerchantsManager() {
     if (!configured) return
     setLoading(true)
     setListError(null)
-    const [merchantsRes, plansRes, domainsRes] = await Promise.all([
+    const [merchantsRes, plansRes, domainsRes, subsRes, paysRes] = await Promise.all([
       adminListMerchants(),
       adminListPlans(),
       adminListEmailDomains(),
+      adminListSubscriptions(),
+      adminListPayments(null),
     ])
     setLoading(false)
-    if (merchantsRes.ok) setMerchants(merchantsRes.merchants)
+    setSubsMissing(Boolean(subsRes.missing))
+    // Vencimiento y pagos se suman a cada negociante (vienen de otra función).
+    if (merchantsRes.ok) setMerchants(merchantsRes.merchants.map((m) => ({ ...m, ...(subsRes.byId?.[m.id]) })))
     else setListError(merchantsRes.error)
+    if (paysRes.ok) {
+      const monthStart = new Date()
+      monthStart.setDate(1)
+      monthStart.setHours(0, 0, 0, 0)
+      setMonthTotal(paysRes.payments.filter((p) => new Date(p.createdAt) >= monthStart).reduce((sum, p) => sum + p.amount, 0))
+    }
     if (plansRes.ok) setPlans(plansRes.plans)
     if (domainsRes.ok) setDomains(domainsRes.domains)
   }
@@ -242,16 +263,36 @@ export default function AdminMerchantsManager() {
             <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-muted">Ninguna cuenta coincide con «{query}».</p>
           )}
 
+          {subsMissing && (
+            <div role="status" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+              <b>Falta activar Pagos y vencimientos en Supabase.</b> Copia el SQL, pégalo en Supabase → SQL Editor y ejecútalo; luego pulsa Actualizar.
+              <button
+                type="button"
+                onClick={async () => {
+                  await copyText(PAYMENTS_SQL)
+                  setSqlCopied(true)
+                  setTimeout(() => setSqlCopied(false), 2000)
+                }}
+                className="ml-2 rounded-lg bg-navy px-2.5 py-1 font-bold text-white"
+              >
+                {sqlCopied ? '✓ SQL copiado' : 'Copiar SQL'}
+              </button>
+            </div>
+          )}
+
+          {merchants.length > 0 && !subsMissing && <SubscriptionSummary merchants={merchants} monthTotal={monthTotal} />}
+
           {visible.length > 0 && (
             <div className="mt-3 card overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-[13px]">
+              <table className="w-full min-w-[1020px] text-left text-[13px]">
                 <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
                   <tr>
                     <th className="px-3 py-2 font-semibold">Tienda</th>
                     <th className="px-3 py-2 font-semibold">Correo</th>
                     <th className="px-3 py-2 font-semibold">WhatsApp</th>
                     <th className="px-3 py-2 font-semibold">Plan</th>
-                    <th className="px-3 py-2 font-semibold">Usuario conectado</th>
+                    <th className="px-3 py-2 font-semibold">Vence en</th>
+                    <th className="px-3 py-2 font-semibold">Pagos</th>
                     <th className="px-3 py-2 font-semibold">Estado</th>
                     <th className="px-3 py-2 font-semibold">Desde</th>
                     <th className="px-3 py-2"><span className="sr-only">Eliminar</span></th>
@@ -296,6 +337,20 @@ export default function AdminMerchantsManager() {
                       </td>
                       <td className="px-3 py-2">
                         <RemainingCell merchant={m} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => setPayingFor(m)}
+                          disabled={subsMissing}
+                          className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-white transition hover:bg-emerald-600 disabled:opacity-40"
+                        >
+                          💳 Registrar pago
+                        </button>
+                        <p className="mt-1 text-[10px] text-muted">
+                          {m.payments ? `S/ ${m.totalPaid.toFixed(2)} · ${m.payments} pago${m.payments === 1 ? '' : 's'}` : 'Sin pagos'}
+                          {m.lastPaymentAt ? ` · últ. ${fmtDate(m.lastPaymentAt)}` : ''}
+                        </p>
                       </td>
                       <td className="px-3 py-2">
                         <button
@@ -355,6 +410,17 @@ export default function AdminMerchantsManager() {
             </div>
           )}
 
+          {payingFor && (
+            <AdminPaymentsDialog
+              merchant={payingFor}
+              plans={plans}
+              onClose={() => setPayingFor(null)}
+              onSaved={() => {
+                notifyAdminActivity()
+                refresh()
+              }}
+            />
+          )}
           {toDelete && <DeleteAccountDialog merchant={toDelete} onClose={() => setToDelete(null)} onDeleted={handleDeleted} />}
 
           {saving && (
@@ -422,27 +488,63 @@ export default function AdminMerchantsManager() {
 
 /** Días que le quedan al plan del negociante, en rojo, tipo temporizador. */
 function RemainingCell({ merchant }) {
-  const { kind, days } = planRemaining(merchant)
+  const { kind, deadline } = planRemaining(merchant)
+  const deadlineMs = deadline ? deadline.getTime() : null
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (deadlineMs == null) return undefined
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [deadlineMs])
+  const left = deadlineMs == null ? null : deadlineMs - now
 
   const label =
     kind === 'none' ? (
       <span className="text-xs text-muted">Sin plan</span>
     ) : kind === 'forever' ? (
-      <span className="text-xs text-muted">Sin vencimiento</span>
-    ) : days === 0 ? (
-      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">Vencido</span>
+      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800" title="Plan pagado sin pagos registrados: no vence hasta que registres uno">
+        Sin pago registrado
+      </span>
+    ) : left <= 0 ? (
+      <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">Vencido · bloqueado</span>
     ) : (
-      <span className="font-mono text-sm font-bold text-red-600 tabular-nums">
-        {days} {days === 1 ? 'día' : 'días'}
+      <span className={`font-mono text-sm font-bold tabular-nums ${left <= 3 * 86400000 ? 'text-red-600' : 'text-emerald-700'}`}>
+        {formatCountdown(left)}
       </span>
     )
 
   return (
     <div className="leading-tight">
       {label}
+      {deadline && <p className="mt-0.5 text-[10px] text-muted">{kind === 'trial' ? 'Prueba' : 'Pagado'} hasta {fmtDate(deadline.toISOString())}</p>}
       <p className="mt-0.5 text-[10px] text-muted">
         {merchant.lastSignInAt ? `Últ. conexión ${fmtDate(merchant.lastSignInAt)}` : 'Nunca ingresó'}
       </p>
+    </div>
+  )
+}
+
+/** Resumen para llevar la cuenta: vencidos, por vencer, sin pago y cobrado en el mes. */
+function SubscriptionSummary({ merchants, monthTotal }) {
+  const states = merchants.map((m) => planRemaining(m))
+  const now = Date.now()
+  const expired = states.filter((r) => r.deadline && r.deadline.getTime() <= now).length
+  const soon = states.filter((r) => r.deadline && r.deadline.getTime() > now && r.deadline.getTime() - now <= 3 * 86400000).length
+  const unpaid = states.filter((r) => r.kind === 'forever').length
+  const tiles = [
+    { label: 'Vencidos (bloqueados)', value: expired, tone: 'text-red-600' },
+    { label: 'Vencen en 3 días', value: soon, tone: 'text-amber-700' },
+    { label: 'Pagados sin registro', value: unpaid, tone: 'text-amber-700' },
+    { label: 'Cobrado este mes', value: monthTotal == null ? '—' : `S/ ${monthTotal.toFixed(2)}`, tone: 'text-emerald-700' },
+  ]
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {tiles.map((t) => (
+        <div key={t.label} className="card p-3">
+          <p className="text-[10px] font-semibold tracking-wide text-muted uppercase">{t.label}</p>
+          <p className={`mt-0.5 text-lg font-bold ${t.tone}`}>{t.value}</p>
+        </div>
+      ))}
     </div>
   )
 }

@@ -51,13 +51,87 @@ const DAY_MS = 24 * 60 * 60 * 1000
  *   'forever' — plan pago: no tiene fecha de vencimiento guardada
  */
 export function planRemaining(merchant) {
-  if (!merchant.planId) return { kind: 'none', days: null }
+  if (!merchant.planId) return { kind: 'none', days: null, deadline: null }
   const trialDays = effectiveTrialDays(merchant.planTrialDays)
-  if (!trialDays) return { kind: 'forever', days: null }
+  if (!trialDays) {
+    // Plan pagado: vence en paid_until (lo fija «Registrar pago»).
+    const paid = merchant.paidUntil ? Date.parse(merchant.paidUntil) : NaN
+    if (Number.isNaN(paid)) return { kind: 'forever', days: null, deadline: null }
+    return { kind: 'paid', days: Math.max(0, Math.ceil((paid - Date.now()) / DAY_MS)), deadline: new Date(paid) }
+  }
   const start = merchant.planStartedAt ? new Date(merchant.planStartedAt).getTime() : null
-  if (!start || Number.isNaN(start)) return { kind: 'forever', days: null }
-  const elapsed = Math.floor((Date.now() - start) / DAY_MS)
-  return { kind: 'trial', days: Math.max(0, trialDays - elapsed) }
+  if (!start || Number.isNaN(start)) return { kind: 'forever', days: null, deadline: null }
+  const end = start + trialDays * DAY_MS
+  return { kind: 'trial', days: Math.max(0, Math.ceil((end - Date.now()) / DAY_MS)), deadline: new Date(end) }
+}
+
+function isMissingFn(error) {
+  return error?.code === 'PGRST202' || error?.code === '42883' || /could not find the function|does not exist/i.test(error?.message || '')
+}
+
+/**
+ * Vencimiento y pagos de cada tienda (sql/2026-11-05-pagos-y-vencimiento.sql).
+ * `missing: true` = falta correr ese SQL.
+ */
+export async function adminListSubscriptions() {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.', byId: {} }
+  const { data, error } = await supabase.rpc('admin_list_subscriptions')
+  if (error) return { ok: false, missing: isMissingFn(error), error: adminError(error), byId: {} }
+  const byId = {}
+  for (const r of data || []) {
+    byId[r.merchant_id] = {
+      paidUntil: r.paid_until || null,
+      lastPaymentAt: r.last_payment_at || null,
+      totalPaid: Number(r.total_paid || 0),
+      payments: Number(r.payments || 0),
+    }
+  }
+  return { ok: true, byId }
+}
+
+/** Registra un pago: asigna el plan y suma los días de vigencia. */
+export async function adminRegisterPayment({ merchantId, planId, days, amount, method, note }) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { data, error } = await supabase.rpc('admin_register_payment', {
+    p_merchant: merchantId,
+    p_plan_id: planId,
+    p_days: days,
+    p_amount: amount,
+    p_method: method || null,
+    p_note: note || null,
+  })
+  if (error) {
+    if (isMissingFn(error)) return { ok: false, error: 'Falta correr el SQL de pagos en Supabase (sql/2026-11-05-pagos-y-vencimiento.sql).' }
+    if (/invalid_days/.test(error.message)) return { ok: false, error: 'Los días deben estar entre 1 y 3650.' }
+    return { ok: false, error: adminError(error) }
+  }
+  return { ok: true, payment: data }
+}
+
+/** Historial de pagos de una tienda (o de todas si no se pasa id). */
+export async function adminListPayments(merchantId = null) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.', payments: [] }
+  const { data, error } = await supabase.rpc('admin_list_payments', { p_merchant: merchantId })
+  if (error) return { ok: false, missing: isMissingFn(error), error: adminError(error), payments: [] }
+  return {
+    ok: true,
+    payments: (data || []).map((r) => ({
+      id: r.id,
+      merchantId: r.merchant_id,
+      businessName: r.business_name,
+      planName: r.plan_name,
+      days: r.days,
+      amount: Number(r.amount || 0),
+      method: r.method || '',
+      note: r.note || '',
+      periodStart: r.period_start,
+      periodEnd: r.period_end,
+      createdAt: r.created_at,
+    })),
+  }
 }
 
 export async function adminListMerchants() {

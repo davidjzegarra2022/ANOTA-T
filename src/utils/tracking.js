@@ -61,7 +61,7 @@ export function trackingSteps(order) {
         : { id: 'shipped', title: 'Listo para recoger', doneTitle: 'Listo para recoger', text: 'Te avisarán cuando esté listo en tienda.', doneText: 'Tu pedido ya te espera en tienda.' }
   const last =
     method === 'agency'
-      ? { id: 'pickup', title: 'Recógelo en tu agencia', text: courier ? `Cuando ${courier} te avise que llegó, recógelo con tu DNI.` : 'Cuando llegue, recógelo con tu DNI.' }
+      ? { id: 'pickup', title: 'Recógelo en tu agencia', text: 'Tu pedido llegó a la agencia, recógelo con tu DNI.' }
       : method === 'home'
         ? { id: 'deliver', title: 'Entrega en tu dirección', text: 'El repartidor te contactará para entregártelo.' }
         : { id: 'pickup', title: 'Recógelo en tienda', text: 'Pasa por la tienda con tu código de pedido.' }

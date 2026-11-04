@@ -6,6 +6,8 @@ import { supportWhatsAppUrl } from '../../utils/support'
 import ClaudeCodeLoader from '../ClaudeCodeLoader'
 import { ThemeButton } from '../ThemeToggle'
 import NotificationBell from './NotificationBell'
+import { CountdownChip, ExpiryBanner, SubscriptionLock } from './SubscriptionCountdown'
+import { subscriptionDeadline } from '../../utils/subscription'
 import OnboardingChecklist from './OnboardingChecklist'
 import ShareMenu from './ShareMenu'
 import {
@@ -103,6 +105,24 @@ export default function DashboardLayout({ email, onLogout }) {
       alive = false
     }
   }, [merchant?.planId])
+
+  // Cuenta regresiva del plan: al llegar a cero se bloquea el panel.
+  const sub = subscriptionDeadline(merchant, plan)
+  const deadlineMs = sub.deadline ? sub.deadline.getTime() : null
+  const [expired, setExpired] = useState(false)
+  useEffect(() => {
+    if (deadlineMs == null) {
+      setExpired(false)
+      return undefined
+    }
+    const left = deadlineMs - Date.now()
+    setExpired(left <= 0)
+    if (left <= 0) return undefined
+    // setTimeout no acepta más de ~24 días: se revisa de nuevo al cumplirse.
+    const id = setTimeout(() => setExpired(Date.now() >= deadlineMs), Math.min(left + 500, 2 ** 31 - 1))
+    return () => clearTimeout(id)
+  }, [deadlineMs])
+  const locked = planReady && Boolean(merchant) && (expired || acceptingOrders === false)
 
   // Una sola campanita a la vez (encabezado móvil o barra de escritorio):
   // si se montaran las dos, se revisaría y avisaría el doble.
@@ -279,12 +299,14 @@ export default function DashboardLayout({ email, onLogout }) {
             <IconMenu className="h-5 w-5" />
           </button>
           <p className="min-w-0 flex-1 truncate text-base font-bold text-navy">{currentLabel}</p>
+          {merchant && planReady && <CountdownChip deadline={sub.deadline} kind={sub.kind} compact onClick={() => selectTab('planes')} />}
           {merchant && planReady && !isDesktop && <NotificationBell merchant={merchant} remindersEnabled={proEnabled} currentTab={tab} onGoTo={selectTab} compact />}
           <ThemeButton />
         </header>
 
         {/* Escritorio: avisos y tema arriba a la derecha, siempre a mano. */}
         <div className="hidden items-center justify-end gap-2 px-10 pt-4 lg:flex">
+          {merchant && planReady && <CountdownChip deadline={sub.deadline} kind={sub.kind} onClick={() => selectTab('planes')} />}
           {merchant && planReady && isDesktop && <NotificationBell merchant={merchant} remindersEnabled={proEnabled} currentTab={tab} onGoTo={selectTab} />}
           <ThemeButton className="h-11 w-11" />
         </div>
@@ -293,24 +315,12 @@ export default function DashboardLayout({ email, onLogout }) {
             <p className="text-sm text-red-600">No se pudo cargar tu perfil. Recarga la página.</p>
           ) : (
             <>
-              {!acceptingOrders && (
-                <div role="alert" className="mb-5 flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-red-700">Tu suscripción venció: tu formulario está en pausa</p>
-                    <p className="mt-1 text-[13px] leading-relaxed text-red-700">
-                      Tus clientes ven un aviso de que la tienda no está recibiendo pedidos. Renueva tu plan para volver a recibirlos.
-                    </p>
-                  </div>
-                  <a
-                    href={supportWhatsAppUrl('renew', { merchant })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600"
-                  >
-                    <IconWhatsapp className="h-4 w-4" /> Renovar plan
-                  </a>
+              {locked && tab === 'planes' && (
+                <div role="alert" className="mb-5 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                  🔒 Tu panel está bloqueado hasta que renueves. Elige un plan y escríbenos por WhatsApp para reactivarlo.
                 </div>
               )}
+              {!locked && <ExpiryBanner deadline={sub.deadline} kind={sub.kind} merchant={merchant} onPlans={() => selectTab('planes')} />}
               {tab !== 'configuracion' && <OnboardingChecklist merchant={merchant} proEnabled={proEnabled} onGoTo={selectTab} />}
               {tab === 'envios' && <EnviosPage merchant={merchant} />}
               {tab === 'clientes' && <ClientesPage merchant={merchant} />}
@@ -326,6 +336,9 @@ export default function DashboardLayout({ email, onLogout }) {
           )}
         </main>
 
+        {locked && tab !== 'planes' && (
+          <SubscriptionLock kind={sub.kind} planName={plan?.name} deadline={sub.deadline} merchant={merchant} onPlans={() => selectTab('planes')} onLogout={onLogout} />
+        )}
         {merchant && <ShareLinkBar slug={merchant.slug} logoUrl={merchant.logoUrl} merchantId={merchant.id} />}
       </div>
     </div>
