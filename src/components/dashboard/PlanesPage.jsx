@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchActivePlans, trialEndsAt, TRIAL_DAYS } from '../../utils/plans'
+import { fetchActivePlans, planDescription, trialEndsAt, TRIAL_DAYS } from '../../utils/plans'
 import { supportWhatsAppUrl } from '../../utils/support'
 import { IconCheck, IconRefresh, IconWhatsapp } from '../icons'
 
@@ -59,7 +59,7 @@ export default function PlanesPage({ merchant }) {
               <p className="mt-1 text-2xl font-bold text-navy">
                 {priceLabel} <span className="text-xs font-normal text-muted">{priceSuffix}</span>
               </p>
-              {p.description && <p className="mt-2 text-xs text-muted">{p.description}</p>}
+              {planDescription(p) && <p className="mt-2 text-xs text-muted">{planDescription(p)}</p>}
               {p.features?.length > 0 && (
                 <ul className="mt-3 space-y-1.5">
                   {p.features.map((f) => (

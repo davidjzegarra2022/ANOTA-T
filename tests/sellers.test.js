@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { cleanSellerName, collectSellerNames, normalizeSellers, readSellerFromSearch, sellerLink } from '../src/utils/sellers.js'
+import { cleanSellerName, collectSellerNames, findSellerWhatsApp, sellerWhatsAppWithCountry, normalizeSellers, readSellerFromSearch, sellerLink } from '../src/utils/sellers.js'
 import { orderMatchesSearch } from '../src/utils/orders.js'
 
 test('cleanSellerName limpia controles, espacios y largo', () => {
@@ -50,4 +50,12 @@ test('la búsqueda de Envíos también encuentra por vendedor', () => {
   expect(orderMatchesSearch(order, 'juan')).toBe(true)
   expect(orderMatchesSearch(order, 'perez')).toBe(true)
   expect(orderMatchesSearch(order, 'carlos')).toBe(false)
+})
+
+test('findSellerWhatsApp encuentra el número por nombre sin importar mayúsculas ni espacios', () => {
+  const list = [{ name: 'Herman Echevarría', whatsapp: '994237831' }]
+  expect(findSellerWhatsApp(list, '  herman   echevarría ')).toBe('994237831')
+  expect(findSellerWhatsApp(list, 'Otro')).toBe('')
+  expect(sellerWhatsAppWithCountry('994237831')).toBe('51994237831')
+  expect(sellerWhatsAppWithCountry('')).toBe('')
 })

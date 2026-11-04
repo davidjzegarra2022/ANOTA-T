@@ -4,7 +4,7 @@
 // marca y logística desde "Configuración".
 import { getSupabaseClient } from './supabaseClient'
 import { compressLogo, HEAVY_LOGO_BYTES } from './logoImage'
-import { normalizeSellers } from './sellers'
+import { findSellerWhatsApp, normalizeSellers } from './sellers'
 
 function fromRow(row) {
   if (!row) return null
@@ -65,6 +65,23 @@ export async function fetchMerchantBySlug(slug) {
     return null
   }
   return data?.[0] ? fromRow(data[0]) : null
+}
+
+/**
+ * WhatsApp (9 dígitos) del vendedor que trajo al cliente (?v=Nombre), para
+ * que el resumen del pedido vuelva a SU chat y no al de la tienda. Devuelve
+ * '' si no hay vendedor, si no tiene número o si falta el SQL de vendedores
+ * (en ese caso el resumen sigue yendo al WhatsApp de la tienda).
+ */
+export async function fetchSellerWhatsApp(merchant, sellerName) {
+  if (!sellerName) return ''
+  const local = findSellerWhatsApp(merchant?.sellers, sellerName)
+  if (local) return local
+  const supabase = await getSupabaseClient()
+  if (!supabase || !merchant?.slug) return ''
+  const { data, error } = await supabase.rpc('get_seller_contact', { p_slug: merchant.slug, p_name: sellerName })
+  if (error) return ''
+  return String(data ?? '').replace(/\D/g, '')
 }
 
 export async function updateMyMerchant(patch) {

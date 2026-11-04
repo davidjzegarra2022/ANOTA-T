@@ -44,6 +44,20 @@ end; $$;
 revoke all on function public.set_order_seller(text, text) from public;
 grant execute on function public.set_order_seller(text, text) to anon, authenticated;
 
+-- El formulario público necesita el WhatsApp del vendedor para devolverle el
+-- resumen del pedido. Solo devuelve el número del vendedor cuyo nombre llega
+-- en el link (?v=...), nunca la lista completa.
+create or replace function public.get_seller_contact(p_slug text, p_name text)
+returns text language sql stable security definer set search_path = public as $$
+  select s->>'whatsapp'
+    from public.merchants m, jsonb_array_elements(m.sellers) s
+   where m.slug = lower(trim(p_slug))
+     and lower(trim(s->>'name')) = lower(trim(p_name))
+   limit 1;
+$$;
+revoke all on function public.get_seller_contact(text, text) from public;
+grant execute on function public.get_seller_contact(text, text) to anon, authenticated;
+
 -- Verificación: deben aparecer las dos columnas nuevas.
 select table_name, column_name, data_type
   from information_schema.columns

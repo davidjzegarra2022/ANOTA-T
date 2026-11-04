@@ -24,6 +24,7 @@ export function buildWhatsAppSummary(form, merchant) {
   lines.push(line('📌', 'Estado', form.trackingCode ? ORDER_STATUS_LABELS[form.orderStatus] ?? 'Pendiente' : null))
   if (form.trackingCode) lines.push('')
   lines.push(line('🏪', 'Tienda', merchant?.businessName))
+  lines.push(line('🧑‍💼', 'Vendedor', form.sellerName))
   lines.push(line('👤', 'Cliente', form.fullName))
   lines.push(line('📱', 'WhatsApp', form.phone ? `+51 ${form.phone}` : ''))
 

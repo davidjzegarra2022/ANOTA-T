@@ -3,6 +3,7 @@ import { COURIERS } from '../data/agencies'
 import { PAYMENT_LABELS } from '../data/paymentMethods'
 import { copyText } from '../utils/clipboard'
 import { ORDER_STATUS_LABELS } from '../utils/orders'
+import { sellerWhatsAppWithCountry } from '../utils/sellers'
 import { buildWhatsAppSummary, buildWhatsAppUrl } from '../utils/whatsapp'
 import { IconArrowLeft, IconCheck, IconCopy, IconWhatsapp } from './icons'
 
@@ -23,7 +24,7 @@ function Row({ icon, children }) {
 
 export default function SuccessScreen({ form, merchant, onNewOrder, onBackToPanel }) {
   const message = buildWhatsAppSummary(form, merchant)
-  const whatsappUrl = buildWhatsAppUrl(merchant.whatsappNumber, message)
+  const whatsappUrl = buildWhatsAppUrl(sellerWhatsAppWithCountry(form.sellerWhatsapp) || merchant.whatsappNumber, message)
   const [copied, setCopied] = useState(false)
 
   function handleCopy() {

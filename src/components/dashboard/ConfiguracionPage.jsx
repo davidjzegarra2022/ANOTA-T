@@ -123,6 +123,13 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
       setMsg({ ok: false, text: 'El WhatsApp de tu tienda debe tener al menos 9 dígitos.' })
       return
     }
+    // Una fila con número pero sin nombre se descartaba en silencio al guardar
+    // (parecía que "se borraba"): ahora se avisa para que la completen.
+    const nameless = form.sellers.findIndex((s) => !String(s.name || '').trim() && String(s.whatsapp || '').trim())
+    if (nameless >= 0) {
+      setMsg({ ok: false, text: `Escribe el nombre del vendedor ${nameless + 1} (o quita esa fila): el nombre es lo que identifica sus pedidos.` })
+      return
+    }
     setSaving(true)
 
     let logoUrl = form.logoUrl
