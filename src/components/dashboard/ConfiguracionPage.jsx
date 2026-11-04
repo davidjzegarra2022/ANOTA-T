@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getKnownCouriers } from '../../data/agencies'
 import { copyText } from '../../utils/clipboard'
 import { updateMyMerchant, uploadMerchantLogo } from '../../utils/merchantProfile'
-import { MAX_SELLERS, loadSellerDraft, normalizeSellers, saveSellerDraft, sellerLink, sellerShareText } from '../../utils/sellers'
+import { MAX_SELLERS, cleanSellerName, loadSellerDraft, newSellerId, normalizeSellers, saveSellerDraft, sellerLink, sellerShareText, sellersProblem } from '../../utils/sellers'
 import { IconCheck, IconLock } from '../icons'
 
 const WEEKDAYS = [
@@ -55,9 +55,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
     leadTimeHours: merchant.leadTimeHours,
     // Si la base todavía no tiene la columna `sellers`, se arranca con el
     // borrador guardado en este dispositivo: lo escrito nunca se pierde.
-    sellers: normalizeSellers(merchant.sellers).length
-      ? normalizeSellers(merchant.sellers)
-      : loadSellerDraft(merchant.id),
+    sellers: merchant.sellers?.length ? normalizeSellers(merchant.sellers) : loadSellerDraft(merchant.id),
   })
   const [logoFile, setLogoFile] = useState(null)
   const [logoRemoved, setLogoRemoved] = useState(false)
@@ -97,7 +95,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
   }
 
   function addSeller() {
-    setForm((f) => (f.sellers.length >= MAX_SELLERS ? f : { ...f, sellers: [...f.sellers, { name: '', whatsapp: '' }] }))
+    setForm((f) => (f.sellers.length >= MAX_SELLERS ? f : { ...f, sellers: [...f.sellers, { id: newSellerId(), name: '', whatsapp: '' }] }))
   }
 
   function updateSeller(index, patch) {
@@ -110,7 +108,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
 
   async function copySeller(index) {
     const seller = form.sellers[index]
-    await copyText(sellerLink(window.location.origin, form.slug, seller.name))
+    await copyText(sellerLink(window.location.origin, form.slug, seller))
     setCopiedSeller(index)
     setTimeout(() => setCopiedSeller(null), 2000)
   }
@@ -122,11 +120,12 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
       setMsg({ ok: false, text: 'El WhatsApp de tu tienda debe tener al menos 9 dígitos.' })
       return
     }
-    // Una fila con número pero sin nombre se descartaba en silencio al guardar
-    // (parecía que "se borraba"): ahora se avisa para que la completen.
-    const nameless = form.sellers.findIndex((s) => !String(s.name || '').trim() && String(s.whatsapp || '').trim())
-    if (nameless >= 0) {
-      setMsg({ ok: false, text: `Escribe el nombre del vendedor ${nameless + 1} (o quita esa fila): el nombre es lo que identifica sus pedidos.` })
+    // Cada vendedor necesita nombre y WhatsApp: ese número recibe los
+    // resúmenes de sus clientes. Antes una fila incompleta se descartaba en
+    // silencio y parecía que "se borraba".
+    const sellerError = locked ? '' : sellersProblem(form.sellers)
+    if (sellerError) {
+      setMsg({ ok: false, text: sellerError })
       return
     }
     setSaving(true)
@@ -145,7 +144,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
     }
 
     const sellers = normalizeSellers(form.sellers)
-    // La columna `merchants.sellers` llega con sql/2026-11-03-vendedores.sql.
+    // La columna `merchants.sellers` llega con sql/2026-11-04-vendedores.sql.
     // Mientras no exista (o el plan no sea Pro), la lista no se manda: se
     // guarda como borrador en este dispositivo y "Guardar cambios" nunca
     // falla ni borra lo escrito.
@@ -184,6 +183,14 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
     setLogoFile(null)
     setLogoRemoved(false)
     onSaved?.()
+  }
+
+  // Un link de vendedor solo funciona cuando ese vendedor (con ese nombre y
+  // número) ya está guardado en la cuenta: el servidor es quien lo reconoce.
+  const savedSellers = new Map((merchant.sellersSupported ? merchant.sellers || [] : []).map((s) => [s.id, s]))
+  function sellerIsLive(seller) {
+    const saved = savedSellers.get(seller.id)
+    return Boolean(saved) && cleanSellerName(saved.name) === cleanSellerName(seller.name) && String(saved.whatsapp || '') === String(seller.whatsapp || '')
   }
 
   return (
@@ -308,7 +315,8 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
             ) : (
               <ul className="mt-2 space-y-2">
                 {form.sellers.map((seller, i) => {
-                  const link = sellerLink(window.location.origin, form.slug, seller.name)
+                  const link = sellerLink(window.location.origin, form.slug, seller)
+                  const live = sellerIsLive(seller)
                   return (
                     <li key={i} className="rounded-lg border border-slate-200 bg-white p-2.5">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -343,7 +351,14 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
                         </button>
                       </div>
 
-                      {seller.name.trim() && (
+                      {seller.name.trim() && !live && (
+                        <p className="mt-2 text-[11px] font-semibold text-amber-700">
+                          {merchant.sellersSupported
+                            ? 'Pulsa «Guardar cambios» para activar el link de este vendedor.'
+                            : 'El link de este vendedor se activa en cuanto ANOTA-T habilite Vendedores en tu cuenta.'}
+                        </p>
+                      )}
+                      {seller.name.trim() && live && (
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <code className="min-w-0 flex-1 truncate rounded-md bg-surface px-2 py-1 font-mono text-[11px] text-muted">{link}</code>
                           <button
@@ -353,16 +368,17 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
                           >
                             {copiedSeller === i ? '✓ Copiado' : 'Copiar link'}
                           </button>
-                          {seller.whatsapp && (
-                            <a
-                              href={`https://wa.me/51${seller.whatsapp}?text=${encodeURIComponent(sellerShareText({ businessName: form.businessName, link }))}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-lg border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50"
-                            >
-                              Enviar por WhatsApp
-                            </a>
-                          )}
+                          <a
+                            href={`https://wa.me/51${seller.whatsapp}?text=${encodeURIComponent(sellerShareText({ businessName: form.businessName, link }))}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50"
+                          >
+                            Enviar link a {seller.name.split(' ')[0]}
+                          </a>
+                          <p className="w-full text-[11px] text-muted">
+                            Los clientes que entren por este link envían su resumen al WhatsApp +51 {seller.whatsapp}.
+                          </p>
                         </div>
                       )}
                     </li>

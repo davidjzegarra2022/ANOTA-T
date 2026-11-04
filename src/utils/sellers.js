@@ -6,6 +6,24 @@
 export const MAX_SELLERS = 4
 export const SELLER_PARAMS = ['v', 'vendedor', 'ref']
 export const SELLER_NAME_MAX = 60
+export const SELLER_ID_RE = /^[a-z0-9]{8}$/
+
+/**
+ * Código fijo de cada vendedor (8 letras/números). Va en su link
+ * (`/f/mi-tienda?v=k3m9x2qa`) en vez del nombre: así el link sigue sirviendo
+ * aunque se corrija el nombre, y nadie puede inventar un vendedor cambiando
+ * la URL — el servidor solo reconoce códigos que la tienda registró.
+ */
+export function newSellerId() {
+  const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789'
+  const bytes = new Uint8Array(8)
+  try {
+    crypto.getRandomValues(bytes)
+  } catch {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256)
+  }
+  return [...bytes].map((b) => alphabet[b % alphabet.length]).join('')
+}
 
 /** Limpia un nombre: sin caracteres de control ni invisibles, 60 caracteres. */
 export function cleanSellerName(value) {
@@ -36,11 +54,15 @@ export function readSellerFromSearch(search) {
   return ''
 }
 
-/** Link público del formulario para un vendedor (sin vendedor devuelve el link normal). */
-export function sellerLink(origin, slug, name) {
+/**
+ * Link público del formulario para un vendedor. Recibe el vendedor
+ * ({ id, name }): usa su código si lo tiene y, si no, su nombre (links
+ * antiguos). Sin vendedor devuelve el link normal de la tienda.
+ */
+export function sellerLink(origin, slug, seller) {
   const base = `${String(origin || '').replace(/\/+$/, '')}/f/${slug || ''}`
-  const clean = cleanSellerName(name)
-  return clean ? `${base}?v=${encodeURIComponent(clean)}` : base
+  const ref = typeof seller === 'object' && seller ? (SELLER_ID_RE.test(seller.id || '') ? seller.id : cleanSellerName(seller.name)) : cleanSellerName(seller)
+  return ref ? `${base}?v=${encodeURIComponent(ref)}` : base
 }
 
 /** Texto listo para pegar en WhatsApp: link + una frase corta. */
@@ -49,11 +71,15 @@ export function sellerShareText({ businessName, link }) {
   return `Hola 👋 Este es el formulario de envío de ${shop}. Llénalo y coordinamos el despacho: ${link}`
 }
 
-/** Deja la lista en el formato que se guarda en la base: [{ name, whatsapp }], máx. 4. */
+/**
+ * Deja la lista en el formato que se guarda en la base:
+ * [{ id, name, whatsapp }], máx. 4. A quien no tenga código se le asigna uno.
+ */
 export function normalizeSellers(list) {
   if (!Array.isArray(list)) return []
   return list
     .map((s) => ({
+      id: SELLER_ID_RE.test(String(s?.id || '')) ? s.id : newSellerId(),
       name: cleanSellerName(s?.name),
       whatsapp: String(s?.whatsapp ?? '')
         .replace(/\D/g, '')
@@ -61,6 +87,28 @@ export function normalizeSellers(list) {
     }))
     .filter((s) => s.name)
     .slice(0, MAX_SELLERS)
+}
+
+/**
+ * Revisa la lista antes de guardar. Devuelve el primer problema en texto
+ * para mostrarlo, o '' si está todo bien. Cada vendedor necesita nombre y
+ * WhatsApp de 9 dígitos: ese número es el que recibe los resúmenes de SUS
+ * clientes (sin número, el resumen iría a la tienda).
+ */
+export function sellersProblem(list) {
+  const rows = Array.isArray(list) ? list : []
+  const seen = new Set()
+  for (let i = 0; i < rows.length; i++) {
+    const name = cleanSellerName(rows[i]?.name)
+    const wa = String(rows[i]?.whatsapp ?? '').replace(/\D/g, '')
+    if (!name && !wa) continue
+    if (!name) return `Escribe el nombre del vendedor ${i + 1} (o quita esa fila).`
+    if (wa.length !== 9) return `El WhatsApp de ${name} debe tener 9 dígitos: ahí le llegan los pedidos de sus clientes.`
+    const key = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    if (seen.has(key)) return `Hay dos vendedores llamados ${name}: usa nombres distintos.`
+    seen.add(key)
+  }
+  return ''
 }
 
 /** WhatsApp (9 dígitos) del vendedor con ese nombre dentro de la lista, o '' si no hay. */
@@ -89,7 +137,7 @@ export function collectSellerNames(sellers, orders) {
 }
 
 // --- Borrador local -------------------------------------------------------// Mientras la columna `merchants.sellers` no exista en la base (falta correr
-// sql/2026-11-03-vendedores.sql), la lista se guarda en este dispositivo para
+// sql/2026-11-04-vendedores.sql), la lista se guarda en este dispositivo para
 // que "Guardar cambios" nunca borre lo que el usuario escribió. En cuanto la
 // columna exista, el borrador se sube solo en el siguiente guardado.
 
@@ -117,40 +165,8 @@ export function saveSellerDraft(merchantId, list) {
 }
 
 /**
- * SQL para activar los vendedores en Supabase (el mismo de
- * sql/2026-11-03-vendedores.sql). Se muestra con botón "copiar" en
- * Configuración cuando la base todavía no tiene las columnas.
+ * SQL para activar los vendedores en Supabase. Se importa tal cual del
+ * archivo del repo (una sola fuente): el panel /admin lo muestra con botón
+ * "Copiar SQL" mientras la base todavía no lo tenga.
  */
-export const SELLERS_SQL = `alter table public.merchants
-  add column if not exists sellers jsonb not null default '[]'::jsonb;
-
-alter table public.orders
-  add column if not exists seller_name text;
-
-create or replace function public.set_order_seller(p_code text, p_seller text)
-returns void language plpgsql security definer set search_path = public as $$
-begin
-  update public.orders
-     set seller_name = left(regexp_replace(coalesce(p_seller, ''), '[[:cntrl:]]', '', 'g'), 60)
-   where tracking_code = upper(trim(p_code))
-     and seller_name is null
-     and created_at > now() - interval '10 minutes';
-end; $$;
-grant execute on function public.set_order_seller(text, text) to anon, authenticated;
-
--- El formulario público necesita el WhatsApp del vendedor para devolverle el
--- resumen del pedido. Solo devuelve el número del vendedor cuyo nombre llega
--- en el link (?v=...), nunca la lista completa.
-create or replace function public.get_seller_contact(p_slug text, p_name text)
-returns text language sql stable security definer set search_path = public as $$
-  select s->>'whatsapp'
-    from public.merchants m, jsonb_array_elements(m.sellers) s
-   where m.slug = lower(trim(p_slug))
-     and translate(lower(trim(s->>'name')), 'áéíóúüñ', 'aeiouun')
-       = translate(lower(trim(p_name)), 'áéíóúüñ', 'aeiouun')
-   limit 1;
-$$;
-revoke all on function public.get_seller_contact(text, text) from public;
-grant execute on function public.get_seller_contact(text, text) to anon, authenticated;
-`
-
+export { default as SELLERS_SQL } from '../../sql/2026-11-04-vendedores.sql?raw'

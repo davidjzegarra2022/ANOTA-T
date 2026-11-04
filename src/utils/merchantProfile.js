@@ -4,7 +4,7 @@
 // marca y logística desde "Configuración".
 import { getSupabaseClient } from './supabaseClient'
 import { compressLogo, HEAVY_LOGO_BYTES } from './logoImage'
-import { findSellerWhatsApp, loadSellerDraft, normalizeSellers } from './sellers'
+import { SELLER_ID_RE, loadSellerDraft, normalizeSellers } from './sellers'
 
 function fromRow(row) {
   if (!row) return null
@@ -22,7 +22,7 @@ function fromRow(row) {
     leadTimeHours: row.lead_time_hours,
     sellers: Array.isArray(row.sellers) ? row.sellers : [],
     // false = la columna `sellers` todavía no existe en la base (falta
-    // correr sql/2026-11-03-vendedores.sql). La pantalla lo usa para avisar
+    // correr sql/2026-11-04-vendedores.sql). La pantalla lo usa para avisar
     // y para no intentar guardar una columna que no está.
     sellersSupported: Object.prototype.hasOwnProperty.call(row, 'sellers'),
     planId: row.plan_id,
@@ -68,20 +68,31 @@ export async function fetchMerchantBySlug(slug) {
 }
 
 /**
- * WhatsApp (9 dígitos) del vendedor que trajo al cliente (?v=Nombre), para
- * que el resumen del pedido vuelva a SU chat y no al de la tienda. Devuelve
- * '' si no hay vendedor, si no tiene número o si falta el SQL de vendedores
- * (en ese caso el resumen sigue yendo al WhatsApp de la tienda).
+ * Vendedor del link (?v=<código> o ?v=Nombre en links antiguos), resuelto por
+ * el servidor: { id, name, whatsapp } o null si la tienda no lo tiene
+ * registrado. Con `name` se marca el pedido y con `whatsapp` el resumen vuelve
+ * al chat de ESE vendedor.
+ *
+ * `pending: true` = la base todavía no tiene el SQL de vendedores: se usa el
+ * nombre que venga en un link antiguo solo para mostrarlo; sin número.
  */
-export async function fetchSellerWhatsApp(merchant, sellerName) {
-  if (!sellerName) return ''
-  const local = findSellerWhatsApp(merchant?.sellers, sellerName)
-  if (local) return local
+export async function fetchSellerPublic(slug, ref) {
+  if (!ref) return null
   const supabase = await getSupabaseClient()
-  if (!supabase || !merchant?.slug) return ''
-  const { data, error } = await supabase.rpc('get_seller_contact', { p_slug: merchant.slug, p_name: sellerName })
-  if (error) return ''
-  return String(data ?? '').replace(/\D/g, '')
+  if (!supabase || !slug) return null
+  const { data, error } = await supabase.rpc('get_seller_public', { p_slug: slug, p_ref: ref })
+  if (error) {
+    if (isMissingFunction(error) && !SELLER_ID_RE.test(ref)) return { id: '', name: ref, whatsapp: '', pending: true }
+    console.warn('[supabase] No se pudo leer el vendedor del link:', error.message)
+    return null
+  }
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row?.name) return null
+  return { id: row.id || '', name: row.name, whatsapp: String(row.whatsapp || '').replace(/\D/g, '') }
+}
+
+function isMissingFunction(error) {
+  return error?.code === 'PGRST202' || error?.code === '42883' || /could not find the function|does not exist/i.test(error?.message || '')
 }
 
 export async function updateMyMerchant(patch) {
@@ -113,7 +124,7 @@ export async function updateMyMerchant(patch) {
 
   const { data, error } = await supabase.from('merchants').update(row).eq('id', user.id).select().maybeSingle()
   if (error) {
-    // La columna `sellers` la crea sql/2026-11-03-vendedores.sql. Si todavía
+    // La columna `sellers` la crea sql/2026-11-04-vendedores.sql. Si todavía
     // no está, se guarda todo lo demás y se avisa que los vendedores no se
     // pudieron guardar — así la pantalla de Configuración nunca queda
     // bloqueada por una migración pendiente.
@@ -198,16 +209,16 @@ export async function fetchAcceptingOrders(merchantId) {
 
 /**
  * ¿Ya se corrió el SQL de vendedores en Supabase? Lo comprueba el panel de
- * administrador llamando a la función `get_seller_contact` con datos de
- * prueba: si la función no existe, la base responde con error de "función no
+ * administrador llamando a la función `get_seller_public` con datos de
+ * prueba (`get_seller_public`): si la función no existe, la base responde con error de "función no
  * encontrada". Devuelve 'ok', 'missing' o 'unknown' (sin conexión u otro error).
  */
 export async function checkSellersSql() {
   const supabase = await getSupabaseClient()
   if (!supabase) return 'unknown'
-  const { error } = await supabase.rpc('get_seller_contact', { p_slug: '__probe__', p_name: '__probe__' })
+  const { error } = await supabase.rpc('get_seller_public', { p_slug: '__probe__', p_ref: '__probe__' })
   if (!error) return 'ok'
-  if (error.code === 'PGRST202' || error.code === '42883' || /could not find the function|does not exist/i.test(error.message || '')) return 'missing'
+  if (isMissingFunction(error)) return 'missing'
   return 'unknown'
 }
 

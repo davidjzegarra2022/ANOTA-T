@@ -160,9 +160,23 @@ dominios en caliente, sin redeploy.
 
 ### Vendedores: un panel, hasta 4 links (ver `utils/sellers.js`)
 
-Cada vendedor comparte `/f/<slug>?v=<su%20nombre>`; el formulario público
-lee ese parámetro y lo guarda en el pedido (`orders.seller_name`) sin que el
-cliente final vea nada distinto. Desde ese momento, Envíos tiene la columna
+Cada vendedor tiene un **código fijo** de 8 caracteres y comparte
+`/f/<slug>?v=<código>` (los links antiguos `?v=<su%20nombre>` siguen
+funcionando). Flujo completo:
+
+1. En Configuración → Vendedores el negociante registra nombre + WhatsApp
+   (los dos obligatorios; `sellersProblem()` lo valida) y pulsa Guardar.
+   El link aparece recién cuando ese vendedor ya está guardado en la cuenta.
+2. Al abrir el link, el formulario llama a `get_seller_public(slug, código)`
+   (security definer): recibe SOLO el nombre y WhatsApp de ese vendedor, y
+   muestra "Te atiende <nombre>".
+3. Al enviar, `set_order_seller(código_rastreo, código)` marca el pedido con
+   el nombre **registrado** por la tienda; un código inventado o de otra
+   tienda se ignora.
+4. El botón "Enviar a <nombre> por WhatsApp" abre el chat del vendedor. Sin
+   vendedor (o si la tienda ya lo quitó) va al WhatsApp de la tienda.
+
+Desde ese momento, Envíos tiene la columna
 y el filtro "Vendedor", Panel Pro muestra el gráfico de ventas por vendedor
 y las exportaciones (Excel/PDF) llevan la columna. Los links se generan y
 copian solos en Configuración → Vendedores, con un botón para mandarlos por
@@ -178,14 +192,16 @@ WhatsApp al vendedor.
   aparece con la etiqueta PRO.
 - La lista se guarda en `merchants.sellers` (jsonb) y el nombre del pedido en
   `orders.seller_name`; las dos columnas las crea
-  `sql/2026-11-03-vendedores.sql`.
+  `sql/2026-11-04-vendedores.sql`.
 - **Mientras esa migración no esté aplicada, "Guardar cambios" no pierde
   nada:** la pantalla detecta que la columna falta (`merchant.sellersSupported`
   es `false`), guarda el resto de la configuración normalmente y deja la lista
   de vendedores en un borrador `localStorage` por tienda
-  (`loadSellerDraft`/`saveSellerDraft` en `utils/sellers.js`), con un aviso
-  ámbar y un botón "Copiar SQL". Cuando la columna exista, el borrador se
-  sube solo en el siguiente guardado. El panel tampoco se desmonta al
+  (`loadSellerDraft`/`saveSellerDraft` en `utils/sellers.js`). El aviso con
+  "Copiar SQL" lo ve solo el administrador en /admin
+  (`AdminSellersSetup.jsx`, que comprueba `get_seller_public`). Cuando la
+  columna exista, el borrador se sube solo al entrar al panel
+  (`syncSellerDraft`). El panel tampoco se desmonta al
   refrescar el perfil (DashboardLayout), así que lo escrito en el formulario
   no desaparece.
 - El vendedor se escribe con la función `set_order_seller` **después** de
