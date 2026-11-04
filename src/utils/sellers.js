@@ -65,9 +65,11 @@ export function normalizeSellers(list) {
 
 /** WhatsApp (9 dígitos) del vendedor con ese nombre dentro de la lista, o '' si no hay. */
 export function findSellerWhatsApp(sellers, name) {
-  const wanted = cleanSellerName(name).toLowerCase()
+  // Sin mayúsculas ni tildes: el link puede llegar escrito distinto al nombre guardado.
+  const fold = (v) => cleanSellerName(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const wanted = fold(name)
   if (!wanted) return ''
-  const found = (sellers || []).find((s) => cleanSellerName(s?.name).toLowerCase() === wanted)
+  const found = (sellers || []).find((s) => fold(s?.name) === wanted)
   return String(found?.whatsapp ?? '').replace(/\D/g, '')
 }
 
@@ -144,7 +146,8 @@ returns text language sql stable security definer set search_path = public as $$
   select s->>'whatsapp'
     from public.merchants m, jsonb_array_elements(m.sellers) s
    where m.slug = lower(trim(p_slug))
-     and lower(trim(s->>'name')) = lower(trim(p_name))
+     and translate(lower(trim(s->>'name')), 'áéíóúüñ', 'aeiouun')
+       = translate(lower(trim(p_name)), 'áéíóúüñ', 'aeiouun')
    limit 1;
 $$;
 revoke all on function public.get_seller_contact(text, text) from public;

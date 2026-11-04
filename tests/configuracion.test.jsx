@@ -77,7 +77,9 @@ test('si la base todavía no tiene la columna, guarda el resto y conserva el ven
   // …y el nombre queda en el formulario y en el borrador local.
   expect(screen.getByLabelText(/nombre del vendedor 1/i).value).toBe('Herman Zegarra')
   expect(localStorage.getItem('anotate-sellers-draft:m-1')).toContain('Herman Zegarra')
-  expect(screen.getByText(/se están guardando en este dispositivo/i)).toBeTruthy()
+  // El aviso técnico del SQL ya no se muestra al negociante (vive en /admin).
+  expect(screen.queryByText(/se están guardando en este dispositivo/i)).toBeNull()
+  expect(screen.queryByRole('button', { name: /copiar sql/i })).toBeNull()
 })
 
 test('al volver a entrar recupera los vendedores del borrador', () => {

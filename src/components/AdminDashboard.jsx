@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import AdminActivityLog from './AdminActivityLog'
 import AdminMerchantsManager from './AdminMerchantsManager'
 import AdminPlansManager from './AdminPlansManager'
+import AdminSellersSetup from './AdminSellersSetup'
 import AgencyManager from './AgencyManager'
 import { clearLog, getEndpoint, getLog, setEndpoint } from '../utils/telemetry'
 import { IconBox, IconChart, IconDownload, IconLogout, IconRefresh, IconSparkles, IconStore, IconTrash } from './icons'
@@ -170,6 +171,8 @@ export default function AdminDashboard({ onLogout, onOpenForm }) {
           <IconSparkles className="h-4 w-4" /> Planes
         </button>
       </div>
+
+      <AdminSellersSetup />
 
       {tab === 'datos' && <AgencyManager />}
       {tab === 'negociantes' && <AdminMerchantsManager />}

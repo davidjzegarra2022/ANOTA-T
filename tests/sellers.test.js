@@ -55,6 +55,7 @@ test('la búsqueda de Envíos también encuentra por vendedor', () => {
 test('findSellerWhatsApp encuentra el número por nombre sin importar mayúsculas ni espacios', () => {
   const list = [{ name: 'Herman Echevarría', whatsapp: '994237831' }]
   expect(findSellerWhatsApp(list, '  herman   echevarría ')).toBe('994237831')
+  expect(findSellerWhatsApp(list, 'HERMAN ECHEVARRIA')).toBe('994237831')
   expect(findSellerWhatsApp(list, 'Otro')).toBe('')
   expect(sellerWhatsAppWithCountry('994237831')).toBe('51994237831')
   expect(sellerWhatsAppWithCountry('')).toBe('')
