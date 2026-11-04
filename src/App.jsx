@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Footer from './components/Footer'
 import Header from './components/Header'
 import ClaudeCodeLoader from './components/ClaudeCodeLoader'
@@ -13,7 +13,7 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const AuthGate = lazy(() => import('./components/auth/AuthGate'))
 const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout'))
 const LandingPage = lazy(() => import('./components/LandingPage'))
-import { fetchMerchantBySlug, fetchSellerWhatsApp } from './utils/merchantProfile'
+import { fetchMerchantBySlug, fetchSellerPublic } from './utils/merchantProfile'
 import { createOrder } from './utils/orders'
 import { readSellerFromSearch } from './utils/sellers'
 import { getCurrentSession, isPlatformAdmin, onAuthStateChange, signOutMerchant } from './utils/supabaseAuth'
@@ -43,19 +43,29 @@ function PublicShippingRoute({ slug }) {
   const [merchant, setMerchant] = useState(undefined)
   const [submittedForm, setSubmittedForm] = useState(null)
   const [suspended, setSuspended] = useState(false)
-  // Vendedor que viene en el link (?v=Juan). Es invisible para el cliente
-  // final: solo sirve para saber de quién es la venta en el panel.
-  const [sellerName] = useState(() => readSellerFromSearch(window.location.search))
+  // Vendedor que viene en el link (?v=<código>). Se resuelve en el servidor
+  // al abrir el formulario: su nombre marca el pedido en el panel y su
+  // WhatsApp recibe el resumen. Sin vendedor (o si la tienda ya lo quitó),
+  // el resumen va al WhatsApp de la tienda.
+  const [sellerRef] = useState(() => readSellerFromSearch(window.location.search))
+  const [seller, setSeller] = useState(null)
+  const sellerPromise = useRef(null)
 
   useEffect(() => {
     fetchMerchantBySlug(slug).then((m) => {
       setMerchant(m)
       setSuspended(m ? m.acceptingOrders === false : false)
     })
-  }, [slug])
+    if (sellerRef) {
+      sellerPromise.current = fetchSellerPublic(slug, sellerRef)
+      sellerPromise.current.then(setSeller)
+    }
+  }, [slug, sellerRef])
 
   async function handleSubmit(form) {
-    const res = await createOrder(merchant.id, { ...form, sellerName })
+    // Si el cliente envía antes de que llegue el vendedor, se le espera.
+    const sel = seller ?? (sellerPromise.current ? await sellerPromise.current : null)
+    const res = await createOrder(merchant.id, { ...form, sellerRef: sel?.id || sellerRef })
     // Si la suscripción venció mientras el cliente llenaba el formulario,
     // el servidor rechaza el pedido: se muestra el aviso, no el éxito.
     if (res.suspended) {
@@ -63,10 +73,7 @@ function PublicShippingRoute({ slug }) {
       return res
     }
     if (res.ok) {
-      // El resumen vuelve al WhatsApp del vendedor que compartió el link (si
-      // tiene número); sin vendedor, o sin número, va al de la tienda.
-      const sellerWhatsapp = await fetchSellerWhatsApp(merchant, sellerName)
-      setSubmittedForm({ ...form, sellerName, sellerWhatsapp, trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status })
+      setSubmittedForm({ ...form, sellerName: sel?.name || '', sellerWhatsapp: sel?.whatsapp || '', trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status })
     }
     // Si falló (p. ej. anti-spam), el formulario muestra el error y no avanza.
     return res
@@ -96,7 +103,17 @@ function PublicShippingRoute({ slug }) {
           {submittedForm ? (
             <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} />
           ) : (
-            <ShippingForm merchant={merchant} onSubmit={handleSubmit} suspended={suspended} />
+            <>
+              {seller?.name && (
+                <p className="mb-4 flex items-center gap-2 rounded-xl bg-brand/10 px-3 py-2 text-[13px] text-ink">
+                  <span aria-hidden="true">🧑‍💼</span>
+                  <span className="min-w-0">
+                    Te atiende <b className="font-semibold">{seller.name}</b>
+                  </span>
+                </p>
+              )}
+              <ShippingForm merchant={merchant} onSubmit={handleSubmit} suspended={suspended} />
+            </>
           )}
         </div>
       </main>

@@ -56,7 +56,7 @@ test('guarda los vendedores y NO los borra de la pantalla al guardar', async () 
 
   await waitFor(() => expect(updateMyMerchant).toHaveBeenCalledTimes(1))
   const patch = updateMyMerchant.mock.calls[0][0]
-  expect(patch.sellers).toEqual([{ name: 'Juan Pérez', whatsapp: '987654321' }])
+  expect(patch.sellers).toEqual([{ id: expect.stringMatching(/^[a-z0-9]{8}$/), name: 'Juan Pérez', whatsapp: '987654321' }])
 
   // Lo escrito sigue en el formulario después de guardar.
   await waitFor(() => expect(screen.getByLabelText(/nombre del vendedor 1/i).value).toBe('Juan Pérez'))
@@ -109,10 +109,30 @@ test('un error de la base se muestra y no pierde nada', async () => {
   updateMyMerchant.mockResolvedValue({ ok: false, error: 'Sin conexión.' })
   renderPage()
 
-  addSeller('Juan Pérez')
+  addSeller('Juan Pérez', '987654321')
   fireEvent.click(screen.getByRole('button', { name: /guardar cambios/i }))
 
   await waitFor(() => expect(screen.getByText('Sin conexión.')).toBeTruthy())
   expect(screen.getByLabelText(/nombre del vendedor 1/i).value).toBe('Juan Pérez')
   expect(localStorage.getItem('anotate-sellers-draft:m-1')).toContain('Juan Pérez')
+})
+
+test('no guarda un vendedor sin WhatsApp: ese número recibe los pedidos de sus clientes', async () => {
+  renderPage()
+  addSeller('Carlos Jesus')
+  fireEvent.click(screen.getByRole('button', { name: /guardar cambios/i }))
+  await waitFor(() => expect(screen.getByText(/whatsapp de carlos jesus debe tener 9 dígitos/i)).toBeTruthy())
+  expect(updateMyMerchant).not.toHaveBeenCalled()
+})
+
+test('el link del vendedor usa su código y solo aparece cuando ya está guardado', () => {
+  const saved = { id: 'k3m9x2qa', name: 'Carlos Jesus', whatsapp: '957514082' }
+  renderPage({ sellers: [saved] })
+  expect(screen.getByText('http://localhost:3000/f/nexus-import?v=k3m9x2qa')).toBeTruthy()
+  expect(screen.getByText(/whatsapp \+51 957514082/i)).toBeTruthy()
+
+  // Si se cambia el número sin guardar, el link se oculta hasta guardar.
+  fireEvent.change(screen.getByLabelText(/whatsapp del vendedor 1/i), { target: { value: '900000000' } })
+  expect(screen.queryByText(/\?v=k3m9x2qa/)).toBeNull()
+  expect(screen.getByText(/guardar cambios.*para activar el link/i)).toBeTruthy()
 })
