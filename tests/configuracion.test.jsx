@@ -136,3 +136,16 @@ test('el link del vendedor usa su código y solo aparece cuando ya está guardad
   expect(screen.queryByText(/\?v=k3m9x2qa/)).toBeNull()
   expect(screen.getByText(/guardar cambios.*para activar el link/i)).toBeTruthy()
 })
+
+test('explica que el link del dueño manda a SU WhatsApp y el de cada vendedor al del vendedor', () => {
+  renderPage({ sellers: [{ id: 'k3m9x2qa', name: 'Carlos Jesus', whatsapp: '957514082' }] })
+  expect(screen.getByText(/links de venta: tú y tus vendedores/i)).toBeTruthy()
+  expect(screen.getByText('Dueño')).toBeTruthy()
+  expect(screen.getByText(/tu whatsapp \+51 962029292/i)).toBeTruthy()
+  expect(screen.getByText(/su whatsapp \+51 957514082/i)).toBeTruthy()
+  expect(screen.getByText('Vendedor 1')).toBeTruthy()
+
+  // Si cambia su número sin guardar, su link avisa que falta guardar.
+  fireEvent.change(screen.getByDisplayValue('962029292'), { target: { value: '911111111' } })
+  expect(screen.getByText(/activar tu link con el nombre y número nuevos/i)).toBeTruthy()
+})

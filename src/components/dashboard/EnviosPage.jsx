@@ -239,7 +239,7 @@ export default function EnviosPage({ merchant }) {
               {sellerNames.map((name) => (
                 <option key={name} value={name}>{name}</option>
               ))}
-              <option value="__none">Sin vendedor</option>
+              <option value="__none">Dueño (link de la tienda)</option>
             </select>
           )}
 
@@ -412,8 +412,8 @@ export default function EnviosPage({ merchant }) {
                   <dd className="min-w-0 font-mono break-all text-ink">{o.customerPhone || '—'}</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="w-24 shrink-0 text-muted">Vendedor</dt>
-                  <dd className="min-w-0 break-words text-ink">{o.sellerName || '—'}</dd>
+                  <dt className="w-24 shrink-0 text-muted">Vendido por</dt>
+                  <dd className="min-w-0 break-words text-ink">{o.sellerName || 'Dueño (tu link)'}</dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="w-24 shrink-0 text-muted">Método</dt>
@@ -456,7 +456,7 @@ export default function EnviosPage({ merchant }) {
                 <th className="px-3 py-2 font-semibold">Código</th>
                 <th className="px-3 py-2 font-semibold">Cliente</th>
                 <th className="px-3 py-2 font-semibold">WhatsApp</th>
-                <th className="px-3 py-2 font-semibold">Vendedor</th>
+                <th className="px-3 py-2 font-semibold" title="Quién compartió el link: el dueño o un vendedor">Vendido por</th>
                 <th className="px-3 py-2 font-semibold">Método</th>
                 <th className="px-3 py-2 font-semibold">Fecha envío</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
@@ -481,7 +481,9 @@ export default function EnviosPage({ merchant }) {
                     {o.sellerName ? (
                       <span className="rounded-full bg-brand/15 px-2 py-0.5 font-semibold text-brand-dark">{o.sellerName}</span>
                     ) : (
-                      <span className="text-muted">—</span>
+                      <span className="rounded-full bg-navy/10 px-2 py-0.5 font-semibold text-navy" title="Llegó por el link del dueño de la tienda">
+                        Dueño
+                      </span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-xs">{deliveryMethodLabel(o)}</td>
