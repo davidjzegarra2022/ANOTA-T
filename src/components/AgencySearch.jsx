@@ -17,6 +17,36 @@ function normalize(s) {
 // el useMemo de más abajo vea una dependencia distinta en cada render.
 const EMPTY_AGENCIES = []
 
+/**
+ * Horario en una línea: ["LUNES A SÁBADOS","08:00 AM A 08:00 PM","DOMINGOS",…]
+ * → "Lun–Sáb 08:00 AM–08:00 PM · Dom 08:00 AM–05:00 PM".
+ */
+export function agencyHoursShort(hours) {
+  if (!Array.isArray(hours) || !hours.length) return ''
+  const shortDay = (t) =>
+    t
+      .toLowerCase()
+      .replace(/lunes/g, 'Lun')
+      .replace(/martes/g, 'Mar')
+      .replace(/mi[eé]rcoles/g, 'Mié')
+      .replace(/jueves/g, 'Jue')
+      .replace(/viernes/g, 'Vie')
+      .replace(/s[aá]bados?/g, 'Sáb')
+      .replace(/domingos?( y feriados)?/g, (m) => (m.includes('feriados') ? 'Dom y feriados' : 'Dom'))
+      .replace(/ a /g, '–')
+  const parts = []
+  for (let i = 0; i < hours.length; i++) {
+    const line = hours[i]
+    const next = hours[i + 1]
+    if (/\d/.test(line)) parts.push(line.replace(/ A /g, '–'))
+    else if (next && /\d/.test(next)) {
+      parts.push(`${shortDay(line)} ${next.replace(/ A /g, '–')}`)
+      i++
+    } else parts.push(shortDay(line))
+  }
+  return parts.join(' · ')
+}
+
 export default function AgencySearch({ courierId, value, onChange, error }) {
   const [query, setQuery] = useState(value?.label ?? '')
   const [open, setOpen] = useState(false)
@@ -207,6 +237,13 @@ export default function AgencySearch({ courierId, value, onChange, error }) {
                     {agency.address}
                     {agency.reference ? `, Ref: ${agency.reference}` : ''}
                   </span>
+                  {(agency.type || agency.hours?.length > 0) && (
+                    <span className="mt-0.5 block truncate text-[11px] text-muted">
+                      {agency.type && <b className="font-semibold text-ink">{agency.type}</b>}
+                      {agency.type && agency.hours?.length > 0 ? ' · ' : ''}
+                      {agencyHoursShort(agency.hours)}
+                    </span>
+                  )}
                 </span>
                 {typeof agency.distanceKm === 'number' && (
                   <span className="mt-0.5 shrink-0 rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-semibold text-cyan-700">
