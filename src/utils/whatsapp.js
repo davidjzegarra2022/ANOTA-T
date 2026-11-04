@@ -57,9 +57,20 @@ export function buildWhatsAppSummary(form, merchant) {
   return lines.filter((l) => l !== null).join('\n')
 }
 
+/**
+ * Link para abrir WhatsApp con el mensaje escrito.
+ *
+ * Va directo a api.whatsapp.com/send y NO a wa.me: la redirección de wa.me
+ * cambia cada emoji por "�" (lo comprobamos: 📦 llega como %EF%BF%BD), y el
+ * resumen del pedido salía lleno de signos raros. Sin número, WhatsApp deja
+ * elegir el contacto o grupo.
+ */
 export function buildWhatsAppUrl(phoneWithCountryCode, message) {
-  const digits = phoneWithCountryCode.replace(/\D/g, '')
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
+  const digits = String(phoneWithCountryCode || '').replace(/\D/g, '')
+  const params = []
+  if (digits) params.push(`phone=${digits}`)
+  if (message) params.push(`text=${encodeURIComponent(message)}`)
+  return `https://api.whatsapp.com/send${params.length ? `?${params.join('&')}` : ''}`
 }
 
 // Aviso que el negociante le manda al cliente cuando cambia el estado de su

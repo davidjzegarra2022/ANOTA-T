@@ -1,3 +1,4 @@
+import { buildWhatsAppUrl } from './whatsapp'
 // Soporte de ANOTA-T por WhatsApp. Los botones de renovar, cambiar o
 // activar un plan (no hay pasarela de pago: el plan lo asigna el
 // administrador) abren un chat con un mensaje ya escrito según el caso,
@@ -67,5 +68,5 @@ const MESSAGES = {
 /** Link de WhatsApp a soporte con el mensaje del caso (`renew`, `upgrade`, `changePlan`, …). */
 export function supportWhatsAppUrl(topic, context = {}) {
   const lines = (MESSAGES[topic] || MESSAGES.help)(context).filter(Boolean)
-  return `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(lines.join('\n'))}`
+  return buildWhatsAppUrl(SUPPORT_WHATSAPP, lines.join('\n'))
 }
