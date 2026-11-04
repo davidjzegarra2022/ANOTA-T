@@ -23,32 +23,36 @@ function IconSun({ className }) {
   )
 }
 
-/**
- * Botón flotante de modo oscuro, presente en todas las páginas (se monta en
- * main.jsx). La preferencia se guarda en este dispositivo; el script de
- * index.html la aplica antes de pintar, para que no haya destello blanco.
- */
-export default function ThemeToggle() {
-  const [theme, setTheme] = useState(readTheme)
+const THEME_EVENT = 'anotat-theme'
 
-  useEffect(() => {
-    const root = document.documentElement
-    root.classList.toggle('dark', theme === 'dark')
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0a1826' : '#071d2d')
-    try {
-      localStorage.setItem(KEY, theme)
-    } catch {
-      // sin almacenamiento: el tema dura esta visita
-    }
-  }, [theme])
-
-  function toggle() {
-    const root = document.documentElement
-    root.classList.add('theme-anim')
-    setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
-    setTimeout(() => root.classList.remove('theme-anim'), 300)
+function applyTheme(theme) {
+  const root = document.documentElement
+  root.classList.add('theme-anim')
+  root.classList.toggle('dark', theme === 'dark')
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0a1826' : '#071d2d')
+  try {
+    localStorage.setItem(KEY, theme)
+  } catch {
+    // sin almacenamiento: el tema dura esta visita
   }
+  setTimeout(() => root.classList.remove('theme-anim'), 300)
+  window.dispatchEvent(new Event(THEME_EVENT))
+}
 
+/** Tema actual, sincronizado entre el botón flotante y el del panel. */
+function useTheme() {
+  const [theme, setTheme] = useState(readTheme)
+  useEffect(() => {
+    const sync = () => setTheme(readTheme())
+    window.addEventListener(THEME_EVENT, sync)
+    return () => window.removeEventListener(THEME_EVENT, sync)
+  }, [])
+  return [theme, () => applyTheme(theme === 'dark' ? 'light' : 'dark')]
+}
+
+/** Botón de tema para el encabezado del panel (mismo estado que el flotante). */
+export function ThemeButton({ className = '' }) {
+  const [theme, toggle] = useTheme()
   const dark = theme === 'dark'
   return (
     <button
@@ -56,7 +60,29 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       title={dark ? 'Modo claro' : 'Modo oscuro'}
-      className="fixed right-4 bottom-24 z-[60] flex h-12 w-12 items-center justify-center rounded-full border shadow-lg transition hover:scale-105 active:scale-95 print:hidden sm:bottom-6"
+      className={`flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 bg-white text-navy transition hover:bg-surface ${className}`}
+    >
+      {dark ? <IconSun className="h-5 w-5 text-brand" /> : <IconMoon className="h-5 w-5" />}
+    </button>
+  )
+}
+
+/**
+ * Botón flotante de modo oscuro, presente en todas las páginas (se monta en
+ * main.jsx) salvo dentro del panel, donde el botón va en el encabezado. La
+ * preferencia se guarda en este dispositivo; el script de index.html la
+ * aplica antes de pintar, para que no haya destello blanco.
+ */
+export default function ThemeToggle() {
+  const [theme, toggle] = useTheme()
+  const dark = theme === 'dark'
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      title={dark ? 'Modo claro' : 'Modo oscuro'}
+      className="theme-fab fixed right-4 bottom-24 z-[60] flex h-12 w-12 items-center justify-center rounded-full border shadow-lg transition hover:scale-105 active:scale-95 print:hidden sm:bottom-6"
       style={{
         background: dark ? '#ffc400' : '#071d2d',
         color: dark ? '#071d2d' : '#ffc400',

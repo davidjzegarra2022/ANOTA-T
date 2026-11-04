@@ -25,6 +25,17 @@ function fmtDay(iso) {
   return new Date(iso + 'T12:00:00Z').toLocaleDateString('es-PE', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' })
 }
 
+/** Fecha de envío legible ("Hoy", "Mañana", "vie 07 nov"); deja tal cual lo que no sea AAAA-MM-DD. */
+function fmtShipDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return value || '—'
+  const today = todayIso()
+  if (value === today) return 'Hoy'
+  if (value === addDays(today, 1)) return 'Mañana'
+  return fmtDay(value)
+}
+
+const STATUS_ORDER = ['pending', 'packed', 'shipped', 'cancelled']
+
 const STATUS_BADGE = {
   pending: 'bg-amber-100 text-amber-700',
   packed: 'bg-violet-100 text-violet-700',
@@ -81,14 +92,18 @@ export default function EnviosPage({ merchant }) {
   // Pedidos a borrar (null = diálogo cerrado).
   const [toDelete, setToDelete] = useState(null)
   const [notice, setNotice] = useState(null)
+  // Cuántos pedidos hay por estado en el día/rango (para los atajos de arriba).
+  const [statusCounts, setStatusCounts] = useState(null)
+  // En el celular el rango de fechas va plegado: casi siempre se mira «Hoy».
+  const [showRange, setShowRange] = useState(false)
 
   const usingRange = Boolean(rangeFrom || rangeTo)
   // Al buscar sin rango de fechas se busca en TODOS los días (para encontrar
   // un pedido por número, nombre, día u hora aunque no sea de hoy).
   const searchingAll = Boolean(search.trim()) && !usingRange
 
-  async function refresh() {
-    setLoading(true)
+  async function refresh({ silent = false } = {}) {
+    if (!silent) setLoading(true)
     const rows = await fetchMyOrders({
       // Día (o rango) en que el cliente llenó el formulario, no la fecha de envío.
       createdFrom: usingRange ? rangeFrom || undefined : searchingAll ? undefined : day,
@@ -98,6 +113,11 @@ export default function EnviosPage({ merchant }) {
       dailySearch: true,
     })
     setSellerNames(collectSellerNames(merchant?.sellers, rows))
+    if (!status) {
+      const counts = Object.fromEntries(STATUS_ORDER.map((k) => [k, 0]))
+      for (const o of rows) counts[o.status] = (counts[o.status] || 0) + 1
+      setStatusCounts(counts)
+    }
     // El filtro por vendedor se aplica en memoria: la consulta ya trae el día
     // o el rango, y así el selector no dispara otra llamada a la base.
     const visible = seller
@@ -111,6 +131,14 @@ export default function EnviosPage({ merchant }) {
 
   useEffect(() => {
     refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh usa el estado más reciente por closure
+  }, [day, rangeFrom, rangeTo, status, seller, search])
+
+  // Un pedido nuevo (lo detecta la campanita) aparece sin recargar la página.
+  useEffect(() => {
+    const onNew = () => refresh({ silent: true })
+    window.addEventListener('anotat-orders-changed', onNew)
+    return () => window.removeEventListener('anotat-orders-changed', onNew)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh usa el estado más reciente por closure
   }, [day, rangeFrom, rangeTo, status, seller, search])
 
@@ -144,15 +172,19 @@ export default function EnviosPage({ merchant }) {
 
   async function handleDeleted(count) {
     setToDelete(null)
-    setNotice(`${count} pedido${count === 1 ? '' : 's'} eliminado${count === 1 ? '' : 's'}.`)
+    setNotice({ text: `${count} pedido${count === 1 ? '' : 's'} eliminado${count === 1 ? '' : 's'}.` })
     setTimeout(() => setNotice(null), 4000)
     await refresh()
   }
 
   async function handleStatusChange(id, newStatus) {
     setBusyId(id)
-    await updateOrderStatus(id, newStatus)
-    await refresh()
+    const res = await updateOrderStatus(id, newStatus)
+    if (!res?.ok) {
+      setNotice({ error: true, text: 'No se pudo cambiar el estado. Revisa tu conexión e inténtalo otra vez.' })
+      setTimeout(() => setNotice(null), 5000)
+    }
+    await refresh({ silent: true })
     setBusyId(null)
   }
 
@@ -211,24 +243,68 @@ export default function EnviosPage({ merchant }) {
             </select>
           )}
 
-          <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-1.5 py-1.5">
-            <button type="button" onClick={() => setDay((d) => addDays(d, -1))} className="rounded-md p-1.5 text-muted hover:bg-surface">
+          <div className={`flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-1.5 py-1.5 ${usingRange ? 'opacity-50' : ''}`}>
+            <button type="button" onClick={() => setDay((d) => addDays(d, -1))} disabled={usingRange} aria-label="Día anterior" className="rounded-md p-1.5 text-navy hover:bg-surface">
               <IconChevronLeft className="h-4 w-4" />
             </button>
-            <span className="px-1 text-sm font-semibold text-ink">{day === todayIso() ? 'Hoy' : fmtDay(day)}</span>
-            <button type="button" onClick={() => setDay((d) => addDays(d, 1))} className="rounded-md p-1.5 text-muted hover:bg-surface">
+            <span className="min-w-14 px-1 text-center text-sm font-semibold text-ink">{day === todayIso() ? 'Hoy' : fmtDay(day)}</span>
+            <button type="button" onClick={() => setDay((d) => addDays(d, 1))} disabled={usingRange} aria-label="Día siguiente" className="rounded-md p-1.5 text-navy hover:bg-surface">
               <IconChevronRight className="h-4 w-4" />
             </button>
           </div>
+          {day !== todayIso() && !usingRange && (
+            <button type="button" onClick={() => setDay(todayIso())} className="rounded-xl bg-brand px-3 py-2 text-sm font-bold text-navy transition hover:brightness-95">
+              Volver a hoy
+            </button>
+          )}
 
-          <div className="flex w-full items-center gap-2 sm:w-auto">
-            <input type="date" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} className="input-field min-w-0 flex-1 sm:w-auto sm:flex-none" />
+          <button
+            type="button"
+            onClick={() => setShowRange((v) => !v)}
+            aria-expanded={showRange || usingRange}
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-navy sm:hidden"
+          >
+            {showRange || usingRange ? 'Ocultar rango de fechas' : 'Buscar por rango de fechas'}
+          </button>
+          <div className={`w-full items-center gap-2 sm:flex sm:w-auto ${showRange || usingRange ? 'flex' : 'hidden'}`}>
+            <input type="date" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} aria-label="Desde" className="input-field min-w-0 flex-1 sm:w-auto sm:flex-none" />
             <span className="shrink-0 text-muted">–</span>
-            <input type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} className="input-field min-w-0 flex-1 sm:w-auto sm:flex-none" />
+            <input type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} aria-label="Hasta" className="input-field min-w-0 flex-1 sm:w-auto sm:flex-none" />
+            {usingRange && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRangeFrom('')
+                  setRangeTo('')
+                }}
+                className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
+              >
+                Quitar rango
+              </button>
+            )}
           </div>
 
         </div>
       </div>
+
+      {/* Atajos por estado: lo primero que se mira en el día. */}
+      {statusCounts && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
+          {STATUS_ORDER.map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setStatus((cur) => (cur === k ? '' : k))}
+              aria-pressed={status === k}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${STATUS_BADGE[k]} ${
+                status === k ? 'ring-2 ring-navy/60' : 'opacity-90 hover:opacity-100'
+              }`}
+            >
+              {ORDER_STATUS_LABELS[k]} <span className="rounded-full bg-white/70 px-1.5 tabular-nums">{statusCounts[k] || 0}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <label
@@ -288,7 +364,17 @@ export default function EnviosPage({ merchant }) {
 
       {!loading && orders.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
-          <p className="text-sm text-muted">No hay pedidos registrados este día. Usa las flechas para revisar otros días.</p>
+          <p className="text-sm text-muted">
+            {search.trim()
+              ? `No encontramos pedidos para «${search.trim()}». Revisa lo que escribiste o busca por número (#12), nombre o código.`
+              : status || seller
+                ? 'No hay pedidos con estos filtros. Prueba con «Todos los estados» o «Todos los vendedores».'
+                : usingRange
+                  ? 'No hay pedidos en ese rango de fechas.'
+                  : day === todayIso()
+                    ? 'Todavía no llegan pedidos hoy. Comparte tu link y aparecerán aquí solos, sin recargar.'
+                    : 'No hay pedidos registrados este día. Usa las flechas o «Volver a hoy».'}
+          </p>
         </div>
       ) : (
         <>
@@ -335,7 +421,7 @@ export default function EnviosPage({ merchant }) {
                 </div>
                 <div className="flex gap-2">
                   <dt className="w-24 shrink-0 text-muted">Fecha envío</dt>
-                  <dd className="min-w-0 text-ink">{o.shippingDate || '—'}</dd>
+                  <dd className="min-w-0 text-ink">{fmtShipDate(o.shippingDate)}</dd>
                 </div>
               </dl>
               <div className="mt-3 flex gap-2">
@@ -359,7 +445,7 @@ export default function EnviosPage({ merchant }) {
         </ul>
 
         <div className="card hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[1100px] text-left text-[13px]">
+          <table className="w-full min-w-[980px] text-left text-[13px]">
             <thead className="bg-surface text-[11px] tracking-wide text-muted uppercase">
               <tr>
                 <th className="w-10 py-2 pr-1 pl-3">
@@ -374,7 +460,7 @@ export default function EnviosPage({ merchant }) {
                 <th className="px-3 py-2 font-semibold">Método</th>
                 <th className="px-3 py-2 font-semibold">Fecha envío</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
-                <th className="px-3 py-2 font-semibold">Acciones</th>
+                <th className="sticky right-0 bg-surface px-3 py-2 font-semibold shadow-[-8px_0_12px_-10px_rgba(7,29,45,.35)]">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -399,7 +485,7 @@ export default function EnviosPage({ merchant }) {
                     )}
                   </td>
                   <td className="px-3 py-2 text-xs">{deliveryMethodLabel(o)}</td>
-                  <td className="px-3 py-2 text-xs whitespace-nowrap">{o.shippingDate}</td>
+                  <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtShipDate(o.shippingDate)}</td>
                   <td className="px-3 py-2">
                     <select
                       value={o.status}
@@ -412,7 +498,7 @@ export default function EnviosPage({ merchant }) {
                       ))}
                     </select>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className={`sticky right-0 px-3 py-2 shadow-[-8px_0_12px_-10px_rgba(7,29,45,.35)] ${selected.has(o.id) ? 'bg-amber-50' : 'bg-white'}`}>
                     <div className="flex items-center gap-1.5">
                       <RowIcon label="Imprimir la etiqueta de envío" small onClick={() => setPrintIds([o.id])}>
                         <IconTag className="h-4 w-4" />
@@ -441,8 +527,11 @@ export default function EnviosPage({ merchant }) {
       <CourierTemplatesCard />
 
       {notice && (
-        <div role="status" className="animate-fade-in-up fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-xl">
-          ✓ {notice}
+        <div
+          role={notice.error ? 'alert' : 'status'}
+          className={`animate-fade-in-up fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-xl ${notice.error ? 'bg-red-700' : 'bg-navy'}`}
+        >
+          {notice.error ? '⚠️' : '✓'} {notice.text}
         </div>
       )}
       {summaryOrder && (
@@ -463,8 +552,14 @@ export default function EnviosPage({ merchant }) {
 }
 
 function RowIcon({ label, onClick, href, danger, ok, small, children }) {
+  // Fondo de color suave + borde marcado: en modo día los íconos sobre blanco
+  // con borde gris claro casi no se veían.
   const cls = `inline-flex shrink-0 items-center justify-center rounded-xl border transition ${small ? 'h-8 w-8' : 'h-9 w-10'} ${
-    danger ? 'border-red-200 text-red-600 hover:bg-red-50' : ok ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-slate-200 text-navy hover:bg-surface'
+    danger
+      ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
+      : ok
+        ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+        : 'border-slate-300 bg-slate-50 text-navy hover:bg-slate-100'
   }`
   if (href) {
     return (

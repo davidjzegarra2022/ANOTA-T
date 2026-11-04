@@ -4,6 +4,8 @@ import { ensureLightLogo, fetchAcceptingOrders, fetchMyMerchant, syncSellerDraft
 import { fetchActivePlans, isProPlan } from '../../utils/plans'
 import { supportWhatsAppUrl } from '../../utils/support'
 import ClaudeCodeLoader from '../ClaudeCodeLoader'
+import { ThemeButton } from '../ThemeToggle'
+import NotificationBell from './NotificationBell'
 import OnboardingChecklist from './OnboardingChecklist'
 import ShareMenu from './ShareMenu'
 import {
@@ -61,6 +63,9 @@ export default function DashboardLayout({ email, onLogout }) {
   // y Vendedores. `proEnabled` es solo de lectura — el plan se asigna desde
   // el panel de administración.
   const [plan, setPlan] = useState(null)
+  // ¿Ya se sabe qué plan tiene? La campanita espera a saberlo: antes de eso
+  // no puede decidir si mostrar recordatorios (son del plan Pro).
+  const [planReady, setPlanReady] = useState(false)
 
   const proEnabled = isProPlan(plan)
 
@@ -86,16 +91,37 @@ export default function DashboardLayout({ email, onLogout }) {
   useEffect(() => {
     if (!merchant?.planId) {
       setPlan(null)
+      if (merchant) setPlanReady(true)
       return
     }
     let alive = true
     fetchActivePlans().then((plans) => {
-      if (alive) setPlan(plans.find((p) => p.id === merchant.planId) || null)
+      if (alive) {
+        setPlan(plans.find((p) => p.id === merchant.planId) || null)
+        setPlanReady(true)
+      }
     })
     return () => {
       alive = false
     }
   }, [merchant?.planId])
+
+  // Una sola campanita a la vez (encabezado móvil o barra de escritorio):
+  // si se montaran las dos, se revisaría y avisaría el doble.
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia?.('(min-width: 1024px)').matches ?? false)
+  useEffect(() => {
+    const mq = window.matchMedia?.('(min-width: 1024px)')
+    if (!mq) return undefined
+    const on = () => setIsDesktop(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+
+  // Dentro del panel el botón de tema va en el encabezado (ver index.css).
+  useEffect(() => {
+    document.documentElement.classList.add('in-panel')
+    return () => document.documentElement.classList.remove('in-panel')
+  }, [])
 
   // Cerrar el cajón con Escape.
   useEffect(() => {
@@ -248,12 +274,16 @@ export default function DashboardLayout({ email, onLogout }) {
             <IconMenu className="h-5 w-5" />
           </button>
           <p className="min-w-0 flex-1 truncate text-base font-bold text-navy">{currentLabel}</p>
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-white to-[#e6eef7] shadow-md">
-            <img src={logoIcon} alt="" className="h-5 w-5" />
-          </span>
+          {merchant && planReady && !isDesktop && <NotificationBell merchant={merchant} remindersEnabled={proEnabled} currentTab={tab} onGoTo={selectTab} compact />}
+          <ThemeButton />
         </header>
 
-        <main className="min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-7 lg:px-10 lg:py-8">
+        {/* Escritorio: avisos y tema arriba a la derecha, siempre a mano. */}
+        <div className="hidden items-center justify-end gap-2 px-10 pt-4 lg:flex">
+          {merchant && planReady && isDesktop && <NotificationBell merchant={merchant} remindersEnabled={proEnabled} currentTab={tab} onGoTo={selectTab} />}
+          <ThemeButton className="h-11 w-11" />
+        </div>
+        <main className="min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-7 lg:px-10 lg:pt-2 lg:pb-8">
           {!merchant ? (
             <p className="text-sm text-red-600">No se pudo cargar tu perfil. Recarga la página.</p>
           ) : (
