@@ -65,8 +65,13 @@ function PublicShippingRoute({ slug }) {
   }, [slug, sellerRef])
 
   async function handleSubmit(form) {
-    // Si el cliente envía antes de que llegue el vendedor, se le espera.
-    const sel = seller ?? (sellerPromise.current ? await sellerPromise.current : null)
+    // Si el cliente envía antes de que llegue el vendedor, se le espera; y si
+    // la primera consulta falló, se intenta otra vez antes de enviar.
+    let sel = seller ?? (sellerPromise.current ? await sellerPromise.current : null)
+    if (sel?.unresolved) {
+      sel = await fetchSellerPublic(slug, sellerRef)
+      setSeller(sel)
+    }
     const res = await createOrder(merchant.id, { ...form, sellerRef: sel?.id || sellerRef })
     // Si la suscripción venció mientras el cliente llenaba el formulario,
     // el servidor rechaza el pedido: se muestra el aviso, no el éxito.
@@ -75,10 +80,21 @@ function PublicShippingRoute({ slug }) {
       return res
     }
     if (res.ok) {
-      setSubmittedForm({ ...form, sellerName: sel?.name || '', sellerWhatsapp: sel?.whatsapp || '', trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status })
+      setSubmittedForm({ ...form, sellerName: sel?.name || '', sellerWhatsapp: sel?.whatsapp || '', sellerUnresolved: Boolean(sel?.unresolved), trackingCode: res.trackingCode, orderNumber: res.orderNumber, orderStatus: res.status })
     }
     // Si falló (p. ej. anti-spam), el formulario muestra el error y no avanza.
     return res
+  }
+
+  // Desde la pantalla final: volver a buscar al vendedor del link.
+  async function retrySeller() {
+    const sel = await fetchSellerPublic(slug, sellerRef)
+    setSeller(sel)
+    if (sel && !sel.unresolved) {
+      setSubmittedForm((f) => (f ? { ...f, sellerName: sel.name, sellerWhatsapp: sel.whatsapp, sellerUnresolved: false } : f))
+      return true
+    }
+    return false
   }
 
   if (merchant === undefined) return <LoadingScreen />
@@ -103,7 +119,7 @@ function PublicShippingRoute({ slug }) {
         {/* Panel de vidrio (Liquid Glass) sobre la luz ambiental del fondo. */}
         <div className="card px-4 py-5 sm:p-6">
           {submittedForm ? (
-            <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} />
+            <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} onRetrySeller={retrySeller} />
           ) : (
             <>
               {/* Guía corta para el cliente final: qué tiene que hacer y que el
@@ -121,7 +137,7 @@ function PublicShippingRoute({ slug }) {
                   </li>
                 </ol>
               )}
-              {seller?.name && (
+              {seller?.name && !seller.unresolved && (
                 <p className="mb-4 flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 px-3 py-2 text-[13px] text-ink">
                   <span aria-hidden="true">🧑‍💼</span>
                   <span className="min-w-0">
