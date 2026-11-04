@@ -116,7 +116,7 @@ export default function PanelProPage({ merchant }) {
     const repeat = buyers.filter((b) => b.count > 1).length
     // Ventas por vendedor: cada pedido trae el nombre de quien compartió el
     // link; los pedidos sin link de vendedor se agrupan aparte.
-    const sellers = countBy(valid, (o) => ({ key: o.sellerName || '__none', label: o.sellerName || 'Sin vendedor' }))
+    const sellers = countBy(valid, (o) => ({ key: o.sellerName || '__none', label: o.sellerName || 'Dueño (tu link)' }))
       .slice(0, 8)
       .map((s, i) => ({ ...s, color: s.key === '__none' ? 'var(--viz-neutral)' : CITY_COLORS[i % CITY_COLORS.length] }))
     // Ingresos: solo pedidos no cancelados con monto cargado.

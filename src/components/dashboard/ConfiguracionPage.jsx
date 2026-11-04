@@ -3,6 +3,7 @@ import { getKnownCouriers } from '../../data/agencies'
 import { copyText } from '../../utils/clipboard'
 import { markOnboarding } from '../../utils/onboarding'
 import { buildWhatsAppUrl } from '../../utils/whatsapp'
+import { storeShareLink } from '../../utils/logoImage'
 import { updateMyMerchant, uploadMerchantLogo } from '../../utils/merchantProfile'
 import { MAX_SELLERS, cleanSellerName, loadSellerDraft, newSellerId, normalizeSellers, saveSellerDraft, sellerLink, sellerShareText, sellersProblem } from '../../utils/sellers'
 import { IconCheck, IconLock } from '../icons'
@@ -64,6 +65,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
   const [copiedSeller, setCopiedSeller] = useState(null)
+  const [copiedOwner, setCopiedOwner] = useState(false)
   // ¿Hay cambios sin guardar? Se enciende con cualquier edición y se apaga
   // al guardar: la barra de «Guardar cambios» se resalta para que no se pierdan.
   const [dirty, setDirty] = useState(false)
@@ -203,6 +205,17 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
     onSaved?.()
   }
 
+  // Link del dueño: el de la tienda. Activo cuando el link y el WhatsApp
+  // escritos son los que ya están guardados.
+  const ownerLink = storeShareLink(merchant.slug, merchant.logoUrl)
+  const ownerLive = form.slug === merchant.slug && `51${form.whatsapp}` === merchant.whatsappNumber
+  async function copyOwner() {
+    await copyText(ownerLink)
+    markOnboarding(merchant.id, 'linkShared')
+    setCopiedOwner(true)
+    setTimeout(() => setCopiedOwner(false), 2000)
+  }
+
   // Un link de vendedor solo funciona cuando ese vendedor (con ese nombre y
   // número) ya está guardado en la cuenta: el servidor es quien lo reconoce.
   const savedSellers = new Map((merchant.sellersSupported ? merchant.sellers || [] : []).map((s) => [s.id, s]))
@@ -286,7 +299,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
           </label>
 
           <label className="mt-3 block">
-            <span className="mb-1 block text-xs font-semibold text-muted uppercase">WhatsApp de tu tienda</span>
+            <span className="mb-1 block text-xs font-semibold text-muted uppercase">Tu WhatsApp (dueño de la tienda)</span>
             <div className="input-field flex items-center gap-2">
               <span className="font-semibold text-muted">+51</span>
               <input
@@ -299,19 +312,75 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
           </label>
 
           <div className="mt-4 rounded-xl border border-slate-200 bg-surface/60 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-muted uppercase">Vendedores (hasta {MAX_SELLERS})</span>
+            <p className="text-sm font-bold text-navy">Links de venta: tú y tus vendedores</p>
+
+            {/* Cómo funciona, sin letra chica: cada link manda el resumen al
+                WhatsApp de quien lo compartió, y todo cae en este panel. */}
+            <ol className="mt-2 grid gap-2 text-[12px] leading-snug text-ink sm:grid-cols-3">
+              <li className="rounded-lg bg-white p-2.5">
+                <b className="text-brand-dark">1.</b> Tú (dueño) y cada vendedor tienen <b>su propio link</b> del formulario.
+              </li>
+              <li className="rounded-lg bg-white p-2.5">
+                <b className="text-brand-dark">2.</b> El cliente final llena el formulario desde el link que <b>le pasaron</b>.
+              </li>
+              <li className="rounded-lg bg-white p-2.5">
+                <b className="text-brand-dark">3.</b> Su resumen llega por WhatsApp <b>a quien le pasó el link</b>: a ti o a ese vendedor.
+              </li>
+            </ol>
+            <p className="mt-2 text-[11px] text-muted">
+              Todos los pedidos, de cualquier link, aparecen en <b>tu</b> panel (Envíos) con el nombre de quién los trajo.
+            </p>
+
+            {/* Link del dueño: siempre activo, en cualquier plan. */}
+            <div className="mt-3 rounded-lg border-2 border-brand/60 bg-white p-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-navy px-2 py-0.5 text-[10px] font-extrabold tracking-wide text-brand uppercase">Dueño</span>
+                <p className="min-w-0 flex-1 truncate text-sm font-bold text-navy">{form.businessName || 'Tu tienda'}</p>
+                <span className="text-xs font-semibold text-muted">+51 {form.whatsapp || '—'}</span>
+              </div>
+              {ownerLive ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <code className="w-full min-w-0 truncate rounded-md bg-surface px-2 py-1 font-mono text-[11px] text-muted sm:w-auto sm:flex-1">{ownerLink}</code>
+                  <button
+                    type="button"
+                    onClick={copyOwner}
+                    className="rounded-lg border border-slate-300 px-2.5 py-1 text-[11px] font-bold text-navy transition hover:bg-surface"
+                  >
+                    {copiedOwner ? '✓ Copiado' : 'Copiar mi link'}
+                  </button>
+                  <a
+                    href={buildWhatsAppUrl('', `Llena tus datos de envío aquí: ${ownerLink}`)}
+                    onClick={() => markOnboarding(merchant.id, 'linkShared')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg border border-emerald-300 px-2.5 py-1 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50"
+                  >
+                    Compartir por WhatsApp
+                  </a>
+                  <p className="w-full text-[11px] text-ink">
+                    Los clientes que entren por <b>tu link</b> envían su resumen a <b>tu WhatsApp +51 {merchant.whatsappNumber.replace(/^51/, '')}</b>.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-2 text-[11px] font-semibold text-amber-700">Pulsa «Guardar cambios» para activar tu link con el nombre y número nuevos.</p>
+              )}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-muted uppercase">
+                Vendedores ({form.sellers.length} de {MAX_SELLERS})
+              </span>
               <button
                 type="button"
                 onClick={addSeller}
                 disabled={locked || form.sellers.length >= MAX_SELLERS}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-navy transition hover:bg-surface disabled:opacity-40"
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-navy transition hover:bg-surface disabled:opacity-40"
               >
                 + Añadir vendedor
               </button>
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted">
-              Cada vendedor comparte <b>su propio link</b>. Todos los pedidos caen en este mismo panel, marcados con el nombre de quien los trajo.
+              Cada vendedor necesita su <b>nombre y su WhatsApp</b>: ahí le llegan los pedidos de los clientes que entren por su link.
             </p>
 
             {locked && (
@@ -329,7 +398,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
 
             <div className={locked ? 'pointer-events-none opacity-45 select-none grayscale' : ''}>
             {form.sellers.length === 0 ? (
-              <p className="mt-2 text-[11px] text-muted">Todavía no agregaste vendedores.</p>
+              <p className="mt-2 text-[11px] text-muted">Todavía no agregaste vendedores. Mientras tanto, todos tus clientes usan tu link de dueño.</p>
             ) : (
               <ul className="mt-2 space-y-2">
                 {form.sellers.map((seller, i) => {
@@ -337,6 +406,9 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
                   const live = sellerIsLive(seller)
                   return (
                     <li key={i} className="rounded-lg border border-slate-200 bg-white p-2.5">
+                      <span className="mb-2 inline-block rounded-full bg-brand/20 px-2 py-0.5 text-[10px] font-extrabold tracking-wide text-brand-dark uppercase">
+                        Vendedor {i + 1}
+                      </span>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <input
                           value={seller.name}
@@ -378,7 +450,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
                       )}
                       {seller.name.trim() && live && (
                         <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <code className="min-w-0 flex-1 truncate rounded-md bg-surface px-2 py-1 font-mono text-[11px] text-muted">{link}</code>
+                          <code className="w-full min-w-0 truncate rounded-md bg-surface px-2 py-1 font-mono text-[11px] text-muted sm:w-auto sm:flex-1">{link}</code>
                           <button
                             type="button"
                             onClick={() => copySeller(i)}
@@ -395,7 +467,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
                             Enviar link a {seller.name.split(' ')[0]}
                           </a>
                           <p className="w-full text-[11px] text-muted">
-                            Los clientes que entren por este link envían su resumen al WhatsApp +51 {seller.whatsapp}.
+                            Los clientes que entren por el link de <b>{seller.name}</b> envían su resumen a <b>su WhatsApp +51 {seller.whatsapp}</b> (no al tuyo).
                           </p>
                         </div>
                       )}

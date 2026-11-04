@@ -29,7 +29,9 @@ export default function ShareLinkBar({ slug, logoUrl, merchantId }) {
   return (
     <div className="border-t border-slate-200 bg-white px-4 py-2.5 sm:px-6">
       <div className="mx-auto flex max-w-4xl flex-col gap-2 sm:flex-row sm:items-center">
-        <span className="min-w-0 flex-1 truncate text-center font-mono text-xs text-muted sm:text-left">{link}</span>
+        <span className="min-w-0 flex-1 truncate text-center text-xs text-muted sm:text-left">
+          <b className="font-sans text-ink">Tu link (dueño):</b> <span className="font-mono">{link}</span>
+        </span>
         <div className="flex items-center gap-2">
         <button
           type="button"
