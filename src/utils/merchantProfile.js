@@ -27,6 +27,8 @@ function fromRow(row) {
     sellersSupported: Object.prototype.hasOwnProperty.call(row, 'sellers'),
     planId: row.plan_id,
     planStartedAt: row.plan_started_at,
+    // Hasta cuándo está pagado el plan (null = sin vencimiento todavía).
+    paidUntil: row.paid_until || null,
     active: row.active,
     // false = suscripción vencida o tienda desactivada: el formulario
     // muestra el aviso de suspensión (ver get_merchant_public).
