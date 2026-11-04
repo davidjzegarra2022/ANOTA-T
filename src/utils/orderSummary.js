@@ -13,7 +13,9 @@ const DELIVERY_LABELS = {
 export function deliveryMethodLabel(order) {
   const base = DELIVERY_LABELS[order.deliveryMethod] || order.deliveryMethod || '—'
   if (order.deliveryMethod === 'agency' && order.courier) {
-    return `${base} ${order.courier}`
+    // "shalom" → "Shalom", "olva courier" → "Olva Courier"
+    const courier = String(order.courier).replace(/\b\p{L}/gu, (c) => c.toLocaleUpperCase('es'))
+    return `${base} ${courier}`
   }
   return base
 }

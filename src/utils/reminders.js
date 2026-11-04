@@ -193,6 +193,12 @@ export function loadReminders(merchantId) {
 export function saveReminders(merchantId, list) {
   try {
     localStorage.setItem(storageKey(merchantId), JSON.stringify(list))
+    // Avisa a la campanita del panel que la lista cambió.
+    try {
+      window.dispatchEvent(new Event('anotat-reminders'))
+    } catch {
+      // fuera del navegador
+    }
     return true
   } catch {
     // Sin espacio o sin localStorage (modo privado): la pantalla sigue

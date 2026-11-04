@@ -58,6 +58,19 @@ export default function RecordatoriosPage({ merchant, locked = false, onUpgrade 
     saveReminders(merchantId, items)
   }, [items, merchantId])
 
+  // Si se marca uno como listo desde la campanita, esta lista se actualiza.
+  // (Se compara antes de cambiar el estado para no entrar en un bucle de
+  // guardar → avisar → releer.)
+  useEffect(() => {
+    const reload = () =>
+      setItems((cur) => {
+        const next = loadReminders(merchantId)
+        return JSON.stringify(next) === JSON.stringify(cur) ? cur : next
+      })
+    window.addEventListener('anotat-reminders', reload)
+    return () => window.removeEventListener('anotat-reminders', reload)
+  }, [merchantId])
+
   const counts = useMemo(() => countReminders(items, today), [items, today])
 
   const visible = useMemo(() => {
@@ -340,7 +353,8 @@ export default function RecordatoriosPage({ merchant, locked = false, onUpgrade 
           </div>
 
           <p className="px-1 text-[11px] leading-relaxed text-muted">
-            Los recordatorios se guardan en este dispositivo, ligados a tu cuenta de tienda.
+            🔔 La campanita de arriba te avisa de lo pendiente al iniciar sesión, a las 9:00, 13:00 y 18:00, y a la hora exacta de cada recordatorio que
+            tenga hora. Los recordatorios se guardan en este dispositivo, ligados a tu cuenta de tienda.
           </p>
         </aside>
       </div>
