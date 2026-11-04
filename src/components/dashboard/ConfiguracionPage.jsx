@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getKnownCouriers } from '../../data/agencies'
 import { copyText } from '../../utils/clipboard'
 import { markOnboarding } from '../../utils/onboarding'
+import { buildWhatsAppUrl } from '../../utils/whatsapp'
 import { updateMyMerchant, uploadMerchantLogo } from '../../utils/merchantProfile'
 import { MAX_SELLERS, cleanSellerName, loadSellerDraft, newSellerId, normalizeSellers, saveSellerDraft, sellerLink, sellerShareText, sellersProblem } from '../../utils/sellers'
 import { IconCheck, IconLock } from '../icons'
@@ -386,7 +387,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
                             {copiedSeller === i ? '✓ Copiado' : 'Copiar link'}
                           </button>
                           <a
-                            href={`https://wa.me/51${seller.whatsapp}?text=${encodeURIComponent(sellerShareText({ businessName: form.businessName, link }))}`}
+                            href={buildWhatsAppUrl(`51${seller.whatsapp}`, sellerShareText({ businessName: form.businessName, link }))}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="rounded-lg border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50"

@@ -6,6 +6,7 @@ import { getKnownCouriers } from '../data/agencies'
 import { DEPARTMENTS } from '../data/departments'
 import { PAYMENT_METHODS } from '../data/paymentMethods'
 import { generateAvailableDates } from '../utils/dates'
+import { buildWhatsAppUrl } from '../utils/whatsapp'
 import { extractCouriersFromRows, fetchAllSupabaseAgencies } from '../utils/supabaseAgencies'
 import { cleanText, isNonEmpty, isValidDni, isValidPeruPhone, normalizePeruPhone } from '../utils/validation'
 import { lookupCustomerByDni } from '../utils/orders'
@@ -144,7 +145,7 @@ function SuspendedNotice({ merchant }) {
       </p>
       {digits && (
         <a
-          href={`https://wa.me/${digits}`}
+          href={buildWhatsAppUrl(digits, '')}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-[13px] font-bold text-white transition hover:bg-emerald-600"

@@ -124,7 +124,7 @@ export function findSellerWhatsApp(sellers, name) {
   return String(found?.whatsapp ?? '').replace(/\D/g, '')
 }
 
-/** Número con código de país (51) para wa.me; '' si el vendedor no tiene número. */
+/** Número con código de país (51) para WhatsApp; '' si el vendedor no tiene número. */
 export function sellerWhatsAppWithCountry(digits) {
   const d = String(digits ?? '').replace(/\D/g, '')
   if (!d) return ''

@@ -82,3 +82,11 @@ test('readSellerFromSearch ignora la versión de logo de links de tienda antiguo
   expect(readSellerFromSearch('?v=9qnspiyw')).toBe('9qnspiyw')
   expect(readSellerFromSearch('?l=482913')).toBe('')
 })
+
+test('los links de WhatsApp no pasan por wa.me (su redirección rompe los emojis)', async () => {
+  const { buildWhatsAppUrl } = await import('../src/utils/whatsapp.js')
+  const url = buildWhatsAppUrl('51 957 514 082', '📦 *NUEVO ENVÍO*\n#️⃣ N° 5')
+  expect(url.startsWith('https://api.whatsapp.com/send?phone=51957514082&text=')).toBe(true)
+  expect(decodeURIComponent(url.split('text=')[1])).toBe('📦 *NUEVO ENVÍO*\n#️⃣ N° 5')
+  expect(buildWhatsAppUrl('', 'Hola')).toBe('https://api.whatsapp.com/send?text=Hola')
+})
