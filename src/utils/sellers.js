@@ -46,6 +46,9 @@ export function readSellerFromSearch(search) {
     for (const key of SELLER_PARAMS) {
       const raw = params.get(key)
       const clean = cleanSellerName(raw)
+      // Links de tienda antiguos llevaban la versión del logo en `?v=123456`:
+      // un número corto no es un vendedor.
+      if (key === 'v' && /^\d{1,6}$/.test(clean)) continue
       if (clean) return clean
     }
   } catch {

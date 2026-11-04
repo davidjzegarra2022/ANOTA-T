@@ -76,3 +76,9 @@ test('sellersProblem exige nombre, WhatsApp de 9 dígitos y nombres distintos', 
   expect(sellersProblem([{ name: 'Ana', whatsapp: '9123' }])).toMatch(/9 dígitos/)
   expect(sellersProblem([{ name: 'Ana', whatsapp: '912345678' }, { name: 'ANA', whatsapp: '987654321' }])).toMatch(/dos vendedores/)
 })
+
+test('readSellerFromSearch ignora la versión de logo de links de tienda antiguos', () => {
+  expect(readSellerFromSearch('?v=482913')).toBe('')
+  expect(readSellerFromSearch('?v=9qnspiyw')).toBe('9qnspiyw')
+  expect(readSellerFromSearch('?l=482913')).toBe('')
+})

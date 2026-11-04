@@ -539,6 +539,9 @@ export default function ShippingForm({ merchant, onSubmit, suspended = false }) 
         {submitting ? 'Enviando…' : 'Agendar y ver resumen'}
         <IconCalendar className="h-5 w-5" />
       </button>
+      {!suspended && (
+        <p className="-mt-2 text-center text-[11.5px] text-muted">En el siguiente paso verás tu resumen y lo envías por WhatsApp.</p>
+      )}
     </form>
   )
 }

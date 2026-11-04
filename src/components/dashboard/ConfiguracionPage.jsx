@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getKnownCouriers } from '../../data/agencies'
 import { copyText } from '../../utils/clipboard'
+import { markOnboarding } from '../../utils/onboarding'
 import { updateMyMerchant, uploadMerchantLogo } from '../../utils/merchantProfile'
 import { MAX_SELLERS, cleanSellerName, loadSellerDraft, newSellerId, normalizeSellers, saveSellerDraft, sellerLink, sellerShareText, sellersProblem } from '../../utils/sellers'
 import { IconCheck, IconLock } from '../icons'
@@ -62,6 +63,18 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
   const [copiedSeller, setCopiedSeller] = useState(null)
+  // ¿Hay cambios sin guardar? Se enciende con cualquier edición y se apaga
+  // al guardar: la barra de «Guardar cambios» se resalta para que no se pierdan.
+  const [dirty, setDirty] = useState(false)
+  const firstForm = useRef(true)
+  useEffect(() => {
+    if (firstForm.current) {
+      firstForm.current = false
+      return
+    }
+    setDirty(true)
+    setMsg(null)
+  }, [form, logoFile, logoRemoved])
 
   // Vista previa: el archivo recién elegido (si hay uno), si no el logo ya
   // guardado, a menos que el usuario lo haya quitado manualmente.
@@ -171,6 +184,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
       return
     }
     saveSellerDraft(merchant.id, sellers)
+    markOnboarding(merchant.id, 'configSaved')
     setMsg({
       ok: true,
       text: locked
@@ -182,6 +196,9 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
     setForm((f) => ({ ...f, logoUrl, sellers }))
     setLogoFile(null)
     setLogoRemoved(false)
+    // El reset de arriba vuelve a disparar el efecto de «cambios sin guardar».
+    firstForm.current = true
+    setDirty(false)
     onSaved?.()
   }
 
@@ -473,15 +490,21 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
           </label>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="btn btn-primary"
-          >
+        {/* Barra de guardado fija abajo: siempre a la vista y resaltada cuando
+            hay cambios pendientes, para que nadie salga sin guardar. */}
+        <div
+          className={`sticky bottom-3 z-10 flex flex-col gap-2 rounded-2xl border p-3 shadow-lg transition sm:flex-row sm:items-center ${
+            dirty ? 'border-brand bg-amber-50' : 'border-slate-200 bg-white'
+          }`}
+        >
+          <button type="submit" disabled={saving} className={`btn btn-primary justify-center sm:w-auto ${dirty ? 'ring-4 ring-brand/30' : ''}`}>
             <IconCheck className="h-4 w-4" /> {saving ? 'Guardando…' : 'Guardar cambios'}
           </button>
-          {msg && <span className={`text-sm font-semibold ${msg.ok ? 'text-emerald-600' : 'text-red-600'}`}>{msg.text}</span>}
+          {msg ? (
+            <span role="status" className={`text-sm font-semibold ${msg.ok ? 'text-emerald-600' : 'text-red-600'}`}>{msg.text}</span>
+          ) : (
+            dirty && <span className="text-sm font-semibold text-amber-800">Tienes cambios sin guardar.</span>
+          )}
         </div>
       </form>
     </div>

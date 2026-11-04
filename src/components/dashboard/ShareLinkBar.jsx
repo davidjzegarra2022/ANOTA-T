@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { copyText } from '../../utils/clipboard'
 import { buildWhatsAppUrl } from '../../utils/whatsapp'
 import { storeShareLink } from '../../utils/logoImage'
+import { markOnboarding } from '../../utils/onboarding'
 import { IconCheck, IconCopy, IconWhatsapp } from '../icons'
 
 /**
@@ -9,12 +10,13 @@ import { IconCheck, IconCopy, IconWhatsapp } from '../icons'
  * propios clientes), visible en cualquier pestaña del panel — copiar o
  * reenviar por WhatsApp sin tener que ir a Configuración a buscarlo.
  */
-export default function ShareLinkBar({ slug, logoUrl }) {
+export default function ShareLinkBar({ slug, logoUrl, merchantId }) {
   const [copied, setCopied] = useState(false)
   const link = storeShareLink(slug, logoUrl)
 
   function handleCopy() {
     copyText(link).then(() => {
+      markOnboarding(merchantId, 'linkShared')
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -39,6 +41,7 @@ export default function ShareLinkBar({ slug, logoUrl }) {
         </button>
         <a
           href={whatsappUrl}
+          onClick={() => markOnboarding(merchantId, 'linkShared')}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-600 sm:flex-none"

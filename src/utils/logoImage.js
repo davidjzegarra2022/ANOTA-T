@@ -57,7 +57,8 @@ export async function compressLogo(blob) {
 }
 
 /**
- * Versión del logo para el link que se comparte (`/f/slug?v=...`). WhatsApp
+ * Versión del logo para el link que se comparte (`/f/slug?l=...`). Va en
+ * `?l=` y no en `?v=`, que es el parámetro del vendedor. WhatsApp
  * guarda la vista previa por link: si el logo cambia, cambia el link y
  * WhatsApp vuelve a leer la vista previa con el logo nuevo.
  */
@@ -73,5 +74,5 @@ export function logoVersion(logoUrl) {
 /** Link público de la tienda, con la versión del logo para refrescar la vista previa. */
 export function storeShareLink(slug, logoUrl) {
   const v = logoVersion(logoUrl)
-  return `${window.location.origin}/f/${slug}${v ? `?v=${v}` : ''}`
+  return `${window.location.origin}/f/${slug}${v ? `?l=${v}` : ''}`
 }

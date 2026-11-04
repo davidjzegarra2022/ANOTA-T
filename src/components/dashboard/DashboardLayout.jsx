@@ -4,6 +4,7 @@ import { ensureLightLogo, fetchAcceptingOrders, fetchMyMerchant, syncSellerDraft
 import { fetchActivePlans, isProPlan } from '../../utils/plans'
 import { supportWhatsAppUrl } from '../../utils/support'
 import ClaudeCodeLoader from '../ClaudeCodeLoader'
+import OnboardingChecklist from './OnboardingChecklist'
 import ShareMenu from './ShareMenu'
 import {
   IconBell,
@@ -201,7 +202,7 @@ export default function DashboardLayout({ email, onLogout }) {
             </button>
           ))}
           {merchant?.slug && (
-            <ShareMenu slug={merchant.slug} businessName={merchant.businessName} logoUrl={merchant.logoUrl} collapsed={collapsed} onExpand={() => setCollapsed(false)} />
+            <ShareMenu slug={merchant.slug} businessName={merchant.businessName} logoUrl={merchant.logoUrl} collapsed={collapsed} onExpand={() => setCollapsed(false)} merchantId={merchant.id} />
           )}
         </nav>
 
@@ -275,6 +276,7 @@ export default function DashboardLayout({ email, onLogout }) {
                   </a>
                 </div>
               )}
+              {tab !== 'configuracion' && <OnboardingChecklist merchant={merchant} proEnabled={proEnabled} onGoTo={selectTab} />}
               {tab === 'envios' && <EnviosPage merchant={merchant} />}
               {tab === 'clientes' && <ClientesPage merchant={merchant} />}
               {tab === 'recordatorios' && (
@@ -290,7 +292,7 @@ export default function DashboardLayout({ email, onLogout }) {
           )}
         </main>
 
-        {merchant && <ShareLinkBar slug={merchant.slug} logoUrl={merchant.logoUrl} />}
+        {merchant && <ShareLinkBar slug={merchant.slug} logoUrl={merchant.logoUrl} merchantId={merchant.id} />}
       </div>
     </div>
   )
