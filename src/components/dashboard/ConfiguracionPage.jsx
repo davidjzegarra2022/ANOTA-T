@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getKnownCouriers } from '../../data/agencies'
 import { copyText } from '../../utils/clipboard'
 import { updateMyMerchant, uploadMerchantLogo } from '../../utils/merchantProfile'
-import { MAX_SELLERS, SELLERS_SQL, loadSellerDraft, normalizeSellers, saveSellerDraft, sellerLink, sellerShareText } from '../../utils/sellers'
+import { MAX_SELLERS, loadSellerDraft, normalizeSellers, saveSellerDraft, sellerLink, sellerShareText } from '../../utils/sellers'
 import { IconCheck, IconLock } from '../icons'
 
 const WEEKDAYS = [
@@ -64,7 +64,6 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
   const [copiedSeller, setCopiedSeller] = useState(null)
-  const [copiedSql, setCopiedSql] = useState(false)
 
   // Vista previa: el archivo recién elegido (si hay uno), si no el logo ya
   // guardado, a menos que el usuario lo haya quitado manualmente.
@@ -178,7 +177,7 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
       text: locked
         ? 'Cambios guardados. Vendedores se habilita con el plan Emprendedor Pro.'
         : res.sellersIgnored || !sellersSupported
-          ? 'Cambios guardados. Los vendedores quedan guardados en este dispositivo; se sincronizarán cuando apliques el SQL de vendedores en Supabase.'
+          ? 'Cambios guardados. Tus vendedores se sincronizarán con tu cuenta en cuanto la administración de ANOTA-T termine de activarlos.'
           : 'Cambios guardados.',
     })
     setForm((f) => ({ ...f, logoUrl, sellers }))
@@ -304,29 +303,6 @@ export default function ConfiguracionPage({ merchant, onSaved, locked = false, o
             )}
 
             <div className={locked ? 'pointer-events-none opacity-45 select-none grayscale' : ''}>
-            {merchant.sellersSupported === false && !locked && (
-              <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5">
-                <p className="text-[11px] font-bold text-amber-800">
-                  Los vendedores se están guardando en este dispositivo.
-                </p>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">
-                  Los links ya funcionan, pero para que queden en tu cuenta y cada pedido salga marcado con su vendedor falta activarlos en Supabase
-                  (SQL Editor → pegar y ejecutar). Es una sola vez:
-                </p>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await copyText(SELLERS_SQL)
-                    setCopiedSql(true)
-                    setTimeout(() => setCopiedSql(false), 2000)
-                  }}
-                  className="mt-1.5 rounded-lg border border-amber-400 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-800 transition hover:bg-amber-100"
-                >
-                  {copiedSql ? '✓ SQL copiado' : 'Copiar SQL'}
-                </button>
-              </div>
-            )}
-
             {form.sellers.length === 0 ? (
               <p className="mt-2 text-[11px] text-muted">Todavía no agregaste vendedores.</p>
             ) : (

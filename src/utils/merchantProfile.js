@@ -195,3 +195,18 @@ export async function fetchAcceptingOrders(merchantId) {
   if (error) return true
   return data !== false
 }
+
+/**
+ * ¿Ya se corrió el SQL de vendedores en Supabase? Lo comprueba el panel de
+ * administrador llamando a la función `get_seller_contact` con datos de
+ * prueba: si la función no existe, la base responde con error de "función no
+ * encontrada". Devuelve 'ok', 'missing' o 'unknown' (sin conexión u otro error).
+ */
+export async function checkSellersSql() {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return 'unknown'
+  const { error } = await supabase.rpc('get_seller_contact', { p_slug: '__probe__', p_name: '__probe__' })
+  if (!error) return 'ok'
+  if (error.code === 'PGRST202' || error.code === '42883' || /could not find the function|does not exist/i.test(error.message || '')) return 'missing'
+  return 'unknown'
+}

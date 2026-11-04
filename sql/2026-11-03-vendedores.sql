@@ -52,7 +52,8 @@ returns text language sql stable security definer set search_path = public as $$
   select s->>'whatsapp'
     from public.merchants m, jsonb_array_elements(m.sellers) s
    where m.slug = lower(trim(p_slug))
-     and lower(trim(s->>'name')) = lower(trim(p_name))
+     and translate(lower(trim(s->>'name')), 'áéíóúüñ', 'aeiouun')
+       = translate(lower(trim(p_name)), 'áéíóúüñ', 'aeiouun')
    limit 1;
 $$;
 revoke all on function public.get_seller_contact(text, text) from public;
