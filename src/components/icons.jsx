@@ -312,3 +312,15 @@ export function IconStar({ className, filled = false }) {
     </svg>
   )
 }
+
+/** Impresora: imprimir etiquetas de envío. */
+export function IconPrinter({ className }) {
+  return (
+    <svg className={className} {...base()}>
+      <path d="M7 8V3.5h10V8" />
+      <rect x="3" y="8" width="18" height="8.5" rx="2" />
+      <path d="M7 13.5h10V21H7z" />
+      <path d="M17.5 11h.01" />
+    </svg>
+  )
+}

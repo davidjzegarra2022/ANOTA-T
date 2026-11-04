@@ -663,3 +663,22 @@ html:not(.dark) svg.text-muted[stroke='currentColor'] { color: #3f5069; }
    (también dentro de la sección navy de la portada) y amarillo de noche. */
 .tracking-code { color: #a16207; }
 .dark .tracking-code { color: #ffc400; }
+
+/* ------------------------------------------------------------------
+   «Mi plan»: la mejora de plan tiene que verse. Fondo navy→azul con un
+   brillo que cruza cada pocos segundos y el botón amarillo que late.
+   ------------------------------------------------------------------ */
+.upgrade-hero { background: radial-gradient(120% 140% at 100% 0%, #1d4f6e 0%, #0b3046 45%, #071d2d 100%); }
+.upgrade-hero .text-slate-200 { color: #dbe5ef; }
+.upgrade-shine {
+  position: absolute; inset: -50% auto -50% -40%; width: 35%;
+  background: linear-gradient(90deg, transparent, rgb(255 196 0 / .18), transparent);
+  transform: skewX(-20deg); animation: upgrade-shine 5.5s ease-in-out infinite;
+}
+@keyframes upgrade-shine { 0%, 55% { left: -40%; } 100% { left: 130%; } }
+.upgrade-cta { animation: upgrade-pulse 2.6s ease-in-out infinite; }
+@keyframes upgrade-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(255 196 0 / .55); }
+  50% { box-shadow: 0 0 0 12px rgb(255 196 0 / 0); }
+}
+@media (prefers-reduced-motion: reduce) { .upgrade-shine, .upgrade-cta { animation: none; } }

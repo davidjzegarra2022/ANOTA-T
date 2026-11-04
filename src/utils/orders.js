@@ -29,6 +29,9 @@ function fromRow(row) {
     shippingDate: row.shipping_date,
     status: row.status,
     createdAt: row.created_at,
+    packedAt: row.packed_at || null,
+    shippedAt: row.shipped_at || null,
+    cancelledAt: row.cancelled_at || null,
   }
 }
 
@@ -273,6 +276,10 @@ export async function trackOrderByCode(code) {
       status: row.status,
       createdAt: row.created_at,
       businessName: row.business_name,
+      // Llegan con sql/2026-11-04-horas-de-estado.sql (antes: undefined).
+      packedAt: row.packed_at || null,
+      shippedAt: row.shipped_at || null,
+      cancelledAt: row.cancelled_at || null,
     },
   }
 }

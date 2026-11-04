@@ -39,6 +39,7 @@ export default function TrackingResult({ order }) {
         <div className="min-w-0">
           <p className={`text-base font-bold ${cancelled ? 'text-red-700' : 'text-emerald-700'}`}>{head.title}</p>
           <p className="mt-0.5 text-sm leading-relaxed text-ink">{head.text}</p>
+          {cancelled && order.cancelledAt && <p className="mt-1 text-xs font-semibold text-red-700">Cancelado el {fmtDateTime(order.cancelledAt)}</p>}
         </div>
       </div>
 
@@ -83,7 +84,7 @@ export default function TrackingResult({ order }) {
                       {s.badge && <span className="ml-2 rounded-full bg-brand/20 px-2 py-0.5 tracking-code text-[10px] font-extrabold uppercase">{s.badge}</span>}
                     </p>
                     <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
-                      {s.id === 'registered' && order.createdAt ? `${fmtDateTime(order.createdAt)} · ` : ''}
+                      {s.at && <span className="font-semibold text-ink">{fmtDateTime(s.at)} · </span>}
                       {s.text}
                     </p>
                   </div>

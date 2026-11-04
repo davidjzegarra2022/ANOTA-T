@@ -11,7 +11,6 @@ import ShareMenu from './ShareMenu'
 import {
   IconBell,
   IconBox,
-  IconCard,
   IconGrid,
   IconLogout,
   IconSettings,
@@ -27,7 +26,6 @@ import PanelProPage from './PanelProPage'
 import PlanesPage from './PlanesPage'
 import RecordatoriosPage from './RecordatoriosPage'
 import ShareLinkBar from './ShareLinkBar'
-import SuscripcionPage from './SuscripcionPage'
 
 const NAV_ITEMS = [
   { id: 'envios', label: 'Envíos', icon: IconBox },
@@ -37,8 +35,8 @@ const NAV_ITEMS = [
   { id: 'recordatorios', label: 'Recordatorios', icon: IconBell, proOnly: true },
   { id: 'panel', label: 'Panel Pro', icon: IconGrid },
   { id: 'configuracion', label: 'Configuración', icon: IconSettings },
-  { id: 'planes', label: 'Planes', icon: IconSparkles },
-  { id: 'suscripcion', label: 'Suscripción', icon: IconCard },
+  // Planes y Suscripción ahora son una sola pantalla.
+  { id: 'planes', label: 'Mi plan', icon: IconSparkles, highlight: true },
 ]
 
 function IconMenu({ className }) {
@@ -216,6 +214,13 @@ export default function DashboardLayout({ email, onLogout }) {
             >
               <item.icon className="h-4.5 w-4.5 shrink-0" />
               <span className={`truncate ${collapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
+              {item.highlight && !proEnabled && (
+                <span
+                  className={`ml-auto shrink-0 animate-pulse rounded-full bg-brand px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide text-navy ${collapsed ? 'lg:hidden' : ''}`}
+                >
+                  MEJORAR
+                </span>
+              )}
               {item.proOnly && !proEnabled && (
                 <span
                   className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide ${
@@ -316,8 +321,7 @@ export default function DashboardLayout({ email, onLogout }) {
               {tab === 'configuracion' && (
                 <ConfiguracionPage merchant={merchant} onSaved={refreshMerchant} locked={!proEnabled} onUpgrade={() => setTab('planes')} />
               )}
-              {tab === 'planes' && <PlanesPage merchant={merchant} />}
-              {tab === 'suscripcion' && <SuscripcionPage merchant={merchant} />}
+              {(tab === 'planes' || tab === 'suscripcion') && <PlanesPage merchant={merchant} />}
             </>
           )}
         </main>
