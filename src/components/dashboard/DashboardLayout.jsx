@@ -322,7 +322,7 @@ export default function DashboardLayout({ email, onLogout }) {
               )}
               {!locked && <ExpiryBanner deadline={sub.deadline} kind={sub.kind} merchant={merchant} onPlans={() => selectTab('planes')} />}
               {tab !== 'configuracion' && <OnboardingChecklist merchant={merchant} proEnabled={proEnabled} onGoTo={selectTab} />}
-              {tab === 'envios' && <EnviosPage merchant={merchant} />}
+              {tab === 'envios' && <EnviosPage merchant={merchant} proEnabled={proEnabled} onUpgrade={() => selectTab('planes')} />}
               {tab === 'clientes' && <ClientesPage merchant={merchant} />}
               {tab === 'recordatorios' && (
                 <RecordatoriosPage merchant={merchant} locked={!proEnabled} onUpgrade={() => setTab('planes')} />

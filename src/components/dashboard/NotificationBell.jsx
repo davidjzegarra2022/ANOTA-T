@@ -136,8 +136,9 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
       if (timed.length) {
         persist({ notified: [...stateRef.current.notified, ...timed.map((r) => r.id)] })
         const r = timed[0]
-        systemNotify(`⏰ ${r.text}`, `Recordatorio de las ${timeLabel(r.dueTime)}`)
-        setPopup({ kind: 'timed', title: 'Es hora de tu recordatorio', lines: timed.map((t) => `${timeLabel(t.dueTime)} · ${t.text}`) })
+        const extra = (t) => [t.sale?.phone ? `📞 +51 ${t.sale.phone.slice(-9)}` : '', t.sale?.note ? `📝 ${t.sale.note}` : ''].filter(Boolean).join(' · ')
+        systemNotify(`⏰ ${r.text}`, [`Recordatorio de las ${timeLabel(r.dueTime)}`, extra(r)].filter(Boolean).join(' · '))
+        setPopup({ kind: 'timed', title: 'Es hora de tu recordatorio', lines: timed.flatMap((t) => [`${timeLabel(t.dueTime)} · ${t.text}`, extra(t)].filter(Boolean)) })
       } else if (slot) {
         persist({ shown: [...stateRef.current.shown, slot] })
         if (pend.length) {
@@ -259,6 +260,12 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
                         </button>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm leading-snug break-words text-ink">{r.text}</p>
+                          {r.sale?.phone && (
+                            <a href={`tel:+${r.sale.phone.length <= 9 ? `51${r.sale.phone}` : r.sale.phone}`} className="text-[11px] font-bold text-navy hover:underline">
+                              📞 +51 {r.sale.phone.slice(-9)}
+                            </a>
+                          )}
+                          {r.sale?.note && <p className="text-[11px] text-muted">📝 {r.sale.note}</p>}
                           <p className={`text-[11px] font-semibold ${isOverdue(r) ? 'text-red-600' : 'text-muted'}`}>
                             {isOverdue(r) ? 'Vencido · ' : ''}
                             {dueLabel(r.dueDate)}
