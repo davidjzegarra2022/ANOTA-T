@@ -13,6 +13,7 @@ import {
   saveReminders,
   timeLabel,
 } from '../../utils/reminders'
+import { buildWhatsAppUrl } from '../../utils/whatsapp'
 import { IconBell, IconCheck, IconChevronLeft, IconChevronRight, IconLock, IconStar, IconTrash } from '../icons'
 
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
@@ -363,6 +364,32 @@ export default function RecordatoriosPage({ merchant, locked = false, onUpgrade 
   )
 }
 
+/** Datos de la venta de un recordatorio inteligente: teléfono, nota y resumen. */
+function SaleDetails({ sale }) {
+  const digits = String(sale.phone || '').replace(/\D/g, '')
+  const cc = digits ? (digits.length <= 9 ? `51${digits}` : digits) : ''
+  return (
+    <div className="mt-1.5 space-y-1 rounded-lg bg-surface p-2 text-[12px] text-ink">
+      {cc && (
+        <p className="flex flex-wrap items-center gap-2">
+          <a href={`tel:+${cc}`} className="font-mono font-bold text-navy hover:underline">📞 +51 {digits.slice(-9)}</a>
+          <a href={buildWhatsAppUrl(cc, `Hola ${String(sale.customerName || '').split(' ')[0]} 👋`)} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-700 hover:underline">
+            WhatsApp
+          </a>
+          {sale.trackingCode && <span className="font-mono text-[11px] text-muted">{sale.trackingCode}</span>}
+        </p>
+      )}
+      {sale.note && <p>📝 {sale.note}</p>}
+      {sale.summary && (
+        <details>
+          <summary className="cursor-pointer text-[11px] font-bold text-brand-dark">Ver resumen de la venta</summary>
+          <p className="mt-1 leading-relaxed text-muted">{sale.summary}</p>
+        </details>
+      )}
+    </div>
+  )
+}
+
 function ReminderRow({ reminder, today, onToggle, onRemove }) {
   const category = categoryOf(reminder.category)
   const overdue = !reminder.done && reminder.dueDate && reminder.dueDate < today
@@ -391,6 +418,7 @@ function ReminderRow({ reminder, today, onToggle, onRemove }) {
           </span>
           <span className={overdue ? 'font-bold text-red-600' : ''}>· {meta}</span>
         </p>
+        {reminder.sale && <SaleDetails sale={reminder.sale} />}
       </div>
 
       <button

@@ -4,7 +4,9 @@ import { deliveryMethodLabel, orderDestination } from '../../utils/orderSummary'
 import { customerStatusWhatsAppUrl } from '../../utils/whatsapp'
 import { exportOrdersToPdf } from '../../utils/ordersExport'
 import { collectSellerNames } from '../../utils/sellers'
-import { IconChevronLeft, IconChevronRight, IconEye, IconFile, IconPrinter, IconSearch, IconTrash, IconWhatsapp } from '../icons'
+import { IconBell, IconChevronLeft, IconChevronRight, IconEye, IconFile, IconLock, IconPrinter, IconSearch, IconTrash, IconWhatsapp } from '../icons'
+import { dueLabel, loadReminders, reminderForOrder, timeLabel } from '../../utils/reminders'
+import SaleReminderDialog from './SaleReminderDialog'
 import CourierTemplatesCard from './CourierTemplatesCard'
 import DeleteOrdersDialog from './DeleteOrdersDialog'
 import ExcelExportMenu from './ExcelExportMenu'
@@ -73,7 +75,7 @@ function SelectBox({ checked, indeterminate = false, onChange, disabled, label, 
   )
 }
 
-export default function EnviosPage({ merchant }) {
+export default function EnviosPage({ merchant, proEnabled = false, onUpgrade }) {
   const [day, setDay] = useState(todayIso())
   const [rangeFrom, setRangeFrom] = useState('')
   const [rangeTo, setRangeTo] = useState('')
@@ -92,6 +94,15 @@ export default function EnviosPage({ merchant }) {
   // Pedidos a borrar (null = diálogo cerrado).
   const [toDelete, setToDelete] = useState(null)
   const [notice, setNotice] = useState(null)
+  // Recordatorios inteligentes por venta (campana): venta abierta y lista
+  // de recordatorios para pintar la campana de las que ya tienen uno.
+  const [reminderOrder, setReminderOrder] = useState(null)
+  const [reminders, setReminders] = useState(() => loadReminders(merchant?.id))
+  useEffect(() => {
+    const reload = () => setReminders(loadReminders(merchant?.id))
+    window.addEventListener('anotat-reminders', reload)
+    return () => window.removeEventListener('anotat-reminders', reload)
+  }, [merchant?.id])
   // Cuántos pedidos hay por estado en el día/rango (para los atajos de arriba).
   const [statusCounts, setStatusCounts] = useState(null)
   // En el celular el rango de fechas va plegado: casi siempre se mira «Hoy».
@@ -435,6 +446,7 @@ export default function EnviosPage({ merchant }) {
                     <IconWhatsapp className="h-4 w-4" />
                   </RowIcon>
                 )}
+                <SaleBell order={o} reminders={reminders} proEnabled={proEnabled} onClick={() => setReminderOrder(o)} />
                 <RowIcon label="Ver resumen" onClick={() => setSummaryOrder(o)}>
                   <IconEye className="h-4 w-4" />
                 </RowIcon>
@@ -457,8 +469,7 @@ export default function EnviosPage({ merchant }) {
                 <th className="px-3 py-2 font-semibold" title="Código de rastreo y hora en que el cliente llenó el formulario">Código y hora</th>
                 <th className="px-3 py-2 font-semibold">Cliente</th>
                 <th className="px-3 py-2 font-semibold" title="Quién compartió el link: el dueño o un vendedor">Vendido por</th>
-                <th className="px-3 py-2 font-semibold" title="Cómo recibe el pedido y a dónde va">Entrega y destino</th>
-                <th className="px-3 py-2 font-semibold">Fecha envío</th>
+                <th className="px-3 py-2 font-semibold" title="Cómo recibe el pedido, a dónde va y cuándo se envía">Entrega, destino y fecha</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
                 <th className="sticky right-0 bg-surface px-3 py-2 font-semibold shadow-[-8px_0_12px_-10px_rgba(7,29,45,.35)]">Acciones</th>
               </tr>
@@ -491,8 +502,10 @@ export default function EnviosPage({ merchant }) {
                   </td>
                   <td className="max-w-[240px] min-w-[180px] px-3 py-2 text-xs">
                     <Destination order={o} />
+                    <span className="mt-0.5 inline-block rounded-md bg-surface px-1.5 py-0.5 font-semibold text-ink">
+                      📅 {o.deliveryMethod === 'store' ? 'Entrega' : 'Envío'}: {fmtShipDate(o.shippingDate)}
+                    </span>
                   </td>
-                  <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtShipDate(o.shippingDate)}</td>
                   <td className="px-3 py-2">
                     <select
                       value={o.status}
@@ -515,6 +528,7 @@ export default function EnviosPage({ merchant }) {
                           <IconWhatsapp className="h-4 w-4" />
                         </RowIcon>
                       )}
+                      <SaleBell order={o} reminders={reminders} proEnabled={proEnabled} small onClick={() => setReminderOrder(o)} />
                       <RowIcon label="Ver resumen" small onClick={() => setSummaryOrder(o)}>
                         <IconEye className="h-4 w-4" />
                       </RowIcon>
@@ -541,6 +555,22 @@ export default function EnviosPage({ merchant }) {
           {notice.error ? '⚠️' : '✓'} {notice.text}
         </div>
       )}
+      {reminderOrder && (
+        <SaleReminderDialog
+          order={reminderOrder}
+          merchant={merchant}
+          locked={!proEnabled}
+          onUpgrade={() => {
+            setReminderOrder(null)
+            onUpgrade?.()
+          }}
+          onClose={() => setReminderOrder(null)}
+          onSaved={(text) => {
+            setNotice({ text })
+            setTimeout(() => setNotice(null), 4000)
+          }}
+        />
+      )}
       {summaryOrder && (
         <OrderSummaryModal
           order={summaryOrder}
@@ -555,6 +585,37 @@ export default function EnviosPage({ merchant }) {
         <PrintLabelsModal orders={orders} initialSelected={printIds} merchant={merchant} onClose={() => setPrintIds(null)} />
       )}
     </div>
+  )
+}
+
+/**
+ * Campana de recordatorio de una venta. Amarilla (y con el día/hora en el
+ * título) si la venta ya tiene recordatorio; con candado si el plan no es Pro.
+ */
+function SaleBell({ order, reminders, proEnabled, small, onClick }) {
+  const rem = proEnabled ? reminderForOrder(reminders, order.id) : null
+  const label = !proEnabled
+    ? 'Recordatorio inteligente (plan Pro)'
+    : rem
+      ? `Recordatorio: ${dueLabel(rem.dueDate)} · ${timeLabel(rem.dueTime)}`
+      : 'Crear recordatorio de esta venta'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className={`relative inline-flex shrink-0 items-center justify-center rounded-xl border transition ${small ? 'h-8 w-8' : 'h-9 w-10'} ${
+        rem ? 'border-brand-dark bg-brand text-navy' : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+      }`}
+    >
+      <IconBell className={`h-4 w-4 ${rem ? 'bell-ring' : ''}`} />
+      {!proEnabled && (
+        <span className="absolute -right-1 -bottom-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-navy text-white">
+          <IconLock className="h-2.5 w-2.5" />
+        </span>
+      )}
+    </button>
   )
 }
 

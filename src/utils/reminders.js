@@ -62,8 +62,8 @@ export function timeLabel(time) {
   return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`
 }
 
-export function newReminder({ text, dueDate = '', dueTime = '', category = 'general', important = false }) {
-  return {
+export function newReminder({ text, dueDate = '', dueTime = '', category = 'general', important = false, sale = null }) {
+  const r = {
     id: `r_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
     text: String(text || '').trim(),
     dueDate: dueDate || '',
@@ -73,6 +73,32 @@ export function newReminder({ text, dueDate = '', dueTime = '', category = 'gene
     done: false,
     createdAt: new Date().toISOString(),
   }
+  const clean = cleanSale(sale)
+  if (clean) r.sale = clean
+  return r
+}
+
+/**
+ * Datos de la venta ligados a un recordatorio inteligente (Envíos → campana):
+ * pedido, cliente, teléfono, nota breve y resumen. Se guardan como texto plano.
+ */
+export function cleanSale(sale) {
+  if (!sale || typeof sale !== 'object' || sale.orderId == null) return null
+  // eslint-disable-next-line no-control-regex -- se quitan a propósito
+  const txt = (v, max) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max)
+  return {
+    orderId: String(sale.orderId),
+    trackingCode: txt(sale.trackingCode, 20),
+    customerName: txt(sale.customerName, 120),
+    phone: String(sale.phone ?? '').replace(/\D/g, '').slice(0, 12),
+    note: txt(sale.note, 140),
+    summary: txt(sale.summary, 600),
+  }
+}
+
+/** Recordatorio pendiente de una venta (o null). */
+export function reminderForOrder(list, orderId) {
+  return (list || []).find((r) => !r.done && r.sale && r.sale.orderId === String(orderId)) || null
 }
 
 /** Pendientes primero, luego por fecha/hora; los hechos siempre al final. */
@@ -184,6 +210,7 @@ export function loadReminders(merchantId) {
         important: Boolean(r.important),
         done: Boolean(r.done),
         createdAt: r.createdAt || new Date().toISOString(),
+        ...(cleanSale(r.sale) ? { sale: cleanSale(r.sale) } : {}),
       }))
   } catch {
     return []
