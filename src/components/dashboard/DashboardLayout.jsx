@@ -5,9 +5,11 @@ import { fetchActivePlans, isProPlan } from '../../utils/plans'
 import { supportWhatsAppUrl } from '../../utils/support'
 import ClaudeCodeLoader from '../ClaudeCodeLoader'
 import { ThemeButton } from '../ThemeToggle'
+import InstallAppButton from '../InstallAppButton'
 import NotificationBell from './NotificationBell'
 import { CountdownChip, ExpiryBanner, SubscriptionLock } from './SubscriptionCountdown'
 import { subscriptionDeadline } from '../../utils/subscription'
+import { syncReminders } from '../../utils/reminders'
 import OnboardingChecklist from './OnboardingChecklist'
 import ShareMenu from './ShareMenu'
 import {
@@ -135,6 +137,15 @@ export default function DashboardLayout({ email, onLogout }) {
     return () => mq.removeEventListener('change', on)
   }, [])
 
+  // Recordatorios en la nube: se sincronizan al entrar y al volver a la pestaña.
+  useEffect(() => {
+    if (!merchant?.id || !proEnabled) return undefined
+    syncReminders(merchant.id)
+    const onVisible = () => document.visibilityState === 'visible' && syncReminders(merchant.id)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [merchant?.id, proEnabled])
+
   // Dentro del panel el botón de tema va en el encabezado (ver index.css).
   useEffect(() => {
     document.documentElement.classList.add('inline-theme')
@@ -257,6 +268,10 @@ export default function DashboardLayout({ email, onLogout }) {
           )}
         </nav>
 
+        {/* Celular: descargar la app (no aparece en computadora ni si ya está instalada). */}
+        <div className="mx-2.5 mb-2 lg:hidden">
+          <InstallAppButton variant="dark" className="w-full" />
+        </div>
         {merchant && (
           <div
             className={`mx-2.5 mb-3 rounded-lg bg-white/10 px-3 py-1.5 text-center text-xs font-bold text-brand ${

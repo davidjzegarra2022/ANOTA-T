@@ -5,7 +5,11 @@ import { IconDownload } from '../icons'
 // public/plantillas/.
 const TEMPLATES = [
   { courier: 'Shalom', description: 'Guías masivas para Shalom Empresarial (Excel PRO).', file: '/plantillas/plantilla-shalom-masivo.xlsx' },
-  { courier: 'Olva Courier', description: 'Carga masiva de envíos para Olva.', file: null },
+  {
+    courier: 'Olva Courier',
+    description: 'Formato oficial de Olva para envíos masivos con pago en destino (versión 31/10/2026). Al abrirlo en Excel, pulsa «Habilitar contenido» para que funcionen sus listas.',
+    file: '/plantillas/plantilla-olva-masivo-pago-destino.xlsm',
+  },
   { courier: 'Marvisur', description: 'Carga masiva de envíos para Marvisur.', file: null },
 ]
 

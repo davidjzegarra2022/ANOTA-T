@@ -1,0 +1,41 @@
+// App Android de ANOTA-T: una "Trusted Web Activity" que abre
+// https://anotat.vercel.app a pantalla completa (sin barra del navegador).
+// La firma se lee de variables de entorno: la clave NO va en el repositorio.
+//   ANOTAT_KEYSTORE, ANOTAT_KEYSTORE_PASSWORD, ANOTAT_KEY_ALIAS, ANOTAT_KEY_PASSWORD
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'pe.anotat.app'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'pe.anotat.app'
+        minSdk 21
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+    signingConfigs {
+        release {
+            if (System.getenv('ANOTAT_KEYSTORE')) {
+                storeFile file(System.getenv('ANOTAT_KEYSTORE'))
+                storePassword System.getenv('ANOTAT_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANOTAT_KEY_ALIAS')
+                keyPassword System.getenv('ANOTAT_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

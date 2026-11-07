@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "pe.anotat.app",
+      "sha256_cert_fingerprints": ["84:57:9C:51:FA:EC:12:B3:A0:DB:18:F6:09:99:A7:88:99:53:9D:C8:77:40:DB:77:40:40:90:97:D4:43:70:8C"]
+    }
+  }
+]
