@@ -14,6 +14,7 @@ import { fetchMyOrders, limaTodayIso } from '../../utils/orders'
 import { dueLabel, loadReminders, saveReminders, syncReminders, timeLabel } from '../../utils/reminders'
 import { IconBell, IconCheck, IconX } from '../icons'
 import { playAlert, setSoundEnabled, soundEnabled, unlockAudioOnFirstGesture } from '../../utils/notifySound'
+import { disablePush, enablePush, pushState, sendTestPush } from '../../utils/push'
 
 const POLL_MS = 60 * 1000
 
@@ -36,7 +37,6 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
   const [newOrders, setNewOrders] = useState([])
   const [open, setOpen] = useState(false)
   const [popup, setPopup] = useState(null)
-  const [permission, setPermission] = useState(() => (notificationsSupported() ? Notification.permission : 'unsupported'))
   const stateRef = useRef(loadAlertState(merchantId))
   const knownIds = useRef(null)
   const boxRef = useRef(null)
@@ -166,6 +166,28 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
 
   // Cada aviso nuevo suena (campanita propia, ≤ 5 s) y vibra en celular.
   const [soundOn, setSoundOn] = useState(soundEnabled)
+  // Avisos push (aunque ANOTA-T esté cerrado) en ESTE dispositivo.
+  const [push, setPush] = useState('checking')
+  const [pushMsg, setPushMsg] = useState(null)
+  const [pushBusy, setPushBusy] = useState(false)
+  useEffect(() => {
+    if (open) pushState().then(setPush).catch(() => setPush('unsupported'))
+  }, [open])
+  async function togglePush() {
+    setPushBusy(true)
+    setPushMsg(null)
+    const res = await (push === 'on' ? disablePush() : enablePush()).catch(() => ({ ok: false, error: 'No se pudo cambiar los avisos push. Intenta de nuevo.' }))
+    setPushBusy(false)
+    if (!res.ok) setPushMsg({ ok: false, text: res.error })
+    else setPushMsg({ ok: true, text: push === 'on' ? 'Avisos push desactivados en este dispositivo.' : '¡Listo! Te llegarán avisos aunque ANOTA-T esté cerrado.' })
+    setPush(await pushState().catch(() => 'unsupported'))
+  }
+  async function testPush() {
+    setPushBusy(true)
+    const res = await sendTestPush().catch(() => ({ ok: false, error: 'No se pudo enviar la prueba.' }))
+    setPushBusy(false)
+    setPushMsg(res.ok ? { ok: true, text: 'Aviso de prueba enviado. Debería llegarte en unos segundos.' } : { ok: false, text: res.error })
+  }
   useEffect(() => {
     unlockAudioOnFirstGesture()
   }, [])
@@ -197,13 +219,7 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
     setReminders(next)
   }
 
-  async function askPermission() {
-    try {
-      setPermission(await Notification.requestPermission())
-    } catch {
-      // el navegador no dejó pedir permiso
-    }
-  }
+
 
   function go(tab) {
     setOpen(false)
@@ -315,13 +331,34 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
               Probar sonido
             </button>
           </div>
-          {permission === 'default' && (
-            <div className="border-t border-slate-100 bg-surface px-4 py-2.5">
-              <button type="button" onClick={askPermission} className="text-xs font-bold text-brand-dark hover:underline">
-                🔔 Recibir avisos aunque la pestaña esté cerrada o minimizada
-              </button>
-            </div>
-          )}
+          <div className="border-t border-slate-100 bg-surface px-4 py-3 text-xs">
+            <p className="font-bold text-navy">📲 Avisos push (aunque ANOTA-T esté cerrado)</p>
+            {push === 'needs-install' ? (
+              <p className="mt-1 text-muted">En iPhone primero instala la app: Safari → Compartir → «Agregar a inicio». Luego ábrela desde el ícono y actívalos aquí.</p>
+            ) : push === 'unsupported' ? (
+              <p className="mt-1 text-muted">Este navegador no permite avisos push. Prueba con Chrome, Edge o la app instalada.</p>
+            ) : push === 'denied' ? (
+              <p className="mt-1 text-muted">Bloqueaste las notificaciones para ANOTA-T. Actívalas en los ajustes del navegador (ícono del candado junto a la dirección).</p>
+            ) : (
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={togglePush}
+                  disabled={pushBusy || push === 'checking'}
+                  className={`rounded-lg px-2.5 py-1.5 font-bold disabled:opacity-60 ${push === 'on' ? 'border border-slate-300 bg-white text-navy' : 'bg-brand text-navy'}`}
+                >
+                  {pushBusy ? 'Un momento…' : push === 'on' ? 'Desactivar en este dispositivo' : 'Activar en este dispositivo'}
+                </button>
+                {push === 'on' && (
+                  <button type="button" onClick={testPush} disabled={pushBusy} className="font-bold text-brand-dark hover:underline disabled:opacity-60">
+                    Enviar aviso de prueba
+                  </button>
+                )}
+                {push === 'on' && <span className="font-semibold text-emerald-700">● Activos</span>}
+              </div>
+            )}
+            {pushMsg && <p role="status" className={`mt-1.5 font-semibold ${pushMsg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{pushMsg.text}</p>}
+          </div>
         </div>
       )}
 

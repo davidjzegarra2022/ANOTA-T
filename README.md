@@ -1031,3 +1031,33 @@ repositorio — lo detecta como proyecto Vite sin configuración adicional.
 No olvides las variables de entorno de Supabase (ver arriba) y, en
 Supabase → Authentication → URL Configuration, apuntar el "Site URL" a tu
 dominio de producción.
+
+## Notificaciones push (avisos aunque ANOTA-T esté cerrado)
+
+Piezas:
+
+- **Navegador** (`src/utils/push.js`, campanita → «Avisos push»): se suscribe
+  con la clave pública VAPID y guarda el dispositivo en `push_subscriptions`
+  (vía `register_push_subscription`). El service worker (`public/sw.js`)
+  muestra el aviso; si ANOTA-T está abierto y a la vista no lo duplica.
+- **Despachador** (`api/push-dispatch.js`, Vercel): envía con `web-push`.
+  Lo llama Supabase con el encabezado `x-push-secret`.
+- **Supabase** (`sql/2026-11-08-notificaciones-push.sql`): `pg_cron` llama al
+  despachador cada minuto (recordatorios que llegaron a su hora y resúmenes de
+  9, 13 y 18 h, solo plan Pro) y un trigger lo llama al entrar un pedido.
+- `api/push-test.js`: «Enviar aviso de prueba» desde la campanita.
+
+Configuración (una sola vez):
+
+1. Vercel → Project → Settings → Environment Variables (Production):
+   `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `PUSH_DISPATCH_SECRET`,
+   `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API →
+   service_role). Volver a desplegar.
+2. Supabase → SQL Editor: correr `sql/2026-11-07-recordatorios-en-la-nube.sql`
+   (si no se corrió) y luego `sql/2026-11-08-notificaciones-push.sql`
+   reemplazando `PEGA_AQUI_EL_SECRETO` por el mismo `PUSH_DISPATCH_SECRET`.
+
+La clave pública VAPID también está en `src/utils/push.js` (es pública por
+diseño); la privada y la service_role **solo** en Vercel.
+iPhone: el push funciona dentro de la app instalada (Safari → Compartir →
+«Agregar a inicio», iOS 16.4+).
