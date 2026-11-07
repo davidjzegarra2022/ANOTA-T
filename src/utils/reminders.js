@@ -210,6 +210,7 @@ export function loadReminders(merchantId) {
         important: Boolean(r.important),
         done: Boolean(r.done),
         createdAt: r.createdAt || new Date().toISOString(),
+        updatedAt: r.updatedAt || r.createdAt || new Date(0).toISOString(),
         ...(cleanSale(r.sale) ? { sale: cleanSale(r.sale) } : {}),
       }))
   } catch {
@@ -217,19 +218,223 @@ export function loadReminders(merchantId) {
   }
 }
 
+function emitChange() {
+  try {
+    window.dispatchEvent(new Event('anotat-reminders'))
+  } catch {
+    // fuera del navegador
+  }
+}
+
+/** Contenido comparable de un recordatorio (sin marcas de tiempo). */
+function contentOf(r) {
+  const { updatedAt: _u, createdAt: _c, ...rest } = r
+  return JSON.stringify(rest)
+}
+
+/**
+ * Guarda la lista (en este dispositivo) y la sube a tu cuenta en segundo
+ * plano. Marca la hora de cambio de lo que cambió y recuerda lo borrado,
+ * para que la sincronización no lo resucite desde otro dispositivo.
+ */
 export function saveReminders(merchantId, list) {
   try {
-    localStorage.setItem(storageKey(merchantId), JSON.stringify(list))
-    // Avisa a la campanita del panel que la lista cambió.
-    try {
-      window.dispatchEvent(new Event('anotat-reminders'))
-    } catch {
-      // fuera del navegador
-    }
+    const before = new Map(loadReminders(merchantId).map((r) => [r.id, r]))
+    const now = new Date().toISOString()
+    const stamped = list.map((r) => {
+      const prev = before.get(r.id)
+      return !prev || contentOf(prev) !== contentOf(r) ? { ...r, updatedAt: now } : { ...r, updatedAt: prev.updatedAt }
+    })
+    const keep = new Set(stamped.map((r) => r.id))
+    const removed = [...before.keys()].filter((id) => !keep.has(id))
+    if (removed.length) addTombstones(merchantId, removed)
+    localStorage.setItem(storageKey(merchantId), JSON.stringify(stamped))
+    emitChange()
+    scheduleSync(merchantId)
     return true
   } catch {
     // Sin espacio o sin localStorage (modo privado): la pantalla sigue
     // funcionando en memoria mientras dure la sesión.
     return false
   }
+}
+
+// --- Sincronización con Supabase (sql/2026-11-07-recordatorios-en-la-nube.sql)
+// Si la tabla no existe todavía, todo sigue funcionando solo en el navegador.
+
+const metaKey = (merchantId, kind) => `${STORAGE_PREFIX}-${kind}:${merchantId || 'anon'}`
+
+function readTombs(merchantId) {
+  try {
+    const v = JSON.parse(localStorage.getItem(metaKey(merchantId, 'deleted')) || '{}')
+    return v && !Array.isArray(v) ? v : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeTombs(merchantId, tombs) {
+  try {
+    localStorage.setItem(metaKey(merchantId, 'deleted'), JSON.stringify(tombs))
+  } catch {
+    // sin espacio
+  }
+}
+
+function addTombstones(merchantId, ids) {
+  const t = readTombs(merchantId)
+  const now = new Date().toISOString()
+  ids.forEach((id) => {
+    t[id] = now
+  })
+  writeTombs(merchantId, t)
+}
+
+let syncStatus = 'idle' // idle | cloud | local | error
+export function reminderSyncStatus() {
+  return syncStatus
+}
+
+function setStatus(next) {
+  if (syncStatus === next) return
+  syncStatus = next
+  try {
+    window.dispatchEvent(new Event('anotat-reminders-sync'))
+  } catch {
+    // fuera del navegador
+  }
+}
+
+function toRow(r) {
+  return {
+    id: r.id,
+    text: String(r.text).slice(0, 300),
+    due_date: r.dueDate || null,
+    due_time: r.dueTime || null,
+    category: r.category,
+    important: Boolean(r.important),
+    done: Boolean(r.done),
+    sale: r.sale || null,
+    deleted: false,
+    created_at: r.createdAt,
+    updated_at: r.updatedAt,
+  }
+}
+
+function fromRow(row) {
+  const r = {
+    id: row.id,
+    text: row.text,
+    dueDate: row.due_date || '',
+    dueTime: row.due_time || '',
+    category: categoryOf(row.category).id,
+    important: Boolean(row.important),
+    done: Boolean(row.done),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at || row.created_at,
+    deleted: Boolean(row.deleted),
+  }
+  const sale = cleanSale(row.sale)
+  if (sale) r.sale = sale
+  return r
+}
+
+const timers = {}
+function scheduleSync(merchantId) {
+  if (!merchantId || typeof window === 'undefined') return
+  clearTimeout(timers[merchantId])
+  timers[merchantId] = setTimeout(() => syncReminders(merchantId), 500)
+}
+
+let running = Promise.resolve()
+
+/**
+ * Junta lo de este dispositivo con lo de tu cuenta:
+ *  - lo nuevo de aquí se sube; lo nuevo de allá se baja;
+ *  - si ambos cambiaron, gana el cambio más reciente;
+ *  - lo borrado aquí se borra allá; lo que se borró en otro dispositivo
+ *    (ya estaba sincronizado y desapareció de la cuenta) se quita aquí.
+ */
+export function syncReminders(merchantId, { getClient } = {}) {
+  running = running.then(() => doSync(merchantId, getClient)).catch(() => {})
+  return running
+}
+
+async function doSync(merchantId, getClient) {
+  if (!merchantId) return syncStatus
+  const supabase = getClient ? await getClient() : await (await import('./supabaseClient')).getSupabaseClient()
+  if (!supabase) return setStatus('local'), syncStatus
+  // Sin sesión válida la base responde «vacío» (no error) y eso parecería
+  // que se borró todo: no se sincroniza hasta tener sesión.
+  if (supabase.auth?.getSession) {
+    const { data: sess } = await supabase.auth.getSession()
+    if (!sess?.session) return syncStatus
+  }
+  const { data, error } = await supabase.from('merchant_reminders').select('*')
+  if (error) {
+    const missing = /merchant_reminders|does not exist|schema cache|PGRST205|42P01/i.test(`${error.code} ${error.message}`)
+    setStatus(missing ? 'local' : 'error')
+    return syncStatus
+  }
+  const remote = new Map((data || []).map((row) => [row.id, fromRow(row)]))
+  const local = new Map(loadReminders(merchantId).map((r) => [r.id, r]))
+  const tombs = readTombs(merchantId)
+  const newer = (x, y) => Date.parse(x) > Date.parse(y)
+
+  const merged = []
+  const upload = []
+  const markDeleted = []
+  for (const id of new Set([...local.keys(), ...remote.keys(), ...Object.keys(tombs)])) {
+    const l = local.get(id)
+    const r = remote.get(id)
+    if (tombs[id]) {
+      // Borrado aquí: se marca borrado en la cuenta (si allí sigue vivo).
+      if (r && !r.deleted) markDeleted.push({ id, at: tombs[id], base: r })
+      continue
+    }
+    if (r?.deleted) {
+      // Borrado en otro dispositivo, salvo que aquí se haya editado después.
+      if (l && newer(l.updatedAt, r.updatedAt)) {
+        merged.push(l)
+        upload.push(l)
+      }
+      continue
+    }
+    if (l && r) {
+      if (newer(l.updatedAt, r.updatedAt)) {
+        merged.push(l)
+        upload.push(l)
+      } else merged.push(r)
+    } else if (l) {
+      // Falta en la cuenta: nunca se interpreta como borrado (podría ser la
+      // sesión); se sube.
+      merged.push(l)
+      upload.push(l)
+    } else if (r) merged.push(r)
+  }
+
+  const rows = [
+    ...upload.map(toRow),
+    ...markDeleted.map(({ base, at }) => ({ ...toRow(base), deleted: true, updated_at: at })),
+  ]
+  if (rows.length) {
+    const { error: upErr } = await supabase.from('merchant_reminders').upsert(rows)
+    if (upErr) return setStatus('error'), syncStatus
+  }
+  // Las marcas de borrado ya quedaron en la cuenta: se olvidan aquí.
+  writeTombs(merchantId, {})
+  for (const r of merged) delete r.deleted
+
+  const before = JSON.stringify(sortReminders([...local.values()]))
+  const after = JSON.stringify(sortReminders(merged))
+  if (before !== after) {
+    try {
+      localStorage.setItem(storageKey(merchantId), JSON.stringify(merged))
+    } catch {
+      // sin espacio
+    }
+    emitChange()
+  }
+  setStatus('cloud')
+  return syncStatus
 }

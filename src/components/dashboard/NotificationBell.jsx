@@ -11,8 +11,9 @@ import {
   timedReminderDue,
 } from '../../utils/alerts'
 import { fetchMyOrders, limaTodayIso } from '../../utils/orders'
-import { dueLabel, loadReminders, saveReminders, timeLabel } from '../../utils/reminders'
+import { dueLabel, loadReminders, saveReminders, syncReminders, timeLabel } from '../../utils/reminders'
 import { IconBell, IconCheck, IconX } from '../icons'
+import { playAlert, setSoundEnabled, soundEnabled, unlockAudioOnFirstGesture } from '../../utils/notifySound'
 
 const POLL_MS = 60 * 1000
 
@@ -102,6 +103,8 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
       knownIds.current = ids
 
       // --- Recordatorios --------------------------------------------------
+      // Primero se traen los de tu cuenta (los que anotaste en otro dispositivo).
+      if (enabledRef.current) await syncReminders(merchantId)
       const list = loadReminders(merchantId)
       const on = enabledRef.current
       const pend = on ? pendingReminders(list) : []
@@ -160,6 +163,18 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
     }, POLL_MS)
     return () => clearInterval(id)
   }, [tick])
+
+  // Cada aviso nuevo suena (campanita propia, ≤ 5 s) y vibra en celular.
+  const [soundOn, setSoundOn] = useState(soundEnabled)
+  useEffect(() => {
+    unlockAudioOnFirstGesture()
+  }, [])
+  const lastPopup = useRef(null)
+  useEffect(() => {
+    if (!popup || lastPopup.current === popup) return
+    lastPopup.current = popup
+    playAlert(popup.kind === 'order' ? 'order' : 'reminder')
+  }, [popup])
 
   // Los avisos de pedido se cierran solos; los de recordatorios esperan.
   useEffect(() => {
@@ -283,6 +298,22 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
               </div>
             )}
             {!remindersEnabled && newOrders.length === 0 && <p className="px-4 py-4 text-sm text-muted">Sin avisos nuevos. Aquí verás los pedidos que lleguen.</p>}
+          </div>
+          <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-4 py-2.5 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setSoundEnabled(!soundOn)
+                setSoundOn(!soundOn)
+              }}
+              aria-pressed={soundOn}
+              className="font-bold text-navy hover:underline"
+            >
+              {soundOn ? '🔊 Sonido y vibración: activado' : '🔇 Sonido y vibración: apagado'}
+            </button>
+            <button type="button" onClick={() => playAlert('reminder', { force: true })} className="font-bold text-brand-dark hover:underline">
+              Probar sonido
+            </button>
           </div>
           {permission === 'default' && (
             <div className="border-t border-slate-100 bg-surface px-4 py-2.5">

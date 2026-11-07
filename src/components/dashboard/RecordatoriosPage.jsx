@@ -12,6 +12,7 @@ import {
   newReminder,
   saveReminders,
   timeLabel,
+  reminderSyncStatus,
 } from '../../utils/reminders'
 import { buildWhatsAppUrl } from '../../utils/whatsapp'
 import { IconBell, IconCheck, IconChevronLeft, IconChevronRight, IconLock, IconStar, IconTrash } from '../icons'
@@ -58,6 +59,14 @@ export default function RecordatoriosPage({ merchant, locked = false, onUpgrade 
   useEffect(() => {
     saveReminders(merchantId, items)
   }, [items, merchantId])
+
+  // Estado de la sincronización con tu cuenta (Supabase).
+  const [sync, setSync] = useState(reminderSyncStatus)
+  useEffect(() => {
+    const on = () => setSync(reminderSyncStatus())
+    window.addEventListener('anotat-reminders-sync', on)
+    return () => window.removeEventListener('anotat-reminders-sync', on)
+  }, [])
 
   // Si se marca uno como listo desde la campanita, esta lista se actualiza.
   // (Se compara antes de cambiar el estado para no entrar en un bucle de
@@ -355,7 +364,16 @@ export default function RecordatoriosPage({ merchant, locked = false, onUpgrade 
 
           <p className="px-1 text-[11px] leading-relaxed text-muted">
             🔔 La campanita de arriba te avisa de lo pendiente al iniciar sesión, a las 9:00, 13:00 y 18:00, y a la hora exacta de cada recordatorio que
-            tenga hora. Los recordatorios se guardan en este dispositivo, ligados a tu cuenta de tienda.
+            tenga hora.
+            <span className={`mt-1 block font-semibold ${sync === 'cloud' ? 'text-emerald-700' : sync === 'error' ? 'text-red-600' : 'text-amber-700'}`}>
+              {sync === 'cloud'
+                ? '☁️ Sincronizados con tu cuenta: los ves en todos tus dispositivos.'
+                : sync === 'error'
+                  ? '⚠️ No se pudo sincronizar ahora; se reintenta solo.'
+                  : sync === 'local'
+                    ? '📱 Guardados solo en este dispositivo (falta activar la sincronización en Supabase).'
+                    : 'Sincronizando…'}
+            </span>
           </p>
         </aside>
       </div>

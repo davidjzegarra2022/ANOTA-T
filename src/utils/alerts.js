@@ -92,13 +92,18 @@ export function saveAlertState(merchantId, state, today = dayKey()) {
 export function systemNotify(title, body) {
   try {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false
-    new Notification(title, { body, icon: '/icon-192.png', tag: 'anotat-' + title })
+    const opts = { body, icon: '/icon-192.png', badge: '/icon-192.png', tag: 'anotat-' + title, renotify: true, vibrate: [160, 80, 160, 80, 300], data: { url: '/' } }
+    // En Android las notificaciones solo funcionan desde el service worker.
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.ready.then((reg) => reg.showNotification(title, opts)).catch(() => new Notification(title, opts))
+    } else {
+      new Notification(title, opts)
+    }
     return true
   } catch {
     return false
   }
 }
-
 export function notificationsSupported() {
   return typeof Notification !== 'undefined'
 }

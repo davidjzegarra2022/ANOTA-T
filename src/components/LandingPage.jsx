@@ -5,6 +5,7 @@ import logoIcon from '../assets/logo-icon.webp'
 import { fetchActivePlans, TRIAL_DAYS } from '../utils/plans'
 import { codeFromLocation } from '../utils/tracking'
 import { TrackingSearch } from './TrackingPage'
+import InstallAppButton from './InstallAppButton'
 import { supportWhatsAppUrl } from '../utils/support'
 import { IconCheck, IconWhatsapp } from './icons'
 
@@ -122,6 +123,10 @@ export default function LandingPage() {
           </div>
           <a href="/login" className="btn btn-primary !px-4 !py-2 text-xs sm:hidden">Ingresar</a>
         </nav>
+        {/* Celular: descargar la app. */}
+        <div className="mx-auto w-[92%] max-w-[1180px] pb-3 sm:hidden">
+          <InstallAppButton variant="dark" className="w-full" />
+        </div>
       </header>
 
       <main>
