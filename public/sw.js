@@ -5,7 +5,7 @@
 //    las permite desde aquí) y al tocarlas abre/enfoca el panel.
 // No guarda en caché datos de la base: pedidos y recordatorios siempre se
 // leen en vivo de Supabase.
-const CACHE = 'anotat-shell-v1'
+const CACHE = 'anotat-shell-v2'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.add('/')).catch(() => {}))
@@ -28,6 +28,32 @@ self.addEventListener('fetch', (event) => {
         return res
       })
       .catch(() => caches.match('/').then((r) => r || Response.error())),
+  )
+})
+
+// Aviso push desde el servidor (/api/push-dispatch). Si ANOTA-T está abierto
+// y a la vista, no se duplica: la propia página ya muestra su ventanita.
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = { title: 'ANOTA-T', body: event.data ? event.data.text() : '' }
+  }
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      const visible = wins.some((w) => w.visibilityState === 'visible' && w.focused)
+      if (visible && data.tag !== 'push-test') return undefined
+      return self.registration.showNotification(data.title || 'ANOTA-T', {
+        body: data.body || '',
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: data.tag || 'anotat',
+        renotify: true,
+        vibrate: data.kind === 'order' ? [120, 60, 220] : [160, 80, 160, 80, 300],
+        data: { url: data.url || '/' },
+      })
+    }),
   )
 })
 
