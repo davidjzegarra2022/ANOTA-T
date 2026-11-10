@@ -1,6 +1,7 @@
 // Despachador de notificaciones push. Lo llama Supabase (nunca el navegador):
 //   * {"type":"tick"}  — cada minuto (pg_cron): recordatorios que llegaron a
-//     su hora y, en los turnos de 9, 13 y 18 h (Lima), resumen de pendientes.
+//     su hora, avisos 6 horas antes y, en los turnos de 9, 13 y 18 h (Lima),
+//     resumen de pendientes.
 //   * {"type":"order","order_id":123} — al entrar un pedido (trigger).
 // Protegido con el encabezado x-push-secret = PUSH_DISPATCH_SECRET.
 // Variables en Vercel: SUPABASE_SERVICE_ROLE_KEY, VAPID_PUBLIC_KEY,
@@ -50,6 +51,27 @@ export default async function handler(req, res, { fetchImpl = fetch, webpushImpl
       }
     })
 
+    // tick: aviso adelantado, 6 horas antes de la hora pactada
+    const early = (await rpc(cfg, fetchImpl, 'push_claim_advance_reminders')) || []
+    const earlyByMerchant = new Map()
+    for (const r of early) earlyByMerchant.set(r.merchant_id, [...(earlyByMerchant.get(r.merchant_id) || []), r])
+    const advance = await sendToMerchants(cfg, fetchImpl, webpushImpl, [...earlyByMerchant.keys()], (mid) => {
+      const list = earlyByMerchant.get(mid) || []
+      if (!list.length) return null
+      const r0 = list[0]
+      const hours = Math.max(1, Math.round(Number(r0.hours_left) || 6))
+      return {
+        title: list.length === 1 ? `⏰ En ${hours} h: ${r0.text}` : `⏰ ${list.length} recordatorios próximos`,
+        body:
+          list.length === 1
+            ? [`Pactado para las ${String(r0.due_time || '').slice(0, 5)}`, phoneText(r0.phone), r0.note ? `📝 ${r0.note}` : ''].filter(Boolean).join(' · ')
+            : list.map((r) => r.text).join(' · '),
+        tag: list.length === 1 ? `adv-${r0.reminder_id}` : `adv-${Date.now()}`,
+        kind: 'reminder',
+        url: '/',
+      }
+    })
+
     // tick: resumen en los turnos de 9, 13 y 18 h
     let summaries = { sent: 0, gone: 0 }
     const { date, hour } = limaNow(now)
@@ -61,7 +83,7 @@ export default async function handler(req, res, { fetchImpl = fetch, webpushImpl
         return r && { title: `🔔 Tienes ${r.pending} pendiente${r.pending === 1 ? '' : 's'}`, body: r.first_text || 'Revisa tus recordatorios.', tag: `summary-${date}-${hour}`, kind: 'reminder', url: '/' }
       })
     }
-    return send(res, 200, { ok: true, type: 'tick', reminders, summaries })
+    return send(res, 200, { ok: true, type: 'tick', reminders, advance, summaries })
   } catch (err) {
     return send(res, 500, { error: 'dispatch_failed', detail: String(err?.message || err).slice(0, 200) })
   }

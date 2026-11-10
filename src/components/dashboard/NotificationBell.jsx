@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  advanceReminderDue,
   dueSlot,
   isOverdue,
   loadAlertState,
   newOrdersSince,
   notificationsSupported,
   pendingReminders,
+  reminderAt,
   saveAlertState,
   systemNotify,
   timedReminderDue,
@@ -28,8 +30,8 @@ function limaDayOf(iso) {
  *  - recordatorios vencidos, de hoy o importantes (solo plan Pro);
  *  - pedidos nuevos desde la última vez que se miró Envíos.
  * Se mueve (animación) mientras haya algo pendiente, y abre una ventanita de
- * aviso al iniciar sesión, a las 9:00, 13:00 y 18:00, a la hora de cada
- * recordatorio y cuando entra un pedido.
+ * aviso al iniciar sesión, a las 9:00, 13:00 y 18:00, 6 horas antes de cada
+ * recordatorio con hora, a su hora exacta y cuando entra un pedido.
  */
 export default function NotificationBell({ merchant, remindersEnabled, currentTab, onGoTo, compact = false }) {
   const merchantId = merchant.id
@@ -109,7 +111,9 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
       const on = enabledRef.current
       const pend = on ? pendingReminders(list) : []
       const timed = on ? timedReminderDue(list, now, stateRef.current.notified) : []
+      const advance = on ? advanceReminderDue(list, now, stateRef.current.notified) : []
       const slot = dueSlot(now, stateRef.current.shown)
+      const extra = (t) => [t.sale?.phone ? `📞 +51 ${t.sale.phone.slice(-9)}` : '', t.sale?.note ? `📝 ${t.sale.note}` : ''].filter(Boolean).join(' · ')
 
       if (first) {
         // Al iniciar sesión: un solo aviso con todo, y el turno y los
@@ -122,16 +126,19 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
         } catch {
           // sin sessionStorage
         }
-        if (!flag && (pend.length || fresh.length)) {
+        if (!flag && (pend.length || fresh.length || advance.length)) {
           setPopup({
             kind: 'login',
-            title: 'Tienes pendientes',
+            title: pend.length || fresh.length ? 'Tienes pendientes' : `Recordatorio${advance.length === 1 ? '' : 's'} próximo${advance.length === 1 ? '' : 's'}`,
             lines: [
               ...(fresh.length ? [`${fresh.length} pedido${fresh.length === 1 ? '' : 's'} nuevo${fresh.length === 1 ? '' : 's'} desde tu última visita`] : []),
+              ...advance.map((t) => `⏰ ${timeLabel(t.dueTime)} · ${t.text}`),
               ...pend.slice(0, 3).map((r) => r.text),
             ],
             more: Math.max(0, pend.length - 3),
           })
+          // Si el aviso adelantado ya se mostró aquí, no se repite en el tick.
+          if (advance.length) persist({ notified: [...stateRef.current.notified, ...advance.map((r) => `adv:${r.id}`)] })
         }
         return
       }
@@ -139,9 +146,22 @@ export default function NotificationBell({ merchant, remindersEnabled, currentTa
       if (timed.length) {
         persist({ notified: [...stateRef.current.notified, ...timed.map((r) => r.id)] })
         const r = timed[0]
-        const extra = (t) => [t.sale?.phone ? `📞 +51 ${t.sale.phone.slice(-9)}` : '', t.sale?.note ? `📝 ${t.sale.note}` : ''].filter(Boolean).join(' · ')
         systemNotify(`⏰ ${r.text}`, [`Recordatorio de las ${timeLabel(r.dueTime)}`, extra(r)].filter(Boolean).join(' · '))
         setPopup({ kind: 'timed', title: 'Es hora de tu recordatorio', lines: timed.flatMap((t) => [`${timeLabel(t.dueTime)} · ${t.text}`, extra(t)].filter(Boolean)) })
+      } else if (advance.length) {
+        // Aviso adelantado: 6 horas antes (o al abrir el panel dentro de la
+        // ventana de 1 a 6 horas antes). Lleva su propia clave para que el
+        // aviso de la hora exacta siga sonando después.
+        persist({ notified: [...stateRef.current.notified, ...advance.map((r) => `adv:${r.id}`)] })
+        const ordered = [...advance].sort((x, y) => reminderAt(x) - reminderAt(y))
+        const a = ordered[0]
+        const hours = Math.max(1, Math.round((reminderAt(a).getTime() - now.getTime()) / 3_600_000))
+        systemNotify(`⏰ En ${hours} h: ${a.text}`, [`Recordatorio de las ${timeLabel(a.dueTime)}`, extra(a)].filter(Boolean).join(' · '))
+        setPopup({
+          kind: 'advance',
+          title: advance.length === 1 ? (hours === 1 ? 'Tu recordatorio es en 1 hora' : `Tu recordatorio es en ${hours} horas`) : 'Tienes recordatorios próximos',
+          lines: ordered.flatMap((t) => [`${timeLabel(t.dueTime)} · ${t.text}`, extra(t)].filter(Boolean)),
+        })
       } else if (slot) {
         persist({ shown: [...stateRef.current.shown, slot] })
         if (pend.length) {

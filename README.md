@@ -1042,9 +1042,11 @@ Piezas:
   muestra el aviso; si ANOTA-T está abierto y a la vista no lo duplica.
 - **Despachador** (`api/push-dispatch.js`, Vercel): envía con `web-push`.
   Lo llama Supabase con el encabezado `x-push-secret`.
-- **Supabase** (`sql/2026-11-08-notificaciones-push.sql`): `pg_cron` llama al
-  despachador cada minuto (recordatorios que llegaron a su hora y resúmenes de
-  9, 13 y 18 h, solo plan Pro) y un trigger lo llama al entrar un pedido.
+- **Supabase** (`sql/2026-11-08-notificaciones-push.sql` +
+  `sql/2026-11-10-recordatorio-6-horas-antes.sql`): `pg_cron` llama al
+  despachador cada minuto (recordatorios 6 horas antes y a su hora exacta,
+  resúmenes de 9, 13 y 18 h, solo plan Pro) y un trigger lo llama al entrar un
+  pedido.
 - `api/push-test.js`: «Enviar aviso de prueba» desde la campanita.
 
 Configuración (una sola vez):
@@ -1056,6 +1058,8 @@ Configuración (una sola vez):
 2. Supabase → SQL Editor: correr `sql/2026-11-07-recordatorios-en-la-nube.sql`
    (si no se corrió) y luego `sql/2026-11-08-notificaciones-push.sql`
    reemplazando `PEGA_AQUI_EL_SECRETO` por el mismo `PUSH_DISPATCH_SECRET`.
+   Por último `sql/2026-11-10-recordatorio-6-horas-antes.sql` (agrega el aviso
+   6 horas antes; se puede correr también después).
 
 La clave pública VAPID también está en `src/utils/push.js` (es pública por
 diseño); la privada y la service_role **solo** en Vercel.

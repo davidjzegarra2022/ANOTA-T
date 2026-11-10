@@ -3,6 +3,7 @@
 // Cuándo avisa con una ventanita:
 //   * al iniciar sesión (una vez por visita), si hay algo pendiente;
 //   * 3 veces al día — a las 9:00, 13:00 y 18:00 — si hay pendientes;
+//   * 6 horas antes de un recordatorio que tenga hora (una sola vez);
 //   * a la hora exacta de un recordatorio que tenga hora (una sola vez);
 //   * cuando entra un pedido nuevo mientras el panel está abierto.
 // Todo se calcula aquí con funciones puras (fáciles de probar); lo que ya se
@@ -10,6 +11,37 @@
 import { dayKey } from './reminders'
 
 export const ALERT_HOURS = [9, 13, 18]
+
+// Aviso adelantado: desde 6 horas antes hasta 1 hora antes de la hora pactada.
+// Si el panel se abre dentro de esa ventana, avisa igual (una sola vez).
+export const ADVANCE_HOURS = 6
+export const MIN_ADVANCE_HOURS = 1
+
+/** Momento local exacto de un recordatorio con día y hora ('AAAA-MM-DD', 'HH:MM'). */
+export function reminderAt(r) {
+  if (!r?.dueDate || !r?.dueTime) return null
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(r.dueTime).trim())
+  if (!m) return null
+  const [y, mo, d] = String(r.dueDate).split('-').map(Number)
+  if (!y || !mo || !d) return null
+  const at = new Date(y, mo - 1, d, Number(m[1]), Number(m[2]), 0, 0)
+  return Number.isNaN(at.getTime()) ? null : at
+}
+
+/**
+ * Recordatorios que toca avisar 6 horas antes: su hora cae entre 1 y 6 horas
+ * desde `now` y todavía no se avisaron con la clave `adv:<id>`. La clave es
+ * distinta de la del aviso a la hora exacta, así suenan las dos veces.
+ */
+export function advanceReminderDue(list, now = new Date(), notified = []) {
+  const min = now.getTime() + MIN_ADVANCE_HOURS * 60 * 60 * 1000
+  const max = now.getTime() + ADVANCE_HOURS * 60 * 60 * 1000
+  return (list || []).filter((r) => {
+    if (r.done || notified.includes(`adv:${r.id}`)) return false
+    const at = reminderAt(r)
+    return at ? at.getTime() >= min && at.getTime() <= max : false
+  })
+}
 
 /** Recordatorios que piden atención: vencidos, de hoy, o importantes sin fecha. */
 export function pendingReminders(list, today = dayKey()) {

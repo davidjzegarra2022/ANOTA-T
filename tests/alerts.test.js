@@ -1,7 +1,8 @@
 import { expect, test } from 'vitest'
-import { dueSlot, isOverdue, newOrdersSince, pendingReminders, timedReminderDue } from '../src/utils/alerts.js'
+import { advanceReminderDue, dueSlot, isOverdue, newOrdersSince, pendingReminders, reminderAt, timedReminderDue } from '../src/utils/alerts.js'
 
 const at = (h, m = 0) => new Date(2026, 10, 4, h, m)
+const atOn = (d, h, m = 0) => new Date(2026, 10, d, h, m)
 const r = (id, extra) => ({ id, text: id, done: false, dueDate: '', dueTime: '', important: false, ...extra })
 
 test('pendingReminders: vencidos, de hoy e importantes sin fecha; no los listos ni los futuros', () => {
@@ -30,6 +31,30 @@ test('timedReminderDue: avisa a la hora exacta una sola vez', () => {
   expect(timedReminderDue(list, at(14, 59)).length).toBe(0)
   expect(timedReminderDue(list, at(15, 0)).map((x) => x.id)).toEqual(['a'])
   expect(timedReminderDue(list, at(15, 1), ['a']).length).toBe(0)
+})
+
+test('advanceReminderDue: avisa 6 horas antes, no antes ni en la última hora', () => {
+  const list = [
+    r('tarde', { dueDate: '2026-11-05', dueTime: '14:00' }),
+    r('sinhora', { dueDate: '2026-11-05' }),
+    r('listo', { dueDate: '2026-11-05', dueTime: '14:00', done: true }),
+  ]
+  // El día anterior todavía falta mucho.
+  expect(advanceReminderDue(list, at(8, 0), []).length).toBe(0)
+  // 6 horas antes sí; 6 h y 1 min antes todavía no.
+  expect(advanceReminderDue(list, atOn(5, 7, 59), []).length).toBe(0)
+  expect(advanceReminderDue(list, atOn(5, 8, 0), []).map((x) => x.id)).toEqual(['tarde'])
+  // Dentro de la ventana (4 h 30 min, 1 h) también avisa.
+  expect(advanceReminderDue(list, atOn(5, 9, 30), []).map((x) => x.id)).toEqual(['tarde'])
+  expect(advanceReminderDue(list, atOn(5, 13, 0), []).map((x) => x.id)).toEqual(['tarde'])
+  // A menos de 1 hora ya no es aviso adelantado (le toca el de la hora exacta).
+  expect(advanceReminderDue(list, atOn(5, 13, 1), []).length).toBe(0)
+  // Con la clave 'adv:<id>' ya avisada no se repite.
+  expect(advanceReminderDue(list, atOn(5, 8, 0), ['adv:tarde']).length).toBe(0)
+  // Si faltan 6 h justas, las horas que muestra el aviso son 6.
+  const due = reminderAt(list[0])
+  expect(due.getDate()).toBe(5)
+  expect(due.getHours()).toBe(14)
 })
 
 test('isOverdue y newOrdersSince', () => {

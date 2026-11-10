@@ -64,6 +64,24 @@ test('tick: recordatorio vencido con teléfono y nota; sin resumen fuera de turn
   expect(sb.calls.some((c) => c.name === 'push_claim_summaries')).toBe(false)
 })
 
+test('tick: aviso adelantado 6 horas antes del recordatorio', async () => {
+  const sb = fakeSupabase({
+    push_claim_due_reminders: [],
+    push_claim_advance_reminders: [{ merchant_id: M1, reminder_id: 'r_2', text: 'Enviar a Arequipa', phone: '962029213', note: 'Cobrar saldo', due_time: '14:00', hours_left: 6 }],
+    push_subscriptions_for: [subs[0]],
+    push_mark_sent: null,
+    push_claim_summaries: [],
+  })
+  const wp = fakeWebpush()
+  const res = fakeRes()
+  const at8 = new Date('2026-11-08T13:00:00Z') // 08:00 en Lima
+  await dispatch({ method: 'POST', headers: { 'x-push-secret': 'sek' }, body: { type: 'tick' } }, res, { env, fetchImpl: sb.fetchImpl, webpushImpl: wp, now: at8 })
+  expect(res.body.advance.sent).toBe(1)
+  expect(wp.sent[0].payload).toMatchObject({ title: '⏰ En 6 h: Enviar a Arequipa', body: 'Pactado para las 14:00 · 📞 +51 962029213 · 📝 Cobrar saldo', kind: 'reminder' })
+  // Los dos avisos usan columnas y etiquetas distintas.
+  expect(sb.calls.find((c) => c.name === 'push_claim_advance_reminders').headers.Authorization).toBe('Bearer svc')
+})
+
 test('tick a las 13:00 de Lima: pide el resumen del turno', async () => {
   const sb = fakeSupabase({ push_claim_due_reminders: [], push_claim_summaries: [{ merchant_id: M1, pending: 3, first_text: 'Llamar a Jessica' }], push_subscriptions_for: [subs[0]], push_mark_sent: null })
   const wp = fakeWebpush()

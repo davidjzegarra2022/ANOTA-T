@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { exportOrdersToExcel } from '../../utils/ordersExport'
+import { isOlvaOrder } from '../../utils/olvaExport'
 import { isShalomOrder } from '../../utils/shalomExport'
 import { IconDownload } from '../icons'
+import OlvaExportDialog from './OlvaExportDialog'
 import ShalomExportDialog from './ShalomExportDialog'
-
-const isOlvaOrder = (o) => o.deliveryMethod === 'agency' && String(o.courier).toLowerCase() === 'olva' && o.status !== 'cancelled'
 
 /**
  * Botón Excel de Envíos: antes de descargar pregunta el formato. Siempre
@@ -15,6 +15,7 @@ export default function ExcelExportMenu({ orders, merchant, label, disabled }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [shalomOpen, setShalomOpen] = useState(false)
+  const [olvaOpen, setOlvaOpen] = useState(false)
   const ref = useRef(null)
   const shalomCount = orders.filter(isShalomOrder).length
   const olvaCount = orders.filter(isOlvaOrder).length
@@ -70,10 +71,22 @@ export default function ExcelExportMenu({ orders, merchant, label, disabled }) {
               }}
             />
           )}
-          {olvaCount > 0 && <MenuItem badge="O" tone="bg-violet-100 text-violet-700" title="Olva masivo" text={`${olvaCount} pedido${olvaCount === 1 ? '' : 's'} · próximamente`} disabled />}
+          {olvaCount > 0 && (
+            <MenuItem
+              badge="O"
+              tone="bg-violet-100 text-violet-700"
+              title="Olva masivo"
+              text={`Envíos Masivos Pago en Destino · ${olvaCount} pedido${olvaCount === 1 ? '' : 's'}`}
+              onClick={() => {
+                setOpen(false)
+                setOlvaOpen(true)
+              }}
+            />
+          )}
         </div>
       )}
       {shalomOpen && <ShalomExportDialog merchant={merchant} periodOrders={orders} periodLabel="Pedidos de la lista" onClose={() => setShalomOpen(false)} />}
+      {olvaOpen && <OlvaExportDialog merchant={merchant} periodOrders={orders} periodLabel="Pedidos de la lista" onClose={() => setOlvaOpen(false)} />}
     </div>
   )
 }

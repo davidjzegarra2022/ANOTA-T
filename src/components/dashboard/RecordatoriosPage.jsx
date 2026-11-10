@@ -363,8 +363,8 @@ export default function RecordatoriosPage({ merchant, locked = false, onUpgrade 
           </div>
 
           <p className="px-1 text-[11px] leading-relaxed text-muted">
-            🔔 La campanita de arriba te avisa de lo pendiente al iniciar sesión, a las 9:00, 13:00 y 18:00, y a la hora exacta de cada recordatorio que
-            tenga hora.
+            🔔 La campanita de arriba te avisa de lo pendiente al iniciar sesión, a las 9:00, 13:00 y 18:00, <b>6 horas antes</b> de cada
+            recordatorio que tenga hora y otra vez a la hora exacta.
             <span className={`mt-1 block font-semibold ${sync === 'cloud' ? 'text-emerald-700' : sync === 'error' ? 'text-red-600' : 'text-amber-700'}`}>
               {sync === 'cloud'
                 ? '☁️ Sincronizados con tu cuenta: los ves en todos tus dispositivos.'
