@@ -1,22 +1,25 @@
-import { readFile, writeFile, rm } from 'node:fs/promises'
+import { readFile, writeFile, rename, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { build } from 'vite'
 
 /**
- * Genera dist/landing.html con la landing ya pintada.
+ * Genera dist/index.html con la landing ya pintada y mueve el shell de la app
+ * a dist/app.html.
  *
- * Sin esto, al abrir "/" el navegador recibe un <div id="root"> vacío y tiene
+ * Sin esto, al abrir "/" el navegador recibía un <div id="root"> vacío y tenía
  * que descargar y ejecutar todo el JS antes de mostrar el primer texto (lo que
  * Google/Lighthouse ve como "página vacía"). La landing se renderiza aquí en
- * tiempo de build y Vercel sirve ese HTML en "/"; React la reemplaza al
- * hidratar, sin cambiar la experiencia.
+ * tiempo de build y Vercel la sirve directamente en "/"; las demás rutas
+ * usan app.html mediante el rewrite de vercel.json.
  *
  * Se usa el build SSR de Vite para resolver los imports de imágenes con los
  * mismos nombres con hash que el build del cliente.
  */
 const root = process.cwd()
 const ssrDir = resolve(root, 'dist-ssr')
+const indexHtmlPath = resolve(root, 'dist', 'index.html')
+const appHtmlPath = resolve(root, 'dist', 'app.html')
 
 await build({
   root,
@@ -40,11 +43,13 @@ markup = markup.replace(/class="([^"]*\breveal\b[^"]*)"/g, (match, classes) =>
   classes.includes('is-visible') ? match : `class="${classes} is-visible"`,
 )
 
-const shell = await readFile(resolve(root, 'dist/index.html'), 'utf8')
+// El shell de la app (root vacío) pasa a app.html; index.html será la landing.
+const shell = await readFile(indexHtmlPath, 'utf8')
+await rename(indexHtmlPath, appHtmlPath)
 const html = shell.replace('<div id="root"></div>', `<div id="root">${markup}</div>`)
-if (html === shell) throw new Error('No se encontró <div id="root"></div> en dist/index.html')
+if (html === shell) throw new Error('No se encontró <div id="root"></div> en el index.html generado')
 
-await writeFile(resolve(root, 'dist/landing.html'), html, 'utf8')
+await writeFile(indexHtmlPath, html, 'utf8')
 await rm(ssrDir, { recursive: true, force: true })
 
-console.log(`landing.html generado (${(html.length / 1024).toFixed(1)} kB)`)
+console.log(`index.html (landing) generado (${(html.length / 1024).toFixed(1)} kB) y app.html listo`)

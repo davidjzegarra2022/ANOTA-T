@@ -1,7 +1,7 @@
 // Vista previa de los links de tienda (/f/:slug) en WhatsApp, Facebook, etc.
 //
 // Los robots que arman la vista previa NO ejecutan JavaScript: leen el HTML
-// tal cual. Esta función (Vercel) devuelve el mismo index.html de la app,
+// tal cual. Esta función (Vercel) devuelve el mismo app.html de la app,
 // pero con las etiquetas Open Graph de la tienda: su nombre y el logo que
 // subió en Configuración. Para las personas no cambia nada: el navegador
 // carga la app como siempre.
@@ -13,24 +13,24 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const SLUG_RE = /^[a-z0-9-]{1,60}$/
-// Dominios desde donde se acepta descargar el index.html de respaldo (nunca
+// Dominios desde donde se acepta descargar el app.html de respaldo (nunca
 // el que diga una cabecera Host cualquiera).
 const ALLOWED_HOST_RE = /^(anotat\.vercel\.app|[a-z0-9-]+\.vercel\.app|localhost(:\d+)?)$/i
 
 let cachedHtml = null
 
-/** El index.html de la app: el que viaja con la función (vercel.json → includeFiles) o, si no, el publicado. */
+/** El app.html de la app: el que viaja con la función (vercel.json → includeFiles) o, si no, el publicado. */
 async function loadIndexHtml(origin, host, fetchImpl) {
   if (cachedHtml) return cachedHtml
   try {
-    cachedHtml = await readFile(join(process.cwd(), 'dist', 'index.html'), 'utf8')
+    cachedHtml = await readFile(join(process.cwd(), 'dist', 'app.html'), 'utf8')
     return cachedHtml
   } catch {
     // sin archivo empaquetado: se descarga del sitio publicado
   }
   if (!ALLOWED_HOST_RE.test(host)) return null
   try {
-    const page = await fetchImpl(`${origin}/index.html`, { signal: AbortSignal.timeout(2500) })
+    const page = await fetchImpl(`${origin}/app.html`, { signal: AbortSignal.timeout(2500) })
     return page.ok ? await page.text() : null
   } catch {
     return null
@@ -55,7 +55,7 @@ function safeHttpsUrl(value) {
   }
 }
 
-/** Reemplaza el bloque <!--og:start-->…<!--og:end--> y el <title> del index.html. */
+/** Reemplaza el bloque <!--og:start-->…<!--og:end--> y el <title> del app.html. */
 export function injectStoreMeta(html, { store, pageUrl, origin }) {
   const name = store?.business_name ? String(store.business_name).slice(0, 80) : null
   const title = name ? `${name} — Completa tus datos de envío` : 'ANOTA-T — Formulario de envío'

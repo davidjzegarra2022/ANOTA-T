@@ -4,16 +4,12 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/landing.html"
-    },
-    {
       "source": "/f/:slug",
       "destination": "/api/store-page?slug=:slug"
     },
     {
       "source": "/((?!api/|\\.well-known/|descargas/|sw\\.js).*)",
-      "destination": "/index.html"
+      "destination": "/app.html"
     }
   ],
   "headers": [
@@ -96,7 +92,7 @@
   ],
   "functions": {
     "api/store-page.js": {
-      "includeFiles": "dist/index.html",
+      "includeFiles": "dist/app.html",
       "maxDuration": 5
     }
   }

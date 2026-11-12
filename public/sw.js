@@ -5,7 +5,7 @@
 //    las permite desde aquí) y al tocarlas abre/enfoca el panel.
 // No guarda en caché datos de la base: pedidos y recordatorios siempre se
 // leen en vivo de Supabase.
-const CACHE = 'anotat-shell-v2'
+const CACHE = 'anotat-shell-v3'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.add('/')).catch(() => {}))
