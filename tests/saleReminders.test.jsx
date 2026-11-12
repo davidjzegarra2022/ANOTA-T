@@ -65,7 +65,10 @@ test('Pro: muestra resumen, teléfono y nota; al confirmar agrega el recordatori
   expect(screen.queryByRole('button', { name: /Agregar al recordatorio/ })).toBeNull()
   expect(screen.getByText('¿Desea agregar esta venta al recordatorio?')).toBeTruthy()
   fireEvent.click(screen.getByRole('radio', { name: /Sí, agregar/ }))
-  expect(screen.getByText(/Sugerido:/)).toBeTruthy()
+  // Ya no hay línea de "Sugerido" ni chips: solo el día y la hora editables.
+  expect(screen.queryByText(/Sugerido:/)).toBeNull()
+  expect(screen.getByLabelText(/Día del recordatorio/)).toBeTruthy()
+  expect(screen.getByLabelText(/Hora del recordatorio/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: /Agregar al recordatorio/ }))
 
   const saved = reminderForOrder(loadReminders('m-1'), 7)

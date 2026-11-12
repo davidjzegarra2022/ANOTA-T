@@ -62,8 +62,12 @@ export function injectStoreMeta(html, { store, pageUrl, origin }) {
   const description = name
     ? 'Déjanos tus datos para coordinar la entrega de tu pedido. Es rápido y seguro.'
     : 'Formulario logístico de envío: coordina tu entrega o retiro en agencia en segundos.'
-  const image = safeHttpsUrl(store?.logo_url) || `${origin}/logo-icon.png`
+  const storeLogo = safeHttpsUrl(store?.logo_url)
+  // Vista previa grande (1200×630) cuando la tienda no tiene logo propio.
+  const image = storeLogo || `${origin}/og-anotat.jpg`
   const tags = [
+    // La página se puede rastrear para leer la vista previa, pero no indexar.
+    `<meta name="robots" content="noindex, follow" />`,
     `<meta name="description" content="${escapeHtml(description)}" />`,
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="${escapeHtml(name || 'ANOTA-T')}" />`,
@@ -73,8 +77,9 @@ export function injectStoreMeta(html, { store, pageUrl, origin }) {
     `<meta property="og:image" content="${escapeHtml(image)}" />`,
     `<meta property="og:image:secure_url" content="${escapeHtml(image)}" />`,
     `<meta property="og:image:type" content="${/\.png($|\?)/i.test(image) ? 'image/png' : 'image/jpeg'}" />`,
-    `<meta property="og:image:alt" content="${escapeHtml(name ? `Logo de ${name}` : 'ANOTA-T')}" />`,
-    `<meta name="twitter:card" content="summary" />`,
+    ...(storeLogo ? [] : ['<meta property="og:image:width" content="1200" />', '<meta property="og:image:height" content="630" />']),
+    `<meta property="og:image:alt" content="${escapeHtml(name ? `Formulario de envío de ${name}` : 'ANOTA-T — Formulario de envío')}" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${escapeHtml(title)}" />`,
     `<meta name="twitter:image" content="${escapeHtml(image)}" />`,
   ].join('\n    ')

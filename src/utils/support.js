@@ -1,4 +1,4 @@
-import { buildWhatsAppUrl } from './whatsapp'
+import { buildWhatsAppUrl } from './whatsappUrl'
 // Soporte de ANOTA-T por WhatsApp. Los botones de renovar, cambiar o
 // activar un plan (no hay pasarela de pago: el plan lo asigna el
 // administrador) abren un chat con un mensaje ya escrito según el caso,

@@ -29,7 +29,7 @@ export default function LoginScreen({ notice, onLoggedIn, onGoToSignup, onGoToFo
     <div className="card w-full max-w-md p-6 sm:p-7">
       <div className="flex items-center gap-2.5">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-white to-[#e6eef7] shadow-md">
-          <img src={logoIcon} alt="" className="h-5.5 w-5.5" />
+          <img src={logoIcon} alt="" className="h-5.5 w-auto" />
         </span>
         <p className="text-lg font-bold text-navy">ANOTA-T</p>
       </div>

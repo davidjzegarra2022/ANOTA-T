@@ -15,6 +15,7 @@ import {
   reminderSyncStatus,
 } from '../../utils/reminders'
 import { buildWhatsAppUrl } from '../../utils/whatsapp'
+import ActivityReminderDialog from './ActivityReminderDialog'
 import { IconBell, IconCheck, IconChevronLeft, IconChevronRight, IconLock, IconStar, IconTrash } from '../icons'
 
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
@@ -54,6 +55,7 @@ export default function RecordatoriosPage({ merchant, locked = false, onUpgrade 
   const [dayFilter, setDayFilter] = useState(null)
   const [month, setMonth] = useState(() => new Date())
   const [error, setError] = useState(null)
+  const [adding, setAdding] = useState(false)
 
   // Cada cambio se guarda de una: no hay botón "Guardar" ni estado sucio.
   useEffect(() => {
@@ -143,10 +145,22 @@ export default function RecordatoriosPage({ merchant, locked = false, onUpgrade 
             Anota lo que no puede olvidarse: envíos por despachar, clientes que prometiste llamar, pagos y renovaciones.
           </p>
         </div>
-        <p className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-muted">
-          {counts.pendientes} pendiente{counts.pendientes === 1 ? '' : 's'}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-muted">
+            {counts.pendientes} pendiente{counts.pendientes === 1 ? '' : 's'}
+          </p>
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            disabled={locked}
+            className="btn btn-primary !px-4 !py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <IconBell className="h-4 w-4" /> Recordar una actividad
+          </button>
+        </div>
       </div>
+
+      {adding && <ActivityReminderDialog onClose={() => setAdding(false)} onCreate={(reminder) => setItems((list) => [...list, reminder])} />}
 
       {locked && (
         <div role="status" className="card flex flex-wrap items-center gap-3 border-amber-300 bg-amber-50 p-4">
@@ -363,9 +377,7 @@ export default function RecordatoriosPage({ merchant, locked = false, onUpgrade 
           </div>
 
           <p className="px-1 text-[11px] leading-relaxed text-muted">
-            🔔 La campanita de arriba te avisa de lo pendiente al iniciar sesión, a las 9:00, 13:00 y 18:00, <b>6 horas antes</b> de cada
-            recordatorio que tenga hora y otra vez a la hora exacta.
-            <span className={`mt-1 block font-semibold ${sync === 'cloud' ? 'text-emerald-700' : sync === 'error' ? 'text-red-600' : 'text-amber-700'}`}>
+            <span className={`font-semibold ${sync === 'cloud' ? 'text-emerald-700' : sync === 'error' ? 'text-red-600' : 'text-amber-700'}`}>
               {sync === 'cloud'
                 ? '☁️ Sincronizados con tu cuenta: los ves en todos tus dispositivos.'
                 : sync === 'error'

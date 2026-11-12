@@ -41,11 +41,11 @@ export default function AccessGate({ onUnlock }) {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-surface px-5 py-10">
+    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-surface px-5 py-10">
       <div className="card w-full max-w-sm p-6 text-center sm:p-7">
         <div className="mx-auto flex items-center gap-2.5">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-white to-[#e6eef7] shadow-md">
-            <img src={logoIcon} alt="" className="h-6 w-6" />
+            <img src={logoIcon} alt="" className="h-6 w-auto" />
           </span>
         </div>
         <div className="mx-auto mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-brand-dark ring-1 ring-brand/40">
@@ -93,6 +93,6 @@ export default function AccessGate({ onUnlock }) {
           .
         </p>
       </div>
-    </div>
+    </main>
   )
 }

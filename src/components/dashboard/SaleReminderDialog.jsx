@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { copyText } from '../../utils/clipboard'
-import { addDaysKey, dayKey, dueLabel, loadReminders, newReminder, reminderForOrder, saveReminders, timeLabel } from '../../utils/reminders'
+import { dayKey, dueLabel, loadReminders, newReminder, reminderForOrder, saveReminders, timeLabel } from '../../utils/reminders'
 import { saleSummary, suggestSaleReminder } from '../../utils/saleReminders'
 import { buildWhatsAppUrl } from '../../utils/whatsapp'
 import { IconBell, IconCheck, IconCopy, IconLock, IconSparkles, IconTrash, IconWhatsapp, IconX } from '../icons'
 
 const NOTE_MAX = 140
-const pad = (n) => String(n).padStart(2, '0')
 
 function phoneWithCc(phone) {
   const d = String(phone || '').replace(/\D/g, '')
@@ -39,25 +38,6 @@ export default function SaleReminderDialog({ order, merchant, locked = false, on
   function flash(what) {
     setCopied(what)
     setTimeout(() => setCopied(null), 1800)
-  }
-
-  function preset(kind) {
-    const now = new Date()
-    if (kind === 'suggested') {
-      setDate(suggestion.date)
-      setTime(suggestion.time)
-    } else if (kind === 'hour') {
-      const d = new Date(now.getTime() + 60 * 60000)
-      d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5, 0, 0)
-      setDate(dayKey(d))
-      setTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`)
-    } else if (kind === 'tomorrow') {
-      setDate(addDaysKey(today, 1))
-      setTime('09:00')
-    } else if (kind === 'ship' && /^\d{4}-\d{2}-\d{2}$/.test(order.shippingDate || '')) {
-      setDate(order.shippingDate)
-      setTime('09:00')
-    }
   }
 
   function save() {
@@ -213,9 +193,6 @@ export default function SaleReminderDialog({ order, merchant, locked = false, on
 
               {add === true && (
                 <div className="mt-3 space-y-2.5">
-                  <p className="rounded-lg bg-white px-3 py-2 text-xs text-ink">
-                    <b className="text-brand-dark">✨ Sugerido:</b> {dueLabel(suggestion.date)} · {timeLabel(suggestion.time)} — {suggestion.reason}.
-                  </p>
                   <label className="block">
                     <span className="mb-1 block text-[11px] font-semibold text-muted uppercase">Recordarme</span>
                     <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={140} className="input-field text-sm" />
@@ -223,18 +200,6 @@ export default function SaleReminderDialog({ order, merchant, locked = false, on
                   <div className="grid grid-cols-2 gap-2">
                     <input type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} aria-label="Día del recordatorio" className="input-field text-sm" />
                     <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label="Hora del recordatorio" className="input-field text-sm" />
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      ['suggested', '✨ Sugerido'],
-                      ['hour', 'En 1 hora'],
-                      ['tomorrow', 'Mañana 9:00'],
-                      ...(/^\d{4}-\d{2}-\d{2}$/.test(order.shippingDate || '') && order.shippingDate >= today ? [['ship', 'Día del envío']] : []),
-                    ].map(([k, label]) => (
-                      <button key={k} type="button" onClick={() => preset(k)} className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-navy hover:bg-surface">
-                        {label}
-                      </button>
-                    ))}
                   </div>
                 </div>
               )}

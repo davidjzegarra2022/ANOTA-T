@@ -219,7 +219,7 @@ export default function DashboardLayout({ email, onLogout }) {
       >
         <div className="flex items-center gap-2.5 px-4 py-5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-white to-[#e6eef7] shadow-md">
-            <img src={logoIcon} alt="" className="h-5 w-5" />
+            <img src={logoIcon} alt="" className="h-5 w-auto" />
           </span>
           <p className={`truncate text-base font-bold text-white ${collapsed ? 'lg:hidden' : ''}`}>ANOTA-T</p>
           <button

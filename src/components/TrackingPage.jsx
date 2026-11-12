@@ -120,7 +120,7 @@ export default function TrackingPage({ initialCode = '' }) {
         <div className="mx-auto flex w-full max-w-xl items-center gap-2.5 px-4 py-4">
           <a href="/" className="inline-flex items-center gap-2.5 text-lg font-extrabold tracking-tight">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-white to-[#e6eef7] shadow">
-              <img src={logoIcon} alt="" className="h-6 w-6" />
+              <img src={logoIcon} alt="" className="h-6 w-auto" />
             </span>
             <span>
               ANOTA<span className="text-brand">-T</span>

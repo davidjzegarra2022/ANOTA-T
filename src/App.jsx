@@ -2,8 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Footer from './components/Footer'
 import Header from './components/Header'
 import ClaudeCodeLoader from './components/ClaudeCodeLoader'
-import ShippingForm from './components/ShippingForm'
-import SuccessScreen from './components/SuccessScreen'
 
 // Carga diferida de las zonas pesadas: así el formulario público (/f/:slug),
 // que es lo que abren los clientes en el celular, NO descarga el panel, el
@@ -13,9 +11,12 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const AuthGate = lazy(() => import('./components/auth/AuthGate'))
 const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout'))
 const LandingPage = lazy(() => import('./components/LandingPage'))
+const ShippingForm = lazy(() => import('./components/ShippingForm'))
+const SuccessScreen = lazy(() => import('./components/SuccessScreen'))
 const TrackingPage = lazy(() => import('./components/TrackingPage'))
 import { fetchMerchantBySlug, fetchSellerPublic } from './utils/merchantProfile'
 import { createOrder } from './utils/orders'
+import { setPageMeta, metaForPath } from './utils/pageMeta'
 import { readSellerFromSearch } from './utils/sellers'
 import { codeFromLocation } from './utils/tracking'
 import { getCurrentSession, isPlatformAdmin, onAuthStateChange, signOutMerchant } from './utils/supabaseAuth'
@@ -35,8 +36,21 @@ const ADMIN_PREVIEW_MERCHANT = {
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface px-6">
+    <main className="flex min-h-screen items-center justify-center bg-surface px-6">
       <ClaudeCodeLoader />
+    </main>
+  )
+}
+
+/** Esqueleto mientras baja el formulario (ahora es un chunk aparte). */
+function FormSkeleton() {
+  return (
+    <div className="space-y-3 py-2" role="status" aria-label="Cargando formulario">
+      <div className="h-4 w-2/3 animate-pulse rounded bg-slate-200" />
+      <div className="h-11 w-full animate-pulse rounded-xl bg-slate-200" />
+      <div className="h-11 w-full animate-pulse rounded-xl bg-slate-200" />
+      <div className="h-11 w-full animate-pulse rounded-xl bg-slate-200" />
+      <div className="h-11 w-1/2 animate-pulse rounded-xl bg-slate-200" />
     </div>
   )
 }
@@ -57,6 +71,9 @@ function PublicShippingRoute({ slug }) {
     fetchMerchantBySlug(slug).then((m) => {
       setMerchant(m)
       setSuspended(m ? m.acceptingOrders === false : false)
+      // El título de la pestaña y lo que se comparte llevan el nombre de la
+      // tienda, no el genérico de la app.
+      if (m?.businessName) setPageMeta({ title: `${m.businessName} · Formulario de envío` })
     })
     if (sellerRef) {
       sellerPromise.current = fetchSellerPublic(slug, sellerRef)
@@ -119,7 +136,9 @@ function PublicShippingRoute({ slug }) {
         {/* Panel de vidrio (Liquid Glass) sobre la luz ambiental del fondo. */}
         <div className="card px-4 py-5 sm:p-6">
           {submittedForm ? (
-            <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} onRetrySeller={retrySeller} />
+            <Suspense fallback={<FormSkeleton />}>
+              <SuccessScreen form={submittedForm} merchant={merchant} onNewOrder={() => setSubmittedForm(null)} onRetrySeller={retrySeller} />
+            </Suspense>
           ) : (
             <>
               {/* Guía corta para el cliente final: qué tiene que hacer y que el
@@ -145,7 +164,9 @@ function PublicShippingRoute({ slug }) {
                   </span>
                 </p>
               )}
-              <ShippingForm merchant={merchant} onSubmit={handleSubmit} suspended={suspended} />
+              <Suspense fallback={<FormSkeleton />}>
+                <ShippingForm merchant={merchant} onSubmit={handleSubmit} suspended={suspended} />
+              </Suspense>
             </>
           )}
         </div>
@@ -212,9 +233,13 @@ function AdminRoute() {
               ← Volver al panel
             </button>
             {submittedForm ? (
-              <SuccessScreen form={submittedForm} merchant={ADMIN_PREVIEW_MERCHANT} onNewOrder={() => setSubmittedForm(null)} onBackToPanel={handleBackToPanel} />
+              <Suspense fallback={<FormSkeleton />}>
+                <SuccessScreen form={submittedForm} merchant={ADMIN_PREVIEW_MERCHANT} onNewOrder={() => setSubmittedForm(null)} onBackToPanel={handleBackToPanel} />
+              </Suspense>
             ) : (
-              <ShippingForm merchant={ADMIN_PREVIEW_MERCHANT} onSubmit={setSubmittedForm} />
+              <Suspense fallback={<FormSkeleton />}>
+                <ShippingForm merchant={ADMIN_PREVIEW_MERCHANT} onSubmit={setSubmittedForm} />
+              </Suspense>
             )}
           </>
         )}
@@ -289,7 +314,12 @@ function MerchantSaasRoute({ path }) {
     setSession(null)
   }
 
-  if (session === undefined) return <LoadingScreen />
+  // La landing se muestra de inmediato: antes se veía un spinner hasta que
+  // Supabase respondía, y al entrar por primera vez la página "llegaba vacía".
+  if (session === undefined) {
+    const showLanding = hashType !== 'recovery' && hashType !== 'signup' && !authScreenForPath(path)
+    return showLanding ? <LandingPage /> : <LoadingScreen />
+  }
 
   // Con sesión activa, siempre al panel — sin importar si llegó a /login por error.
   if (session && hashType !== 'recovery') {
@@ -330,6 +360,12 @@ export default function App() {
     () => (isTrackingRoute ? codeFromLocation(path, window.location.search, window.location.hash) : ''),
     [isTrackingRoute, path],
   )
+
+  // Título y descripción de la pestaña según la ruta. En /f/:slug los pone la
+  // propia ruta cuando ya conoce el nombre de la tienda.
+  useEffect(() => {
+    if (!publicFormSlug) setPageMeta(metaForPath(path))
+  }, [path, publicFormSlug])
 
   // Suspense cubre a los componentes cargados en diferido mientras bajan.
   return (

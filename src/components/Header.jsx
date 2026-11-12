@@ -22,7 +22,7 @@ export default function Header({ businessName, subtitle, minimal = false, logoUr
           <img
             src={showCustomLogo ? logoUrl : logoIcon}
             alt=""
-            className={showCustomLogo ? 'h-full w-full object-cover' : 'h-5.5 w-5.5'}
+            className={showCustomLogo ? 'h-full w-full object-cover' : 'h-5.5 w-auto'}
             onError={() => setLogoFailed(true)}
           />
         </span>

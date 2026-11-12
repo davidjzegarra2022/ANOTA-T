@@ -63,7 +63,9 @@ function PlanCard({ plan, featured }) {
 
 function TrackingBox() {
   // Links antiguos (#rastreo?c=ANOTA-…) también llegan con el pedido consultado.
-  const [initialCode] = useState(() => codeFromLocation(window.location.pathname, window.location.search, window.location.hash))
+  const [initialCode] = useState(() =>
+    typeof window === 'undefined' ? '' : codeFromLocation(window.location.pathname, window.location.search, window.location.hash),
+  )
   return (
     <div className="reveal">
       <TrackingSearch initialCode={initialCode} onDark />
@@ -108,7 +110,7 @@ export default function LandingPage() {
         <nav className="mx-auto flex min-h-[76px] w-[92%] max-w-[1180px] items-center justify-between gap-6">
           <a href="/" className="inline-flex items-center gap-2.5 text-[22px] font-extrabold tracking-tight">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-white to-[#e6eef7] shadow-lg">
-              <img src={logoIcon} alt="" className="h-7 w-7" />
+              <img src={logoIcon} alt="" className="h-7 w-auto" />
             </span>
             <span>
               ANOTA<span className="text-brand">-T</span>
@@ -302,7 +304,7 @@ export default function LandingPage() {
           <div>
             <a href="/" className="inline-flex items-center gap-2.5 text-xl font-extrabold">
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-white to-[#e6eef7]">
-                <img src={logoIcon} alt="" className="h-6 w-6" />
+                <img src={logoIcon} alt="" className="h-6 w-auto" />
               </span>
               <span>
                 ANOTA<span className="text-brand">-T</span>
@@ -311,7 +313,7 @@ export default function LandingPage() {
             <p className="mt-4 text-[13px] text-slate-300">ANOTA-T es una herramienta de formularios. No realizamos delivery ni transporte.</p>
           </div>
           <div>
-            <h4 className="mb-4 font-bold text-brand">Enlaces rápidos</h4>
+            <h3 className="mb-4 font-bold text-brand">Enlaces rápidos</h3>
             <div className="space-y-2 text-[13px] text-slate-300">
               <a href="#servicios" className="block hover:text-brand">Funciones</a>
               <a href="#como-funciona" className="block hover:text-brand">Cómo funciona</a>
@@ -319,7 +321,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div>
-            <h4 className="mb-4 font-bold text-brand">Soporte</h4>
+            <h3 className="mb-4 font-bold text-brand">Soporte</h3>
             <div className="space-y-2 text-[13px] text-slate-300">
               <a href={supportWhatsAppUrl('info')} target="_blank" rel="noopener noreferrer" className="block hover:text-brand">Soporte por WhatsApp</a>
               <a href="#contacto" className="block hover:text-brand">Preguntas frecuentes</a>
@@ -327,7 +329,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div>
-            <h4 className="mb-4 font-bold text-brand">Contáctanos</h4>
+            <h3 className="mb-4 font-bold text-brand">Contáctanos</h3>
             <p className="mb-2 text-[13px] text-slate-300">✉ helpanotat@gmail.com</p>
             <a
               href={supportWhatsAppUrl('info')}

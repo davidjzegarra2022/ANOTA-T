@@ -4,6 +4,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/landing.html"
+    },
+    {
       "source": "/f/:slug",
       "destination": "/api/store-page?slug=:slug"
     },

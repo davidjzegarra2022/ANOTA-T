@@ -1,11 +1,11 @@
 # ANOTA-T
 User-agent: *
-Allow: /$
-Allow: /login
-Allow: /signup
-# Los formularios de cada tienda son privados por link, no para indexar.
-Disallow: /f/
+Allow: /
+# El panel de administración y la recuperación de contraseña no se indexan.
 Disallow: /admin
 Disallow: /forgot-password
+# Los formularios de cada tienda (/f/:slug) SÍ se dejan rastrear para que
+# WhatsApp, Facebook y X puedan leer su vista previa; el HTML de esa ruta
+# lleva <meta name="robots" content="noindex"> para no aparecer en Google.
 
 Sitemap: https://anotat.vercel.app/sitemap.xml
