@@ -50,10 +50,17 @@ export default function TrackingResult({ order }) {
             <p className="tracking-code font-mono text-sm font-bold">{order.trackingCode}</p>
           </div>
           <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${cancelled ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
-            {ORDER_STATUS_LABELS[order.status] ?? order.status}
+            {/* Si Shalom ya respondió, su estado es el más actual. */}
+            {!cancelled && order.courierStatus ? order.courierStatus : (ORDER_STATUS_LABELS[order.status] ?? order.status)}
           </span>
         </div>
 
+        {!cancelled && order.courierStatus && (
+          <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-[12px] font-semibold text-blue-700">
+            🚚 Estado en Shalom: {order.courierStatus}
+            {order.courierCheckedAt && <span className="font-normal"> · consultado {fmtDateTime(order.courierCheckedAt)}</span>}
+          </p>
+        )}
         {!cancelled && (
           <ol className="mt-5" aria-label="Avance de tu envío">
             {steps.map((s, i) => {

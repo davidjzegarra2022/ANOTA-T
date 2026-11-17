@@ -56,3 +56,24 @@ test('orderDestination: agencia, domicilio y tienda', async () => {
   })
   expect(orderDestination({ deliveryMethod: 'store' }).main).toBe('Recojo en tienda')
 })
+
+test('con el estado real de Shalom la línea de tiempo y el titular dicen la verdad', () => {
+  const base = { deliveryMethod: 'agency', courier: 'shalom', businessName: 'NEXUS' }
+  // Shalom dice "En tránsito" aunque la tienda solo marcó "Empacado".
+  const transit = trackingSteps({ ...base, status: 'packed', courierStatus: 'En tránsito', courierRegisteredAt: '14/11/26 10:15' })
+  expect(transit.map((s) => s.state)).toEqual(['done', 'done', 'done', 'current'])
+  expect(transit[2].text).toContain('Shalom: En tránsito')
+  expect(transit[3]).toMatchObject({ badge: 'Siguiente' })
+  expect(transit[3].text).not.toMatch(/llegó/)
+  expect(trackingHeadline({ ...base, status: 'packed', courierStatus: 'En tránsito' }).title).toBe('Tu pedido va camino a tu agencia')
+  // En destino → ahora sí "llegó".
+  const dest = trackingSteps({ ...base, status: 'shipped', courierStatus: 'En destino' })
+  expect(dest[3]).toMatchObject({ state: 'current', badge: 'Ahora', text: 'Tu pedido llegó a la agencia, recógelo con tu DNI.' })
+  expect(trackingHeadline({ ...base, status: 'shipped', courierStatus: 'En destino' }).title).toBe('¡Tu pedido llegó a tu agencia!')
+  // Entregado → todo hecho.
+  const ent = trackingSteps({ ...base, status: 'shipped', courierStatus: 'Entregado', courierDeliveredAt: '16/11/26 16:40' })
+  expect(ent.every((s) => s.state === 'done')).toBe(true)
+  expect(ent[3]).toMatchObject({ title: 'Pedido recogido', text: 'Shalom lo entregó el 16/11/26 16:40.' })
+  // Cancelado manda sobre Shalom.
+  expect(trackingHeadline({ ...base, status: 'cancelled', courierStatus: 'En tránsito' }).tone).toBe('bad')
+})

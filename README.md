@@ -1065,3 +1065,20 @@ La clave pública VAPID también está en `src/utils/push.js` (es pública por
 diseño); la privada y la service_role **solo** en Vercel.
 iPhone: el push funciona dentro de la app instalada (Safari → Compartir →
 «Agregar a inicio», iOS 16.4+).
+
+## Rastreo real en Shalom (skill `rastrear-envio`)
+
+- La skill de Finangher (MIT) está en `.claude/skills/rastrear-envio`: Claude
+  Code puede responder «¿dónde está mi pedido?» con el N° de orden y el código
+  del ticket de Shalom.
+- En el producto: en Envíos → Ver resumen de un pedido de Shalom se guardan el
+  N° de orden y el código del ticket y se pulsa **Consultar en Shalom**.
+  `api/rastrear-shalom.js` (misma lógica, `api/_shalom.js`) abre la página
+  pública de rastreo de Shalom con Chromium sin ventana (`@sparticuz/chromium`
+  en Vercel), un pedido a la vez y solo bajo demanda; si se consultó hace menos
+  de 10 minutos devuelve lo guardado. Lee y guarda con la sesión del negociante
+  (RLS), sin claves de servicio.
+- El rastreo público muestra el estado de Shalom (no los números del ticket) y
+  la línea de tiempo avanza con él. SQL: `sql/2026-11-17-rastreo-shalom.sql`.
+- No guarda el nombre ni el DNI de quien recogió (Shalom los muestra; aquí se
+  omiten). Si Shalom cambia su página, se avisa: no se inventa un estado.

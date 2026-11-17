@@ -576,6 +576,7 @@ export default function EnviosPage({ merchant, proEnabled = false, onUpgrade }) 
           order={summaryOrder}
           onClose={() => setSummaryOrder(null)}
           onAmountSaved={(id, amount) => setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, amount } : o)))}
+          onOrderPatched={(id, patch) => setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)))}
         />
       )}
       {toDelete && (
@@ -627,6 +628,14 @@ function Destination({ order }) {
       <span className="block font-semibold text-ink">{deliveryMethodLabel(order)}</span>
       {order.deliveryMethod !== 'store' && <span className="block leading-snug break-words text-ink">{dest.main}</span>}
       {dest.detail && <span className="block leading-snug break-words text-muted">{dest.detail}</span>}
+      {order.courierStatus && (
+        <span
+          title={order.courierCheckedAt ? `Consultado en Shalom: ${new Date(order.courierCheckedAt).toLocaleString('es-PE')}` : undefined}
+          className="mt-0.5 mr-1 inline-block rounded-md bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700"
+        >
+          🚚 Shalom: {order.courierStatus}
+        </span>
+      )}
     </>
   )
 }

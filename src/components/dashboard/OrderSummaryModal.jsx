@@ -5,6 +5,7 @@ import { orderSummarySections, orderSummaryText } from '../../utils/orderSummary
 import { updateOrderAmount } from '../../utils/orders'
 import { IconCheck, IconCopy, IconX } from '../icons'
 import { pageRule, readPrintFormat, savePrintFormat } from './PrintLabelsModal'
+import CourierTicketPanel from './CourierTicketPanel'
 
 function IconPrinter({ className }) {
   return (
@@ -26,7 +27,7 @@ function IconPrinter({ className }) {
  * CSS de `#order-summary-print` (en index.css) esconde el resto al
  * imprimir y muestra solo esa copia.
  */
-export default function OrderSummaryModal({ order, onClose, onAmountSaved }) {
+export default function OrderSummaryModal({ order, onClose, onAmountSaved, onOrderPatched }) {
   const [copied, setCopied] = useState(false)
   const [amount, setAmount] = useState(order.amount == null ? '' : String(order.amount))
   const [savingAmount, setSavingAmount] = useState(false)
@@ -73,10 +74,10 @@ export default function OrderSummaryModal({ order, onClose, onAmountSaved }) {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-navy/60 p-0 sm:items-center sm:p-6">
       <button type="button" aria-label="Cerrar" onClick={onClose} className="absolute inset-0 print:hidden" />
 
-      <div className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
+      <div role="dialog" aria-modal="true" aria-labelledby="order-summary-title" className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
         <div className="flex items-start gap-3 border-b border-slate-200 px-4 py-3.5 sm:px-5 print:hidden">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-navy sm:text-base">Resumen del pedido</p>
+            <p id="order-summary-title" className="text-sm font-bold text-navy sm:text-base">Resumen del pedido</p>
             <p className="truncate font-mono text-xs text-brand-dark">{order.trackingCode}</p>
           </div>
           <button
@@ -111,6 +112,15 @@ export default function OrderSummaryModal({ order, onClose, onAmountSaved }) {
             </div>
             {amountMsg && <p className={`mt-1 text-xs font-semibold ${amountMsg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{amountMsg.text}</p>}
           </div>
+          {order.deliveryMethod === 'agency' && String(order.courier).toLowerCase() === 'shalom' && (
+            <CourierTicketPanel
+              order={order}
+              onUpdated={(patch) => {
+                Object.assign(order, patch) // refleja en el objeto que comparte la lista
+                onOrderPatched?.(order.id, patch)
+              }}
+            />
+          )}
           <SummaryBody sections={sections} />
         </div>
 
