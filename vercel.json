@@ -94,6 +94,10 @@
     "api/store-page.js": {
       "includeFiles": "dist/app.html",
       "maxDuration": 5
+    },
+    "api/rastrear-shalom.js": {
+      "maxDuration": 60,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     }
   }
 }

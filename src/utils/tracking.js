@@ -73,7 +73,24 @@ export function trackingSteps(order) {
   ]
   // Hasta qué paso confirma el estado. Mientras está pendiente, «preparando»
   // es lo que pasa AHORA; en los demás, el paso que sigue es lo SIGUIENTE.
-  const done = STEP_INDEX[order?.status] ?? 1
+  let done = STEP_INDEX[order?.status] ?? 1
+  // Si se consultó en Shalom, manda lo que dice Shalom (la tienda pudo no
+  // haber marcado «Enviado» todavía).
+  const cs = order?.status === 'cancelled' ? null : order?.courierStatus
+  if (cs && method === 'agency') {
+    done = cs === 'Entregado' ? 4 : Math.max(done, 3)
+    if (cs === 'En destino') {
+      last.title = 'Listo para recoger en tu agencia'
+      last.text = 'Tu pedido llegó a la agencia, recógelo con tu DNI.'
+      last.now = true
+    } else if (cs === 'Entregado') {
+      last.doneTitle = 'Pedido recogido'
+      last.doneText = order.courierDeliveredAt ? `Shalom lo entregó el ${order.courierDeliveredAt}.` : 'Shalom confirmó la entrega.'
+    } else {
+      last.text = 'Cuando llegue a tu agencia podrás recogerlo con tu DNI.'
+    }
+    sent.doneText = `Shalom: ${cs}${order.courierRegisteredAt ? ` (registrado el ${order.courierRegisteredAt})` : ''}.`
+  }
   return steps.map((s, i) => {
     const state = i < done ? 'done' : i === done ? 'current' : 'todo'
     // Hora real en que pasó cada paso (solo si la base la guarda).
@@ -82,7 +99,7 @@ export function trackingSteps(order) {
       id: s.id,
       state,
       at: at || null,
-      badge: state === 'current' ? (s.id === 'packing' ? 'Ahora' : 'Siguiente') : '',
+      badge: state === 'current' ? (s.id === 'packing' || s.now ? 'Ahora' : 'Siguiente') : '',
       title: state === 'done' && s.doneTitle ? s.doneTitle : s.title,
       text: state === 'done' && s.doneText ? s.doneText : s.text,
     }
@@ -93,9 +110,12 @@ export function trackingSteps(order) {
 export function trackingHeadline(order) {
   const shop = order?.businessName || 'La tienda'
   switch (order?.status) {
-    case 'packed':
-      return { tone: 'ok', title: 'Tu pedido ya está empacado', text: `${shop} lo tiene listo para despachar. Pronto saldrá.` }
     case 'shipped':
+    case 'packed':
+      if (order.deliveryMethod === 'agency' && order.courierStatus === 'Entregado') return { tone: 'ok', title: '¡Pedido entregado!', text: 'Shalom confirmó que ya lo recogiste. ¡Gracias por tu compra!' }
+      if (order.deliveryMethod === 'agency' && order.courierStatus === 'En destino') return { tone: 'ok', title: '¡Tu pedido llegó a tu agencia!', text: 'Recógelo con tu DNI y la clave del envío. Hay plazo de recojo.' }
+      if (order.deliveryMethod === 'agency' && order.courierStatus) return { tone: 'ok', title: 'Tu pedido va camino a tu agencia', text: `Según Shalom está «${order.courierStatus}». Te avisaremos cuando llegue.` }
+      if (order.status === 'packed') return { tone: 'ok', title: 'Tu pedido ya está empacado', text: `${shop} lo tiene listo para despachar. Pronto saldrá.` }
       return order.deliveryMethod === 'agency'
         ? { tone: 'ok', title: '¡Tu pedido ya fue enviado!', text: `Va camino a tu agencia. Recógelo con tu DNI cuando te avisen.` }
         : order.deliveryMethod === 'home'

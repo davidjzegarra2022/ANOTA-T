@@ -32,6 +32,13 @@ function fromRow(row) {
     packedAt: row.packed_at || null,
     shippedAt: row.shipped_at || null,
     cancelledAt: row.cancelled_at || null,
+    // Ticket y estado real en el courier (sql/2026-11-17-rastreo-shalom.sql).
+    courierTrackingNumber: row.courier_tracking_number || '',
+    courierTrackingCode: row.courier_tracking_code || '',
+    courierStatus: row.courier_status || null,
+    courierRegisteredAt: row.courier_registered_at || null,
+    courierDeliveredAt: row.courier_delivered_at || null,
+    courierCheckedAt: row.courier_checked_at || null,
   }
 }
 
@@ -212,6 +219,35 @@ export async function fetchMyOrders({ createdFrom, createdTo, status, search, da
   return search?.trim() ? rows.filter((o) => orderMatchesSearch(o, search, { daily: dailySearch })) : rows
 }
 
+/** Guarda el N° de orden y el código del ticket del courier (Shalom). Vacío = borrar. */
+export async function updateCourierTicket(id, number, code) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const n = String(number || '').replace(/\D/g, '')
+  const c = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  if ((n || c) && (!/^\d{8,12}$/.test(n) || !/^[A-Z0-9]{4}$/.test(c))) return { ok: false, error: 'El N° de orden tiene 8 a 12 dígitos y el código 4 caracteres (están en el ticket).' }
+  const { error } = await supabase.from('orders').update({ courier_tracking_number: n || null, courier_tracking_code: c || null }).eq('id', id)
+  if (error) return { ok: false, error: /courier_tracking/.test(error.message) ? 'Falta activar el rastreo en Supabase (SQL de rastreo Shalom).' : error.message }
+  return { ok: true, number: n, code: c }
+}
+
+/** Consulta el estado real en Shalom (bajo demanda, ver api/rastrear-shalom.js). */
+export async function consultCourier(orderId, { force = false } = {}) {
+  const supabase = await getSupabaseClient()
+  const { data } = (await supabase?.auth.getSession()) || {}
+  const token = data?.session?.access_token
+  if (!token) return { ok: false, mensaje: 'Vuelve a iniciar sesión.' }
+  const res = await fetch('/api/rastrear-shalom', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order_id: orderId, force }),
+  }).catch(() => null)
+  if (!res) return { ok: false, mensaje: 'Sin conexión.' }
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok || !body.ok) return { ok: false, mensaje: body.mensaje || 'No se pudo consultar Shalom en este momento.' }
+  return body
+}
+
 /** ¿La tienda ya recibió al menos un pedido? (solo cuenta, no trae datos) */
 export async function hasAnyOrder() {
   const supabase = await getSupabaseClient()
@@ -280,6 +316,10 @@ export async function trackOrderByCode(code) {
       packedAt: row.packed_at || null,
       shippedAt: row.shipped_at || null,
       cancelledAt: row.cancelled_at || null,
+      courierStatus: row.courier_status || null,
+      courierRegisteredAt: row.courier_registered_at || null,
+      courierDeliveredAt: row.courier_delivered_at || null,
+      courierCheckedAt: row.courier_checked_at || null,
     },
   }
 }

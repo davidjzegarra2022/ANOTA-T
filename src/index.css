@@ -682,3 +682,6 @@ html:not(.dark) svg.text-muted[stroke='currentColor'] { color: #3f5069; }
   50% { box-shadow: 0 0 0 12px rgb(255 196 0 / 0); }
 }
 @media (prefers-reduced-motion: reduce) { .upgrade-shine, .upgrade-cta { animation: none; } }
+
+.dark .bg-blue-50 { background-color: rgb(59 130 246 / .15); }
+.dark .text-blue-700 { color: #93c5fd; }
