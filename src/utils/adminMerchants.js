@@ -113,24 +113,82 @@ export async function adminListSubscriptions() {
   return { ok: true, byId }
 }
 
+/** Fecha de hoy en Perú como se pide escribirla para confirmar (ej. 20/11/2026). */
+export function limaTodayText(now = new Date()) {
+  return now.toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+/** ¿El historial ya tiene un pago real (no anulado) registrado hoy, hora de Perú? */
+export function hasPaymentToday(payments, now = new Date()) {
+  const today = limaTodayText(now)
+  return (payments || []).some((p) => p.kind !== 'adjustment' && !p.voidedAt && p.createdAt && limaTodayText(new Date(p.createdAt)) === today)
+}
+
+const MISSING_ADJUST_SQL = 'Falta correr el SQL de ajustes de pagos en Supabase (sql/2026-11-20-ajustes-de-pagos.sql).'
+
 /** Registra un pago: asigna el plan y suma los días de vigencia. */
-export async function adminRegisterPayment({ merchantId, planId, days, amount, method, note }) {
+export async function adminRegisterPayment({ merchantId, planId, days, amount, method, note, confirm }) {
   const supabase = await getSupabaseClient()
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
-  const { data, error } = await supabase.rpc('admin_register_payment', {
+  const args = {
     p_merchant: merchantId,
     p_plan_id: planId,
     p_days: days,
     p_amount: amount,
     p_method: method || null,
     p_note: note || null,
-  })
+  }
+  // Solo se envía cuando hace falta: así sigue funcionando aunque aún no se
+  // haya corrido el SQL de ajustes.
+  if (confirm) args.p_confirm = confirm
+  const { data, error } = await supabase.rpc('admin_register_payment', args)
   if (error) {
-    if (isMissingFn(error)) return { ok: false, error: 'Falta correr el SQL de pagos en Supabase (sql/2026-11-05-pagos-y-vencimiento.sql).' }
+    if (/duplicate_today/.test(error.message)) return { ok: false, duplicateToday: true, error: `Ya registraste un pago hoy a esta tienda. Escribe la fecha de hoy (${limaTodayText()}) para registrar otro.` }
+    if (isMissingFn(error)) return { ok: false, error: confirm ? MISSING_ADJUST_SQL : 'Falta correr el SQL de pagos en Supabase (sql/2026-11-05-pagos-y-vencimiento.sql).' }
     if (/invalid_days/.test(error.message)) return { ok: false, error: 'Los días deben estar entre 1 y 3650.' }
     return { ok: false, error: adminError(error) }
   }
   return { ok: true, payment: data }
+}
+
+/** Ajusta a mano los días de servicio (+ suma, − resta). Queda en el historial. */
+export async function adminAdjustDays({ merchantId, days, reason }) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { data, error } = await supabase.rpc('admin_adjust_days', { p_merchant: merchantId, p_days: days, p_reason: reason })
+  if (error) {
+    if (isMissingFn(error)) return { ok: false, error: MISSING_ADJUST_SQL }
+    if (/invalid_days/.test(error.message)) return { ok: false, error: 'El ajuste debe estar entre −3650 y 3650 días (y no ser 0).' }
+    if (/reason_required/.test(error.message)) return { ok: false, error: 'Escribe el motivo del ajuste.' }
+    return { ok: false, error: adminError(error) }
+  }
+  return { ok: true, payment: data }
+}
+
+/** Anula un pago o ajuste: deja de contar y se le restan (o devuelven) sus días. */
+export async function adminVoidPayment(paymentId, reason) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { error } = await supabase.rpc('admin_void_payment', { p_payment: paymentId, p_reason: reason || null })
+  if (error) {
+    if (isMissingFn(error)) return { ok: false, error: MISSING_ADJUST_SQL }
+    if (/already_voided/.test(error.message)) return { ok: false, error: 'Ese movimiento ya estaba anulado.' }
+    return { ok: false, error: adminError(error) }
+  }
+  return { ok: true }
+}
+
+/** Restaura un pago o ajuste anulado: vuelve a contar sus días. */
+export async function adminRestorePayment(paymentId) {
+  const supabase = await getSupabaseClient()
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' }
+  const { error } = await supabase.rpc('admin_restore_payment', { p_payment: paymentId })
+  if (error) {
+    if (isMissingFn(error)) return { ok: false, error: MISSING_ADJUST_SQL }
+    if (/not_voided/.test(error.message)) return { ok: false, error: 'Ese movimiento no está anulado.' }
+    return { ok: false, error: adminError(error) }
+  }
+  return { ok: true }
 }
 
 /** Historial de pagos de una tienda (o de todas si no se pasa id). */
@@ -153,6 +211,9 @@ export async function adminListPayments(merchantId = null) {
       periodStart: r.period_start,
       periodEnd: r.period_end,
       createdAt: r.created_at,
+      kind: r.kind || 'payment',
+      voidedAt: r.voided_at || null,
+      voidReason: r.void_reason || '',
     })),
   }
 }
@@ -309,6 +370,9 @@ export async function adminListActivity(limit = 100) {
       action: r.action,
       details: r.details,
       createdAt: r.created_at,
+      kind: r.kind || 'payment',
+      voidedAt: r.voided_at || null,
+      voidReason: r.void_reason || '',
     })),
   }
 }
